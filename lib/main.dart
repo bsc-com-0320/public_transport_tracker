@@ -1,11 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'Homepage.dart';
 import 'LoginPage.dart';
 import 'SignUpPage.dart';
 import 'BookPage.dart';
 
+const supabaseUrl = 'https://oilotmwaixynjaupkucd.supabase.co';
+const supabaseKey =
+ 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9pbG90bXdhaXh5bmphdXBrdWNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI4MzMyMzcsImV4cCI6MjA1ODQwOTIzN30.iQcQ1FxZz5jollXQgkAflSuIUFoPHgfbc6_L8c66QwM';
 
-void main() {
+
+
+void main()  async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Supabase.initialize(url: supabaseUrl,anonKey:supabaseKey );
   runApp(MyApp());
 }
 
