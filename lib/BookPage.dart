@@ -53,9 +53,7 @@ class _BookPageState extends State<BookPage> {
       );
 
       if (result != null) {
-        debugPrint("Latitude: ${result.latitude}");
-        debugPrint("Longitude: ${result.longitude}");
-
+       
         String locationName = await getLocationName(result.latitude, result.longitude);
 
         setState(() {
@@ -99,24 +97,33 @@ class _BookPageState extends State<BookPage> {
     }
   }
 
+ 
   void _confirmBooking() async {
-    if (_pickupController.text.isEmpty || _dropoffController.text.isEmpty || selectedDateTime == null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Please fill all fields!")));
-      return;
-    }
-
-    final response = await supabase.from('booking').insert({
-      'pickup_point': _pickupController.text,
-      'dropoff_point': _dropoffController.text,
-      'ride_date': selectedDateTime!.toIso8601String(),
-    });
-
-    if (response.error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error booking ride!")));
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Ride booked successfully!")));
-    }
+  if (_pickupController.text.isEmpty || _dropoffController.text.isEmpty || selectedDateTime == null) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Please fill all fields!")));
+    return;
   }
+
+  final response = await supabase.from('booking').insert({
+    'pickup_point': _pickupController.text,
+    'dropoff_point': _dropoffController.text,
+    'datetime': selectedDateTime!.toIso8601String(),
+  }).select();  // Ensure it returns a proper response
+
+  // Instead of response.error, check response structure
+  if (response == null) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Unexpected error: Response is null")));
+    return;
+  }
+
+  // Check if the response contains an error
+  if (response is PostgrestException) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error booking ride: ${response.message}")));
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Ride booked successfully!")));
+  }
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -170,4 +177,8 @@ class _BookPageState extends State<BookPage> {
       return "Unknown Location";
     }
   }
+}
+
+extension on PostgrestList {
+  get message => null;
 }
