@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'Homepage.dart';
 import 'LoginPage.dart';
 import 'SignUpPage.dart';
 import 'BookPage.dart';
+import 'GoogleMap.dart';
+
 
 const supabaseUrl = 'https://oilotmwaixynjaupkucd.supabase.co';
 const supabaseKey =
@@ -25,6 +28,7 @@ class MyApp extends StatelessWidget {
       title: 'Public_transport_tracker',
       theme: ThemeData(
         primarySwatch: Colors.brown,
+        
       ),
       initialRoute: '/login',
       routes: {
