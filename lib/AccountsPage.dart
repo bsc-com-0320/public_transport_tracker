@@ -44,12 +44,12 @@ class AccountsPage extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
-                      Text("\$",
+                      Text("\MWK",
                           style: TextStyle(
                               color: Colors.green,
                               fontWeight: FontWeight.bold)),
                       SizedBox(width: 5),
-                      Text("20.5",
+                      Text("1000.50",
                           style: TextStyle(
                               color: Colors.green,
                               fontWeight: FontWeight.bold)),
