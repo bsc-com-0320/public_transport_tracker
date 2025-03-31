@@ -28,11 +28,7 @@ class _BookPageState extends State<BookPage> {
       );
 
       if (result != null) {
-        debugPrint("Latitude: ${result.latitude}");
-        debugPrint("Longitude: ${result.longitude}");
-
         String locationName = await getLocationName(result.latitude, result.longitude);
-
         setState(() {
           _pickupController.text = locationName;
         });
@@ -53,9 +49,7 @@ class _BookPageState extends State<BookPage> {
       );
 
       if (result != null) {
-       
         String locationName = await getLocationName(result.latitude, result.longitude);
-
         setState(() {
           _dropoffController.text = locationName;
         });
@@ -97,33 +91,46 @@ class _BookPageState extends State<BookPage> {
     }
   }
 
- 
   void _confirmBooking() async {
-  if (_pickupController.text.isEmpty || _dropoffController.text.isEmpty || selectedDateTime == null) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Please fill all fields!")));
-    return;
+    if (_pickupController.text.isEmpty || _dropoffController.text.isEmpty || selectedDateTime == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Please fill all fields!")),
+      );
+      return;
+    }
+
+    try {
+      final response = await supabase.from('booking').insert({
+        'pickup_point': _pickupController.text,
+        'dropoff_point': _dropoffController.text,
+        'datetime': selectedDateTime!.toIso8601String(),
+      }).select();
+
+      if (response != null && response.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Ride booked successfully!")),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to book ride. Please try again.")),
+        );
+      }
+    } catch (e) {
+      print("Error booking ride: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error booking ride: $e")),
+      );
+    }
   }
 
-  final response = await supabase.from('booking').insert({
-    'pickup_point': _pickupController.text,
-    'dropoff_point': _dropoffController.text,
-    'datetime': selectedDateTime!.toIso8601String(),
-  }).select();  // Ensure it returns a proper response
-
-  // Instead of response.error, check response structure
-  if (response == null) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Unexpected error: Response is null")));
-    return;
+  void _onItemTapped(int index) {
+    if (index == 2) { // Book tab index
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => BookPage()),
+      );
+    }
   }
-
-  // Check if the response contains an error
-  if (response is PostgrestException) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error booking ride: ${response.message}")));
-  } else {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Ride booked successfully!")));
-  }
-}
-
 
   @override
   Widget build(BuildContext context) {
@@ -151,9 +158,36 @@ class _BookPageState extends State<BookPage> {
             SizedBox(height: 5),
             TextField(controller: _dateTimeController, readOnly: true, onTap: _selectDateTime, decoration: InputDecoration(filled: true, fillColor: Colors.white, border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),)),
             SizedBox(height: 20),
-            Center(child: ElevatedButton(onPressed: _confirmBooking, style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF8B5E3B), padding: EdgeInsets.symmetric(horizontal: 40, vertical: 12)), child: Text("Confirm Booking", style: TextStyle(color: Colors.white)))),
+            Center(
+              child: ElevatedButton(
+                onPressed: _confirmBooking,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Color(0xFF8B5E3B),
+                  padding: EdgeInsets.symmetric(horizontal: 40, vertical: 12),
+                ),
+                child: Text("Confirm Booking", style: TextStyle(color: Colors.white)),
+              ),
+            ),
           ],
         ),
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: 2, // Set Book as the selected tab
+        onTap: _onItemTapped,
+        items: [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: "Home",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.local_taxi),
+            label: "Order",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.book),
+            label: "Book",
+          ),
+        ],
       ),
     );
   }
@@ -177,8 +211,4 @@ class _BookPageState extends State<BookPage> {
       return "Unknown Location";
     }
   }
-}
-
-extension on PostgrestList {
-  get message => null;
 }
