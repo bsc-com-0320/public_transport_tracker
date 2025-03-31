@@ -1,0 +1,366 @@
+{
+   "checksum": "b0e5c0ce7680b5bf893fb6fce8edafca",
+   "roots": {
+      "bookmark_bar": {
+         "children": [ {
+            "date_added": "13341525001947767",
+            "date_last_used": "0",
+            "guid": "d762f15f-67a0-4fdf-b59f-8053128a4a61",
+            "id": "35",
+            "meta_info": {
+               "power_bookmark_meta": ""
+            },
+            "name": "NollyVerse | Index of Movies and TV Shows",
+            "show_icon": false,
+            "source": "sync",
+            "type": "url",
+            "url": "https://www.nollyverse.com/",
+            "visit_count": 0
+         } ],
+         "date_added": "13387901544389448",
+         "date_last_used": "0",
+         "date_modified": "13341525001947767",
+         "guid": "0bc5d13f-2cba-5d74-951f-3f233fe6c908",
+         "id": "1",
+         "name": "Favorites bar",
+         "source": "unknown",
+         "type": "folder"
+      },
+      "other": {
+         "children": [ {
+            "children": [ {
+               "children": [ {
+                  "date_added": "13220319253398126",
+                  "date_last_used": "0",
+                  "guid": "4e7c602e-9672-4bba-8f80-2a37f1066a3b",
+                  "id": "8",
+                  "name": "Permutations and Combinations.pdf",
+                  "show_icon": false,
+                  "source": "sync",
+                  "type": "url",
+                  "url": "file:///C:/Users/artmic/Desktop/MAT/PERMUTATION%20&%20COMBINATION/Permutations%20and%20Combinations.pdf",
+                  "visit_count": 0
+               } ],
+               "date_added": "13253204400516391",
+               "date_last_used": "0",
+               "date_modified": "13253204400516391",
+               "guid": "b09ba559-4bba-4b41-9168-c9992130aea3",
+               "id": "7",
+               "name": "Group 1",
+               "source": "unknown",
+               "type": "folder"
+            }, {
+               "children": [ {
+                  "date_added": "13220319256568932",
+                  "date_last_used": "0",
+                  "guid": "727e3018-8baf-424c-845f-fffe117ed3f3",
+                  "id": "10",
+                  "name": "You’re not connected",
+                  "show_icon": false,
+                  "source": "sync",
+                  "type": "url",
+                  "url": "ms-appx-web://microsoft.microsoftedge/assets/errorpages/dnserror.html?ErrorStatus=0x800C0005&DNSError=11001#https://www.msn.com/spartan/ntp?locale=en-US&market=US&enableregulatorypsm=0&enablecpsm=0&ishostisolationenforced=0&targetexperience=default",
+                  "visit_count": 0
+               } ],
+               "date_added": "13253204400616156",
+               "date_last_used": "0",
+               "date_modified": "13253204400616156",
+               "guid": "5b73f9fa-f6b8-4959-93f0-c27c896ed33a",
+               "id": "9",
+               "name": "Group 2",
+               "source": "unknown",
+               "type": "folder"
+            }, {
+               "children": [ {
+                  "date_added": "13220342854916673",
+                  "date_last_used": "0",
+                  "guid": "1884b0fa-6d15-4b34-9d6c-c7f7e4d9fdc5",
+                  "id": "12",
+                  "name": "Can’t reach this page",
+                  "show_icon": false,
+                  "source": "sync",
+                  "type": "url",
+                  "url": "ms-appx-web://microsoft.microsoftedge/assets/errorpages/dnserror.html?ErrorStatus=0x800C0005&DNSError=0#https://wifi.cc.ac.mw:12081/cgi-bin/zscp",
+                  "visit_count": 0
+               } ],
+               "date_added": "13253204400616323",
+               "date_last_used": "0",
+               "date_modified": "13253204400616323",
+               "guid": "f65997b9-4659-41a7-81c7-b49d0bc3a02d",
+               "id": "11",
+               "name": "Group 3",
+               "source": "unknown",
+               "type": "folder"
+            }, {
+               "children": [ {
+                  "date_added": "13220356403688028",
+                  "date_last_used": "0",
+                  "guid": "5b7f8d60-c0c9-410e-9a80-1eb750d5c406",
+                  "id": "14",
+                  "name": "Can’t reach this page",
+                  "show_icon": false,
+                  "source": "sync",
+                  "type": "url",
+                  "url": "ms-appx-web://microsoft.microsoftedge/assets/errorpages/dnserror.html?ErrorStatus=0x800C0005&DNSError=0#http://wifi.cc.ac.mw/",
+                  "visit_count": 0
+               }, {
+                  "date_added": "13220356403688028",
+                  "date_last_used": "0",
+                  "guid": "f67b6147-fb10-4502-b3d0-2cad0e63c2f5",
+                  "id": "15",
+                  "name": "Classroom: manage teaching and learning | Google for Education",
+                  "show_icon": false,
+                  "source": "sync",
+                  "type": "url",
+                  "url": "https://edu.google.com/intl/en/products/classroom/?modal_active=none",
+                  "visit_count": 0
+               }, {
+                  "date_added": "13220356403688028",
+                  "date_last_used": "0",
+                  "guid": "86dacb44-57b6-4b8a-9329-a351df2a4e35",
+                  "id": "16",
+                  "name": "Mechanics_and_Thermal_properties_of_matter_1-1.pdf",
+                  "show_icon": false,
+                  "source": "sync",
+                  "type": "url",
+                  "url": "file:///C:/Users/artmic/Desktop/climatex/books/physics/Mechanics_and_Thermal_properties_of_matter_1-1.pdf",
+                  "visit_count": 0
+               } ],
+               "date_added": "13253204400616443",
+               "date_last_used": "0",
+               "date_modified": "13253204400616443",
+               "guid": "c5b70c7e-1457-4a69-ba22-e007e8e6c582",
+               "id": "13",
+               "name": "Group 4",
+               "source": "unknown",
+               "type": "folder"
+            }, {
+               "children": [ {
+                  "date_added": "13223651514811354",
+                  "date_last_used": "0",
+                  "guid": "3954ad02-8940-4949-9f25-b6c298d8f176",
+                  "id": "18",
+                  "name": "EWER.pdf",
+                  "show_icon": false,
+                  "source": "sync",
+                  "type": "url",
+                  "url": "file:///C:/Users/artmic/Desktop/climatex/books/mat/EWER.pdf",
+                  "visit_count": 0
+               }, {
+                  "date_added": "13223651514811354",
+                  "date_last_used": "0",
+                  "guid": "08bf8dfb-449a-4f49-a986-ddb78874ce72",
+                  "id": "19",
+                  "name": "Embedded Hardware_ Know It All ( PDFDrive.com ).pdf",
+                  "show_icon": false,
+                  "source": "sync",
+                  "type": "url",
+                  "url": "file:///C:/Users/artmic/Desktop/Embedded%20Hardware_%20Know%20It%20All%20(%20PDFDrive.com%20).pdf",
+                  "visit_count": 0
+               }, {
+                  "date_added": "13223651514811354",
+                  "date_last_used": "0",
+                  "guid": "2b70919c-7b98-4a32-80e2-cf587ca58d9d",
+                  "id": "20",
+                  "name": "Geo121_Nature_and_Scope1-3_2015.pdf",
+                  "show_icon": false,
+                  "source": "sync",
+                  "type": "url",
+                  "url": "file:///C:/Users/artmic/Desktop/climatex/books/geo/Geo121_Nature_and_Scope1-3_2015.pdf",
+                  "visit_count": 0
+               }, {
+                  "date_added": "13223651514811354",
+                  "date_last_used": "0",
+                  "guid": "7cdfeb33-d21b-48dd-ae69-15a2e749f97c",
+                  "id": "21",
+                  "name": "Human Geography A Concise Introduction ( PDFDrive.com ).pdf",
+                  "show_icon": false,
+                  "source": "sync",
+                  "type": "url",
+                  "url": "file:///C:/Users/artmic/Downloads/Human%20Geography%20%20A%20Concise%20Introduction%20(%20PDFDrive.com%20).pdf",
+                  "visit_count": 0
+               }, {
+                  "date_added": "13223651514811354",
+                  "date_last_used": "0",
+                  "guid": "61333119-8a04-4023-bf4a-593e1301d59c",
+                  "id": "22",
+                  "name": "MAT 111-Swokowski12ed.pdf",
+                  "show_icon": false,
+                  "source": "sync",
+                  "type": "url",
+                  "url": "file:///C:/Users/artmic/Desktop/climatex/books/mat/MAT%20111-Swokowski12ed.pdf",
+                  "visit_count": 0
+               }, {
+                  "date_added": "13223651514811354",
+                  "date_last_used": "0",
+                  "guid": "cb262f16-7ac1-46eb-b7ff-2c27eb5a646f",
+                  "id": "23",
+                  "name": "MAT_111_END_SEM_1_2013 - Copy.pdf",
+                  "show_icon": false,
+                  "source": "sync",
+                  "type": "url",
+                  "url": "file:///C:/Users/artmic/Desktop/climatex/books/mat/MAT_111_END_SEM_1_2013%20-%20Copy.pdf",
+                  "visit_count": 0
+               }, {
+                  "date_added": "13223651514811354",
+                  "date_last_used": "0",
+                  "guid": "91ca7799-92a4-4607-b284-7ebc5e072dea",
+                  "id": "24",
+                  "name": "PDF error",
+                  "show_icon": false,
+                  "source": "sync",
+                  "type": "url",
+                  "url": "ms-appx-web://microsoft.microsoftedge/assets/errorpages/pdferror.html#file:///C:/Users/artmic/Downloads/The%20Cultural%20Landscape_%20An%20Introduction%20to%20Human%20Geography%20%20(%20PDFDrive.com%20).pdf",
+                  "visit_count": 0
+               }, {
+                  "date_added": "13223651514811354",
+                  "date_last_used": "0",
+                  "guid": "3799ea07-0760-46fb-a540-55eb306ba867",
+                  "id": "25",
+                  "name": "Velamma_Episode_1.pdf",
+                  "show_icon": false,
+                  "source": "sync",
+                  "type": "url",
+                  "url": "file:///C:/Users/artmic/Desktop/climatex/books/Velamma_Episode_1.pdf",
+                  "visit_count": 0
+               }, {
+                  "date_added": "13223651514811354",
+                  "date_last_used": "0",
+                  "guid": "613e0ffb-2949-43f8-97e9-00ddc0694c9c",
+                  "id": "26",
+                  "name": "Velamma_Episode_2.pdf",
+                  "show_icon": false,
+                  "source": "sync",
+                  "type": "url",
+                  "url": "file:///C:/Users/artmic/Desktop/climatex/books/Velamma_Episode_2.pdf",
+                  "visit_count": 0
+               }, {
+                  "date_added": "13223651514811354",
+                  "date_last_used": "0",
+                  "guid": "ecf70506-9679-416c-8460-88e219fe5a05",
+                  "id": "27",
+                  "name": "Velamma_Episode_3.pdf",
+                  "show_icon": false,
+                  "source": "sync",
+                  "type": "url",
+                  "url": "file:///C:/Users/artmic/Desktop/climatex/books/Velamma_Episode_3.pdf",
+                  "visit_count": 0
+               }, {
+                  "date_added": "13223651514811354",
+                  "date_last_used": "0",
+                  "guid": "8e564e57-e4a5-4428-aa83-a1c1fc60193e",
+                  "id": "28",
+                  "name": "You’re not connected",
+                  "show_icon": false,
+                  "source": "sync",
+                  "type": "url",
+                  "url": "ms-appx-web://microsoft.microsoftedge/assets/errorpages/dnserror.html?ErrorStatus=0x800C0005&DNSError=11001#https://www.msn.com/spartan/dhp?locale=en-US&market=US&enableregulatorypsm=0&enablecpsm=0&ishostisolationenforced=0&targetexperience=default",
+                  "visit_count": 0
+               }, {
+                  "date_added": "13223651514811354",
+                  "date_last_used": "0",
+                  "guid": "4c2a6cac-f703-4bbd-8ef0-86aa217f2837",
+                  "id": "29",
+                  "name": "ewer .copy.pdf",
+                  "show_icon": false,
+                  "source": "sync",
+                  "type": "url",
+                  "url": "file:///C:/Users/artmic/Desktop/climatex/books/mat/ewer%20.copy.pdf",
+                  "visit_count": 0
+               }, {
+                  "date_added": "13223651514811354",
+                  "date_last_used": "0",
+                  "guid": "4b499153-578f-4f3c-b78d-902470f01a27",
+                  "id": "30",
+                  "name": "mc-ty-sigma-2009-1.pdf",
+                  "show_icon": false,
+                  "source": "sync",
+                  "type": "url",
+                  "url": "file:///C:/Users/artmic/Desktop/climatex/books/mat/Summation/mc-ty-sigma-2009-1.pdf",
+                  "visit_count": 0
+               }, {
+                  "date_added": "13223651514811354",
+                  "date_last_used": "0",
+                  "guid": "6518ebae-7900-4bbf-8ea2-e8244e245be2",
+                  "id": "31",
+                  "name": "sigma.pdf",
+                  "show_icon": false,
+                  "source": "sync",
+                  "type": "url",
+                  "url": "file:///C:/Users/artmic/Desktop/climatex/books/mat/Summation/sigma.pdf",
+                  "visit_count": 0
+               } ],
+               "date_added": "13253204400616738",
+               "date_last_used": "0",
+               "date_modified": "13253204400616738",
+               "guid": "f3222076-2482-4687-a2c6-9864d7e53aea",
+               "id": "17",
+               "name": "Group 5",
+               "source": "unknown",
+               "type": "folder"
+            }, {
+               "children": [ {
+                  "date_added": "13223652072840585",
+                  "date_last_used": "0",
+                  "guid": "6fd935fc-97c1-43cc-83f7-4efacbd51e82",
+                  "id": "33",
+                  "name": "You’re not connected",
+                  "show_icon": false,
+                  "source": "sync",
+                  "type": "url",
+                  "url": "ms-appx-web://microsoft.microsoftedge/assets/errorpages/dnserror.html?ErrorStatus=0x800C0005&DNSError=11001#https://www.msn.com/spartan/ntp?locale=en-US&market=US&enableregulatorypsm=0&enablecpsm=0&ishostisolationenforced=0&targetexperience=default",
+                  "visit_count": 0
+               } ],
+               "date_added": "13253204400617941",
+               "date_last_used": "0",
+               "date_modified": "13253204400617941",
+               "guid": "88462c0d-4924-43a8-a81a-ef82a193d224",
+               "id": "32",
+               "name": "Group 6",
+               "source": "unknown",
+               "type": "folder"
+            } ],
+            "date_added": "13253204400515838",
+            "date_last_used": "0",
+            "date_modified": "13253204400515838",
+            "guid": "c93a2b0a-c020-4ffb-a90c-036373a3ce32",
+            "id": "6",
+            "name": "Tabs set aside",
+            "source": "unknown",
+            "type": "folder"
+         }, {
+            "date_added": "13375694894242564",
+            "date_last_used": "0",
+            "guid": "fb0fce3e-24af-4ef1-af55-e1b04c44f137",
+            "id": "34",
+            "name": "(107) WhatsApp",
+            "show_icon": false,
+            "source": "sync",
+            "type": "url",
+            "url": "https://web.whatsapp.com/",
+            "visit_count": 0
+         } ],
+         "date_added": "13387901544389451",
+         "date_last_used": "0",
+         "date_modified": "13375694894242564",
+         "guid": "82b081ec-3dd3-529c-8475-ab6c344590dd",
+         "id": "2",
+         "name": "Other favorites",
+         "source": "unknown",
+         "type": "folder"
+      },
+      "synced": {
+         "children": [  ],
+         "date_added": "13387901544389452",
+         "date_last_used": "0",
+         "date_modified": "0",
+         "guid": "4cf2e351-0e85-532b-bb37-df045d8f8d0f",
+         "id": "3",
+         "name": "Mobile favorites",
+         "source": "unknown",
+         "type": "folder"
+      }
+   },
+   "sync_metadata": "CjEKDgiIgQISCNw/luOTAQAAEgAqGEJpTitlTXU2MGw0bkU4ViszZlFsTmc9PUgDoAYHEqwBCCMSpwEKHGY0OGozVldnNkJzQmF3dUw5aVhjMlZ6TnlQYz0SJGQ3NjJmMTVmLTY3YTAtNGZkZi1iNTlmLTgwNTMxMjhhNGE2MRgAIAAoADDg7oG1tTE48vSBtbUxQPL0gbW1MUocTDhEVncycXYrZHAxZnRobVVtakloaitRVFR3PVoeIhw5bUtMM0Y3TFVvcWJJZ3oxR3hIR213eTMvcUk9Zb7ef77CPgJgBRKtAQgiEqgBChxuZWpyN2hCN2lCam92cWVMTGpwSnBlNEJOT0k9EiRmYjBmY2UzZS0yNGFmLTRlZjEtYWY1NS1lMWIwNGM0NGYxMzcYACAAKAAw2//YnL4yOO3EoLezMkDtxKC3szJKHEJUUk9ERVIwemRoNTNCelRBRnNPRG84NS9GZz1aHyIdslZBczdXd2o2NFVGdm4rNnB1VnMzMy9oM01vcz1lUK7pI8I+AmAFEqwBCCESpwEKHHNRWkVROTVWQVVhSm8xV2xhaGFibTVuNlRCWT0SJDM3MDdmMDYzLWQxMGYtNDJkZS1iNTQ4LTk4MWMxODcyNWVmMhgAIAAoADCQicXt6C44jafVv44wQI2n1b+OMEocMVJ4VENTZWxyc0h3eGxTdm9qM3dxT3JJbU80PVoeIhwxQUpJcmt0VTR0WXJKbi9HUzkvRlY2bENuUE09ZQAAAADCPgJgBRKuAQgdEqkBChxjUWNNZllnTjRSc2F6VzVsSWdlZFhncThvYjA9EiRiOWUzOGIzOC03NjFkLTRlZDktYTNlYS1kOTVkOTMxYjE1ZmUYACAAKAAwjJXF7eguOOCr1b+OMEDgq9W/jjBKHEx6WGtCM2pxZWR2ZkpxeUJENjVoT0FmUVV0OD1aICIe/6cwdzFoVUNpWElYQk9DN0QveDl4VmVXMldxcWs9ZXdwbKPCPgJgBRKtAQgbEqgBChxxRW9CNUFQam1FWlhyenozUFp3SG1BVDZyTE09EiQwZjM2NmI3Mi1mNmJjLTQ3YzAtODUwZC0wOTlhMjJlNWE1YzgYACAAKAAwiJLF7eguOKKr1b+OMECiq9W/jjBKHHF1TTlsQXdwcG5FVUhQYnVIekVaSUdSNzVFVT1aHyId/lZBeVVna3BQdnVxUHE5K3p3bWxSZ3N5eFJtRT1ld3Bso8I+AmAFEq0BCBoSqAEKHDhFand0R2htQk43K1dOTDEyS3M4WVNnNXBBdz0SJDM2YTJiNzg1LTMyN2MtNDAxOC1iMTk3LTc2ODkzOWI1MjQxZhgAIAAoADCHksXt6C44kqvVv44wQJKr1b+OMEocQVZsbFNRbTRlL05ObDdMSVYzdmtsQXNRdWkwPVofIh39ZDdqVkFwQnVCSlZzaHpXcjk1V3NyRmZka0JzPWV3cGyjwj4CYAUSrgEIHhKpAQocOTFFcXVramt3bDNhWHFUOEJUWDNrK2ZxR1ZVPRIkNWMyMDI5YmQtODNlMy00ODhiLTg3NDQtNDVhN2NkOTQxOThmGAAgACgAMIWSxe3oLjjjqtW/jjBA46rVv44wShx5ZFdNazhyaGhndHdKaHk1M0RjSzV3S2QrVms9WiAiHv/TL3cwcVJHRzNKYUJIbVlCMldZbndkOGdKTmo4PWV3cGyjwj4CYAUSrQEICRKoAQocZ0hhSWVBT2EwMXUwQWpmcURKRUJPRTgvWThzPRIkYmQ2ZmRhMDAtMDVkYi00MGY3LWFmNjMtNGY0NTU0NTEyZGY0GAAgACgAMJuGxe3oLjjPptW/jjBAz6bVv44wShxPYzBYWG01TXBHNlZQbjlwY2wvTjNGSUE1clE9Wh8iHao0a05Qdm5DdzJ3cVZwWEJZNDBxczUwQ2Vrd009ZQAAAADCPgJgABKsAQgKEqcBChxuMDhVZWpCaTY5NU1Gb01UN2Vxa2JtMHU1YWM9EiQ5ZTUwYzc5ZC1lMWRhLTQwZmUtODkzNy05NWVmZWYxM2FmZDQYACAAKAAwnIbF7eguON+m1b+OMEDfptW/jjBKHENlRUZLbk8vMkpHWWZac1RaREZhQVVlWnBCaz1aHiIcTVRPU3Q5ZUYzZGZ0bThaZys4Z3kyU3FOd1Q0PWUAAAAAwj4CYAUSrQEIGRKoAQocUXFWYWltN0p0ZXV4cktNSEZFU3p5MDdCVjJVPRIkNDE1ZGQxZjQtOWIxNi00OTVmLTg3YzYtY2NkYTI5Mzg4MjFmGAAgACgAMIuVxe3oLjjBq9W/jjBAwavVv44wShxMK09GSy9jOVM4TkVVVUpLMGdYVXk5UndXcE09Wh8iHftuYktoMUIyVkJYbDhEU05QeG15QkpLOThYS0E9ZXdwbKPCPgJgBRKtAQgYEqgBChxQWU9jaHl0U1FlQVdERWxhWndSUTYyR2NFVVU9EiRiOWJkMTdmYS1jMzQwLTRiMDYtYmNhNC1iMzM1NTQwMTY1MWEYACAAKAAwkY/F7eguOMSq1b+OMEDEqtW/jjBKHFF4SDZ4aE5vQTdnejJzUWRkSUVkaXk2KzlwQT1aHyId9nlWc2RIWEp5UDdYR1FnMTlmRDFVbnNncWxqUT1lAAAAAMI+AmAFEqwBCBMSpwEKHE1BTEtrbjZsdExtbnRRTTh4cHZHN3pVeDIrND0SJGQzNGExNzg1LTAwMjUtNDc1YS05ZmI1LWVhNjBkZWE4NWNjNBgAIAAoADCQj8Xt6C44tKrVv44wQLSq1b+OMEoceldaYmxoUGhKMUdIWitFdWYzRHBsV1Z5ZGhRPVoeIhxNSlhwcTN1Lzc2RWxST2Q5Unk0RkxrWWhhMkk9ZXdwbKPCPgJgBRKOAQgDEokBChxuamdEdTg4ZUNydlhwODZwRDdmSEdjcUZwODg9EiRjMWY3NTM2OS1mOTFiLTUyM2EtYjYzZi03MDJkODI0YTk3ZjIYACAAKAAwh9DC7eguOPGl1b+OMEDxpdW/jjBKHHl6TkIwMWNuNTRBN2NSVTB1VCsvUGdtVHRVbz1aAGUAAAAAwj4CYAASrQEIEBKoAQocY0JOSlBPeTM4b29SQlUySlYxdXp6bEFzaFFNPRIkNTZjNDhlMDctYjZkZC00ZjFmLWEzMjItMTc0YTI0OTdlNzI4GAAgACgAMJiMxe3oLjjrp9W/jjBA66fVv44wShw5WXBMTnp4a2NjemduQ3lqSXNJLzF5eDI1RFE9Wh8iHdo3MFI0dnlCdzZ1akJoVmcyM2tQcE5IZGhNZjQ9ZXdwbKPCPgJgBRKsAQgMEqcBChxmTlpxNXhBdFkyemZKUzVra293MmJUcHV6UVU9EiRlNmY1OWQ4Ny04OGE4LTQwMTYtODhjYS0wMzM5NjIwMjE3YjEYACAAKAAwl4zF7eguONyn1b+OMEDcp9W/jjBKHFFMaEg0dVhoU3BDZXIwMUxoZk4wY3VoeWRCRT1aHiIcY20vNm9KT3E5VTFSWmsyWlZJQmtRL0RHL1NFPWUAAAAAwj4CYAUSrQEICxKoAQocTkdYckRqRnFhM3FPWnRwZ1ZZTXhRSTBXNE00PRIkZjM3NjUyN2EtZmNjMi00MGQ1LWI2ZTYtOTllNmY3NjBiOTEzGAAgACgAMJaMxe3oLjjMp9W/jjBAzKfVv44wShxxOVUyVjhWZUMrcWlGTWVoWEF1a0wrZytUdFk9Wh8iHdVLaDFIMHZndG0va3FBNm4xa1BwUEN4aVZ6OGs9ZQAAAADCPgJgABKOAQgBEokBChx5eEovNmZ2a2VjcjdrcDVFUXpCNHRXTHBkYkU9EiQ0MzU3YWYzMi0xZGE0LTU3OGQtYmU5ZC01MTdhMjY3M2FjOTcYACAAKAAwgtDC7eguOKOl1b+OMECjpdW/jjBKHGFSQ1dMZ2hGOWI1SW5xS0lEdnVKL2p2UWtGYz1aAGUAAAAAwj4CYAASrAEIFBKnAQoccWdBUDFYMXR3US9qK25iNW80bmJsMnNTY080PRIkMDc2YmNlMzYtNzJlYy00YjNiLTgxMjgtNmQwNjVkZjlkZDQ1GAAgACgAMI+Pxe3oLjilqtW/jjBAparVv44wShx5WWR0dmtWWHd5NThoZDhUcVN0WGpncFJLcjA9Wh4iHGdGSlpBTTR4cGVGUFVOSklrODJEcVJGaTFqbz1ld3Bso8I+AmAFEq0BCA8SqAEKHG52dVRwSU5Ua3dqM2xIOEI0b2hPNjBiU2lLMD0SJDY4NzdjM2FjLTc0M2EtNGVmZi1iMDE4LTU2MGM1Y2I5NWFhORgAIAAoADCTicXt6C44vKfVv44wQLyn1b+OMEocMmpvbGZvOXRwcjZ3VWZUcDFyRytkcnJseElBPVofIh21WG9sam1Cb1JJaFd6aVF6OE94d2ltdzhiU2JvPWUAAAAAwj4CYAUSrQEIHBKoAQocampzdERoOG9URXdvaWhZK21rQmRRcFpMa3FNPRIkZTBlYTIzOTctNzUyNS00ZmI1LWE5YjctMzExZWRkOWE3YzEyGAAgACgAMI6Pxe3oLjiVqtW/jjBAlarVv44wShxmWGduZ0l1aTVlVUFmUWRWUUEzTjB1UEI1czA9Wh8iHf9Ob1A1U1RSQU0zOHltTmNhWWtDUGloZXd5bFk9ZQAAAADCPgJgBRKtAQgNEqgBChxIb2VyL2pFYnVNRjFvRzNIblQ5akRLNEh5bXM9EiRiZjRjMzAwZi1jNTU0LTRhOGEtYmMzYy0zYjQ3ZGU5ODYxZTEYACAAKAAwkYnF7eguOJ2n1b+OMECdp9W/jjBKHDB5ZUVxUGFKMm94My92SGt3WGlXenpvMW9pbz1aHyId6mVUVWRMdEM3aXVNWW9lUzJQWm5kNWtUalBvcz1lAAAAAMI+AmAAEqwBCAYSpwEKHEdmZXdPQWgwaTBmYzNOQ0N2Y1k3U0xsTjJnbz0SJDQ1NGI4ZmEwLTQzOTMtNDE5ZS05NmNhLTM5NDBiZjZmM2Q2YRgAIAAoADCYhsXt6C44oKbVv44wQKCm1b+OMEocb2lJSFErM0VZWENyM3I0bWNiait4NTVVQjFVPVoeIhxlZ0pmNzI5dnI5dy85MnEzYWNsNHd0aE5OSEk9ZQAAAADCPgJgABKtAQgXEqgBChwxSzB0cU1EY21pS05xMUw0djhPSHcwK1pQR009EiQ0YzUwOGVmZi0zNmY0LTRmMTQtYTAzYS04ZmM2NzA5MzEyZmEYACAAKAAwjY/F7eguOPap1b+OMED2qdW/jjBKHFVBcXF4MU95Q1RveXZzMzgzYlNEcEVla1dvbz1aHyId7CtIMTVBVzVVdEFNa0h6RmZQb1k3TVR1eUw3cz1ld3Bso8I+AmAFEqwBCBISpwEKHFhzQ2lvcjNYUXY3Y3pOWm5ma1lGR1dkSnZTOD0SJGIyNDNkNDZmLWJiNzItNDY4Yi04ZWZjLTJjNjU3MzFmMDY1ORgAIAAoADCajMXt6C445qnVv44wQOap1b+OMEocak1xNTVzYSsvSGt3bUR6dGVIekJhaXR6UUh3PVoeIhw0MnJTM1UwdkphUTY3N3ZFcUxBOFBvVGZ3TVE9ZXdwbKPCPgJgBRKsAQgIEqcBChw5S0xxUnRZclVDY3RscklXa1Ewd1BuN2VDN0E9EiQ1ZTY4Y2U1ZC00ZTMxLTRjOGItYjcxNS1lMzY5Y2E0OTM4NTIYACAAKAAwmobF7eguOL+m1b+OMEC/ptW/jjBKHEl0aFM5RFVCU29VTmlEaHB6dWhSL21pVUd0VT1aHiIcNkdzS2c2K2o1MndvL0F2R2dIRUV4TVN5cUh3PWV3cGyjwj4CYAUSrgEIHxKpAQocVlhCSGRWamxqTFVKa2R2eGVrRmtLUnd1dnJ3PRIkOWY0NTE1MmMtYjRkZi00NmE0LTgzOWQtYjk3YmFhNDQwN2FjGAAgACgAMIqVxe3oLjixq9W/jjBAsavVv44wShxWUm41bFVBSGV1RG1lZDNERitDUVRKQnBpM0E9WiAiHv/pMWdjQmVyZHYxUGV4VkVnMjZmYzdoaFdoT2NNPWV3cGyjwj4CYAUSrQEIFRKoAQocQit4NGpWK1JxbG5LZCtNNkZmcUJFMEFmYllFPRIkYjY4OGM5ZDQtMWE4YS00YzIzLTk2MWQtNTU4ZGFiNmYyZmFhGAAgACgAMIaSxe3oLjiDq9W/jjBAg6vVv44wShwwck9Yc0VDYVpWejdDNW9kWEFQU1dab1dHUE09Wh8iHbNlMHBhWVc5OHU3UG0wbjFZcXlnOXowU2MwU009ZXdwbKPCPgJgBRKtAQgREqgBChxJbkFsUmxxNG5lMW5aTUNSK3ZKNmg3S25XVk09EiRlMjNiNDIyNS0yMGYxLTRiZGMtOGE0MC0xNDgyOTk3OTY4YzkYACAAKAAwmYzF7eguONep1b+OMEDXqdW/jjBKHFRCengvY1hKa0I4bzh1L1ordk4vTFFuYkoxcz1aHyId9WNOZ01SRS9sVndzTDhnSVdYUHVaejdUWURmQT1lAAAAAMI+AmAAEq0BCBYSqAEKHGJCSVZrdEVCbjZwai90Q2FyZkowM1FPSDJDQT0SJDc4NDJjMjJjLTBjNzQtNDZjMC1iZGRjLThjMDQwNTRiYjA1MRgAIAAoADCEksXt6C441KrVv44wQNSq1b+OMEocVklkaWV4Z2FqYTBiLzhwRGRoc3pRUlJEekVvPVofIh3ZM2tRZWlmQ2lXZFhkU2xWV1pzSnZzeU11em9rPWV3cGyjwj4CYAUSrAEIBxKnAQocZWFWSkpiMXBXN3NFaHVKRUU1WVVhOVkxL05rPRIkOWY3MmQxNTItMGEwOS00MTc1LWE4ZGMtNmY2ZjFmNWY2ODBlGAAgACgAMJmGxe3oLjiwptW/jjBAsKbVv44wShxQUlFTcHZJcVRWRFdjcVU5aEZ3STBXK1FyMlE9Wh4iHFVmUEtFRTV6bU9MdXY4R3VicSsvUlJNRmZ4dz1lAAAAAMI+AmAAEq0BCCASqAEKHGVSUXEwVW9OTzdsMnQxQytoVEZzU1I2dDdYND0SJGM2Nzc3YmM0LWRlNjEtNDBmZi05ZmQ0LTdmOGRlNjA5NWIxYxgAIAAoADCPicXt6C44/qbVv44wQP6m1b+OMEocaGtYd25xa3lMYnBhRitUcWw5bEIxWXh6d2dRPVofIh36d09kemFxNFNNMWlsZGJKdzUrTEd1S0RpZ3FFPWUAAAAAwj4CYAASrAEIDhKnAQocSW1oTHM5YnZoN3RxVldPcUUrN3ZMMkEwS1ZRPRIkNTQxZDJhYjUtYmExMS00YWEyLWEzNzktMTQxMWYyNjYwYzdjGAAgACgAMJKJxe3oLjitp9W/jjBArafVv44wShx5dUpTd21MUG5DVVdhaUlqNFBHcXptZm5waDg9Wh4iHGsrRmROakxOa0JCbkVCODF2TVZ3ZUhDWk9IQT1lAAAAAMI+AmAFEo4BCAISiQEKHFljU1RvbnZFU1B3cUNzNEwyY3JWaHY2OEw5OD0SJDNlMTg4NmYxLWI4ZmMtNTI5Zi1iN2FiLTIxNTc3YzI4M2M1YxgAIAAoADCD0MLt6C44s6XVv44wQLOl1b+OMEocb1BWa2h3QlJiVjY1S0NXUjIrSU9OSFdvT3U4PVoAZQAAAADCPgJgADAAOAA=",
+   "version": 1
+}

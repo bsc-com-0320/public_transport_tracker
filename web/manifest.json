@@ -1,6 +1,6 @@
 {
-    "name": "public_transport_tracker",
-    "short_name": "public_transport_tracker",
+    "name": "click_counter",
+    "short_name": "click_counter",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

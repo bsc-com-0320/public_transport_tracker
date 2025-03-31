@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
-        android:label="public_transport_tracker"
+        android:label="publictransport"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
