@@ -4,12 +4,14 @@ import 'package:public_transport_tracker/AccountsPage.dart';
 import 'package:public_transport_tracker/CheckPage.dart';
 import 'package:public_transport_tracker/EditProfilePage.dart';
 import 'package:public_transport_tracker/OrderPage.dart';
+import 'package:public_transport_tracker/map_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'Homepage.dart';
 import 'LoginPage.dart';
 import 'SignUpPage.dart';
 import 'BookPage.dart';
 import 'GoogleMap.dart';
+import 'OrderPage.dart';
 
 
 const supabaseUrl = 'https://oilotmwaixynjaupkucd.supabase.co';
@@ -33,7 +35,7 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.brown,
         
       ),
-      initialRoute: '/login',
+      initialRoute: '/login', 
       routes: {
         '/': (context) => HomePage(),
         '/login': (context) => LoginPage(),
@@ -41,8 +43,9 @@ class MyApp extends StatelessWidget {
        '/book': (context) => BookPage(),
        '/order': (context) => OrderPage(),
        '/accounts': (context) => AccountsPage(),
-        '/Check': (context) => CheckPage(),
-         '/Editprofile': (context) => EditProfilePage(),
+        '/check': (context) => CheckPage(),
+         '/editprofile': (context) => EditProfilePage(),
+          '/map': (context) => MapScreen(),
 
 
       
@@ -52,3 +55,5 @@ class MyApp extends StatelessWidget {
     );
   }
 }
+
+
