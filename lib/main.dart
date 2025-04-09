@@ -3,7 +3,9 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:public_transport_tracker/AccountsPage.dart';
 import 'package:public_transport_tracker/CheckPage.dart';
 import 'package:public_transport_tracker/EditProfilePage.dart';
+import 'package:public_transport_tracker/GPSPage.dart';
 import 'package:public_transport_tracker/OrderPage.dart';
+import 'package:public_transport_tracker/RidesPage.dart';
 import 'package:public_transport_tracker/map_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'Homepage.dart';
@@ -41,11 +43,14 @@ class MyApp extends StatelessWidget {
         '/login': (context) => LoginPage(),
         '/signup': (context) => SignUpPage(),
        '/book': (context) => BookPage(),
+       '/rides': (context) => RidesPage(),
        '/order': (context) => OrderPage(),
        '/accounts': (context) => AccountsPage(),
         '/check': (context) => CheckPage(),
          '/editprofile': (context) => EditProfilePage(),
-          '/map': (context) => MapScreen(),
+         '/gps': (context) => GPSPage(),
+         '/map': (context) => MapScreen(),
+
 
 
       
@@ -54,6 +59,8 @@ class MyApp extends StatelessWidget {
       },
     );
   }
+  //
+  
 }
 
 

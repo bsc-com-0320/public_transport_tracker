@@ -71,7 +71,7 @@ class _OrderPageState extends State<OrderPage> {
       'pickup': _pickupController.text,
       'dropoff': _dropoffController.text,
       'date_time': isOrderActive ? null : _dateTimeController.text,
-      'type': isOrderActive ? 'order' : 'book',
+      'type': isOrderActive ? 'order ride' : 'book',
     };
 
     try {
@@ -79,7 +79,6 @@ class _OrderPageState extends State<OrderPage> {
       setState(() => confirmationMessage = "Ride Confirmed!");
     } catch (e) {
       print("Supabase Error: $e");
-
       setState(() => confirmationMessage = "Error confirming ride. Try again.");
     }
   }
@@ -90,7 +89,7 @@ class _OrderPageState extends State<OrderPage> {
       backgroundColor: Color(0xFFF5F5DC),
       appBar: AppBar(
         backgroundColor: Color(0xFF8B5E3B),
-        title: Text("Order", style: TextStyle(color: Colors.white)),
+        title: Text("Order Ride", style: TextStyle(color: Colors.white)),
         centerTitle: true,
       ),
       body: Padding(
@@ -99,7 +98,7 @@ class _OrderPageState extends State<OrderPage> {
           children: [
             Row(
               children: [
-                Expanded(child: _buildToggleButton("Order", isOrderActive, () => setState(() => isOrderActive = true))),
+                Expanded(child: _buildToggleButton("Order Ride", isOrderActive, () => setState(() => isOrderActive = true))),
                 SizedBox(width: 10),
                 Expanded(child: _buildToggleButton("Book", !isOrderActive, () => setState(() => isOrderActive = false))),
               ],
@@ -146,7 +145,8 @@ class _OrderPageState extends State<OrderPage> {
       children: [
         _buildTextField("pickup point", _pickupController, _selectPickup),
         _buildTextField("dropoff point", _dropoffController, _selectDropoff),
-        ElevatedButton(onPressed: _confirmRide, child: Text("Order Now")),
+        _buildTextField("select date & time", _dateTimeController, _selectDateTime),
+        ElevatedButton(onPressed: _confirmRide, child: Text("Order Ride Now")),
       ],
     );
   }
@@ -154,7 +154,7 @@ class _OrderPageState extends State<OrderPage> {
   Widget buildBookContent() {
     return Column(
       children: [
-        _buildTextField("pickup point", _pickupController,_selectPickup ),
+        _buildTextField("pickup point", _pickupController, _selectPickup),
         _buildTextField("dropoff point", _dropoffController, _selectDropoff),
         _buildTextField("select date & time", _dateTimeController, _selectDateTime),
         ElevatedButton(onPressed: _confirmRide, child: Text("Book Now")),
@@ -163,11 +163,29 @@ class _OrderPageState extends State<OrderPage> {
   }
 
   Widget _buildTextField(String label, TextEditingController controller, VoidCallback onTap) {
+    Icon? icon;
+
+    if (label.toLowerCase().contains('pickup') || label.toLowerCase().contains('dropoff')) {
+      icon = Icon(Icons.location_on, color: Colors.brown);
+    } else if (label.toLowerCase().contains('date')) {
+      icon = Icon(Icons.calendar_today, color: Colors.brown);
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        TextField(controller: controller, readOnly: true, onTap: onTap),
+        TextField(
+          controller: controller,
+          readOnly: true,
+          onTap: onTap,
+          decoration: InputDecoration(
+            prefixIcon: icon,
+            filled: true,
+            fillColor: Colors.white,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        ),
         SizedBox(height: 10),
       ],
     );
