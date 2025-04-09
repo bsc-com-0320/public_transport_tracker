@@ -28,6 +28,7 @@ class _BookPageState extends State<BookPage> {
       );
 
       if (result != null) {
+      
         String locationName = await getLocationName(result.latitude, result.longitude);
 
         setState(() {
@@ -50,6 +51,7 @@ class _BookPageState extends State<BookPage> {
       );
 
       if (result != null) {
+       
         String locationName = await getLocationName(result.latitude, result.longitude);
 
         setState(() {
@@ -93,29 +95,33 @@ class _BookPageState extends State<BookPage> {
     }
   }
 
+ 
   void _confirmBooking() async {
-    if (_pickupController.text.isEmpty || _dropoffController.text.isEmpty || selectedDateTime == null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Please fill all fields!")));
-      return;
-    }
-
-    final response = await supabase.from('booking').insert({
-      'pickup_point': _pickupController.text,
-      'dropoff_point': _dropoffController.text,
-      'datetime': selectedDateTime!.toIso8601String(),
-    }).select();
-
-    if (response == null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Unexpected error: Response is null")));
-      return;
-    }
-
-    if (response is PostgrestException) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error booking ride: ${response.message}")));
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Ride booked successfully!")));
-    }
+  if (_pickupController.text.isEmpty || _dropoffController.text.isEmpty || selectedDateTime == null) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Please fill all fields!")));
+    return;
   }
+
+  final response = await supabase.from('booking').insert({
+    'pickup_point': _pickupController.text,
+    'dropoff_point': _dropoffController.text,
+    'datetime': selectedDateTime!.toIso8601String(),
+  }).select();  // Ensure it returns a proper response
+
+  // Instead of response.error, check response structure
+  if (response == null) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Unexpected error: Response is null")));
+    return;
+  }
+
+  // Check if the response contains an error
+  if (response is PostgrestException) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error booking ride: ${response.message}")));
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Ride booked successfully!")));
+  }
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -133,56 +139,17 @@ class _BookPageState extends State<BookPage> {
           children: [
             Text("Pickup Point", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black)),
             SizedBox(height: 5),
-            TextField(
-              controller: _pickupController,
-              readOnly: true,
-              onTap: _selectPickup,
-              decoration: InputDecoration(
-                prefixIcon: Icon(Icons.location_on, color: Colors.brown),
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-            ),
+            TextField(controller: _pickupController, readOnly: true, onTap: _selectPickup, decoration: InputDecoration(filled: true, fillColor: Colors.white, border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),)),
             SizedBox(height: 10),
             Text("Dropoff Point", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black)),
             SizedBox(height: 5),
-            TextField(
-              controller: _dropoffController,
-              readOnly: true,
-              onTap: _selectDropoff,
-              decoration: InputDecoration(
-                prefixIcon: Icon(Icons.location_on, color: Colors.brown),
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-            ),
+            TextField(controller: _dropoffController, readOnly: true, onTap: _selectDropoff, decoration: InputDecoration(filled: true, fillColor: Colors.white, border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),)),
             SizedBox(height: 10),
             Text("Select Date & Time", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black)),
             SizedBox(height: 5),
-            TextField(
-              controller: _dateTimeController,
-              readOnly: true,
-              onTap: _selectDateTime,
-              decoration: InputDecoration(
-                prefixIcon: Icon(Icons.calendar_today, color: Colors.brown),
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-            ),
+            TextField(controller: _dateTimeController, readOnly: true, onTap: _selectDateTime, decoration: InputDecoration(filled: true, fillColor: Colors.white, border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),)),
             SizedBox(height: 20),
-            Center(
-              child: ElevatedButton(
-                onPressed: _confirmBooking,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(0xFF8B5E3B),
-                  padding: EdgeInsets.symmetric(horizontal: 40, vertical: 12),
-                ),
-                child: Text("Confirm Booking", style: TextStyle(color: Colors.white)),
-              ),
-            ),
+            Center(child: ElevatedButton(onPressed: _confirmBooking, style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF8B5E3B), padding: EdgeInsets.symmetric(horizontal: 40, vertical: 12)), child: Text("Confirm Booking", style: TextStyle(color: Colors.white)))),
           ],
         ),
       ),

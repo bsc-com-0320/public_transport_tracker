@@ -71,12 +71,12 @@ class _OrderPageState extends State<OrderPage> {
       'pickup': _pickupController.text,
       'dropoff': _dropoffController.text,
       'date_time': isOrderActive ? null : _dateTimeController.text,
-      'type': isOrderActive ? 'order ride' : 'book',
+      'type': isOrderActive ? 'order' : 'book',
     };
 
     try {
       await supabase.from('orders').insert(rideData);
-      setState(() => confirmationMessage = "Ride Confirmed!");
+      setState(() => confirmationMessage = "Ride has successfully Confirmed!");
     } catch (e) {
       print("Supabase Error: $e");
       setState(() => confirmationMessage = "Error confirming ride. Try again.");
@@ -93,17 +93,17 @@ class _OrderPageState extends State<OrderPage> {
         centerTitle: true,
       ),
       body: Padding(
-        padding: EdgeInsets.all(16.0),
+        padding: EdgeInsets.all(8.0),
         child: Column(
           children: [
             Row(
               children: [
-                Expanded(child: _buildToggleButton("Order Ride", isOrderActive, () => setState(() => isOrderActive = true))),
+                Expanded(child: _buildToggleButton("Order", isOrderActive, () => setState(() => isOrderActive = true))),
                 SizedBox(width: 10),
                 Expanded(child: _buildToggleButton("Book", !isOrderActive, () => setState(() => isOrderActive = false))),
               ],
             ),
-            SizedBox(height: 20),
+            SizedBox(height: 10),
             Expanded(
               child: isOrderActive ? buildOrderContent() : buildBookContent(),
             ),
@@ -122,7 +122,7 @@ class _OrderPageState extends State<OrderPage> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: EdgeInsets.symmetric(vertical: 12),
+        padding: EdgeInsets.symmetric(vertical: 8),
         decoration: BoxDecoration(
           color: isActive ? Color(0xFF8B5E3B) : Colors.white,
           borderRadius: BorderRadius.circular(10),
