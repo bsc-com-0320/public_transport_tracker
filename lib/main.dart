@@ -1,11 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:public_transport_tracker/AccountsPage.dart';
+import 'package:public_transport_tracker/CheckPage.dart';
+import 'package:public_transport_tracker/EditProfilePage.dart';
+import 'package:public_transport_tracker/GPSPage.dart';
+import 'package:public_transport_tracker/OrderPage.dart';
+import 'package:public_transport_tracker/RidesPage.dart';
+import 'package:public_transport_tracker/map_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'Homepage.dart';
 import 'LoginPage.dart';
 import 'SignUpPage.dart';
 import 'BookPage.dart';
 import 'GoogleMap.dart';
+import 'OrderPage.dart';
 
 
 const supabaseUrl = 'https://oilotmwaixynjaupkucd.supabase.co';
@@ -30,14 +38,33 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.brown,
         
       ),
-      initialRoute: '/login',
+      initialRoute: '/login', 
       routes: {
         '/': (context) => HomePage(),
         '/login': (context) => LoginPage(),
         '/signup': (context) => SignUpPage(),
        '/book': (context) => BookPage(),
+<<<<<<< HEAD
+=======
+       '/rides': (context) => RidesPage(),
+       '/order': (context) => OrderPage(),
+       '/accounts': (context) => AccountsPage(),
+        '/check': (context) => CheckPage(),
+         '/editprofile': (context) => EditProfilePage(),
+         '/gps': (context) => GPSPage(),
+         '/map': (context) => MapScreen(),
+
+
+
+      
+    
+>>>>>>> bsc-com-03-20
         
       },
     );
   }
+  //
+  
 }
+
+
