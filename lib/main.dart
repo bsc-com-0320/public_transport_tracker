@@ -44,21 +44,6 @@ class MyApp extends StatelessWidget {
         '/login': (context) => LoginPage(),
         '/signup': (context) => SignUpPage(),
        '/book': (context) => BookPage(),
-<<<<<<< HEAD
-=======
-       '/rides': (context) => RidesPage(),
-       '/order': (context) => OrderPage(),
-       '/accounts': (context) => AccountsPage(),
-        '/check': (context) => CheckPage(),
-         '/editprofile': (context) => EditProfilePage(),
-         '/gps': (context) => GPSPage(),
-         '/map': (context) => MapScreen(),
-
-
-
-      
-    
->>>>>>> bsc-com-03-20
         
       },
     );
