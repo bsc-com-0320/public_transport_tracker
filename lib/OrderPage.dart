@@ -21,6 +21,8 @@ class _OrderPageState extends State<OrderPage> {
 
   final SupabaseClient supabase = Supabase.instance.client;
 
+  int _selectedIndex = 0; // Add an index for the BottomNavigationBar
+
   void _selectPickup() async {
     final LatLng? result =
         await Navigator.pushNamed(context, '/map') as LatLng?;
@@ -98,12 +100,20 @@ class _OrderPageState extends State<OrderPage> {
     }
   }
 
+  // Method to handle bottom navigation bar item tap
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Color(0xFFF5F5DC),
       appBar: AppBar(
         backgroundColor: Color(0xFF8B5E3B),
+        automaticallyImplyLeading: false,
         title: Text("Order Ride", style: TextStyle(color: Colors.white)),
         centerTitle: true,
       ),
@@ -135,7 +145,6 @@ class _OrderPageState extends State<OrderPage> {
                 ),
               ],
             ),
- 
             SizedBox(height: 10),
             Expanded(
               child: isOrderActive ? buildOrderContent() : buildBookContent(),
@@ -155,27 +164,24 @@ class _OrderPageState extends State<OrderPage> {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildToggleButton(String label, bool isActive, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: EdgeInsets.symmetric(vertical: 8),
-        decoration: BoxDecoration(
-          color: isActive ? Color(0xFF8B5E3B) : Colors.white,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isActive ? Colors.white : Colors.black,
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
+      // Add Bottom Navigation Bar
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
+        items: [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: 'Home',
           ),
-        ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.search),
+            label: 'Search',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings),
+            label: 'Settings',
+          ),
+        ],
       ),
     );
   }
