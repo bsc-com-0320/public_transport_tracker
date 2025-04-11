@@ -22,17 +22,25 @@ class _OrderPageState extends State<OrderPage> {
   final SupabaseClient supabase = Supabase.instance.client;
 
   void _selectPickup() async {
-    final LatLng? result = await Navigator.pushNamed(context, '/map') as LatLng?;
+    final LatLng? result =
+        await Navigator.pushNamed(context, '/map') as LatLng?;
     if (result != null) {
-      String locationName = await getLocationName(result.latitude, result.longitude);
+      String locationName = await getLocationName(
+        result.latitude,
+        result.longitude,
+      );
       setState(() => _pickupController.text = locationName);
     }
   }
 
   void _selectDropoff() async {
-    final LatLng? result = await Navigator.pushNamed(context, '/map') as LatLng?;
+    final LatLng? result =
+        await Navigator.pushNamed(context, '/map') as LatLng?;
     if (result != null) {
-      String locationName = await getLocationName(result.latitude, result.longitude);
+      String locationName = await getLocationName(
+        result.latitude,
+        result.longitude,
+      );
       setState(() => _dropoffController.text = locationName);
     }
   }
@@ -52,17 +60,24 @@ class _OrderPageState extends State<OrderPage> {
       if (pickedTime != null) {
         setState(() {
           selectedDateTime = DateTime(
-            pickedDate.year, pickedDate.month, pickedDate.day,
-            pickedTime.hour, pickedTime.minute,
+            pickedDate.year,
+            pickedDate.month,
+            pickedDate.day,
+            pickedTime.hour,
+            pickedTime.minute,
           );
-          _dateTimeController.text = DateFormat("yyyy-MM-dd HH:mm").format(selectedDateTime!);
+          _dateTimeController.text = DateFormat(
+            "yyyy-MM-dd HH:mm",
+          ).format(selectedDateTime!);
         });
       }
     }
   }
 
   Future<void> _confirmRide() async {
-    if (_pickupController.text.isEmpty || _dropoffController.text.isEmpty || (!isOrderActive && _dateTimeController.text.isEmpty)) {
+    if (_pickupController.text.isEmpty ||
+        _dropoffController.text.isEmpty ||
+        (!isOrderActive && _dateTimeController.text.isEmpty)) {
       setState(() => confirmationMessage = "Please fill in all fields.");
       return;
     }
@@ -98,11 +113,29 @@ class _OrderPageState extends State<OrderPage> {
           children: [
             Row(
               children: [
-                Expanded(child: _buildToggleButton("Order", isOrderActive, () => setState(() => isOrderActive = true))),
-                SizedBox(width: 10),
-                Expanded(child: _buildToggleButton("Book", !isOrderActive, () => setState(() => isOrderActive = false))),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        isOrderActive = true;
+                      });
+                    },
+                    child: Text("Order"),
+                  ),
+                ),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        isOrderActive = false;
+                      });
+                    },
+                    child: Text("Book"),
+                  ),
+                ),
               ],
             ),
+ 
             SizedBox(height: 10),
             Expanded(
               child: isOrderActive ? buildOrderContent() : buildBookContent(),
@@ -110,7 +143,14 @@ class _OrderPageState extends State<OrderPage> {
             if (confirmationMessage.isNotEmpty)
               Padding(
                 padding: EdgeInsets.all(8.0),
-                child: Text(confirmationMessage, style: TextStyle(color: Colors.green, fontSize: 16, fontWeight: FontWeight.bold)),
+                child: Text(
+                  confirmationMessage,
+                  style: TextStyle(
+                    color: Colors.green,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
           ],
         ),
@@ -145,7 +185,11 @@ class _OrderPageState extends State<OrderPage> {
       children: [
         _buildTextField("pickup point", _pickupController, _selectPickup),
         _buildTextField("dropoff point", _dropoffController, _selectDropoff),
-        _buildTextField("select date & time", _dateTimeController, _selectDateTime),
+        _buildTextField(
+          "select date & time",
+          _dateTimeController,
+          _selectDateTime,
+        ),
         ElevatedButton(onPressed: _confirmRide, child: Text("Order Ride Now")),
       ],
     );
@@ -156,16 +200,25 @@ class _OrderPageState extends State<OrderPage> {
       children: [
         _buildTextField("pickup point", _pickupController, _selectPickup),
         _buildTextField("dropoff point", _dropoffController, _selectDropoff),
-        _buildTextField("select date & time", _dateTimeController, _selectDateTime),
+        _buildTextField(
+          "select date & time",
+          _dateTimeController,
+          _selectDateTime,
+        ),
         ElevatedButton(onPressed: _confirmRide, child: Text("Book Now")),
       ],
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller, VoidCallback onTap) {
+  Widget _buildTextField(
+    String label,
+    TextEditingController controller,
+    VoidCallback onTap,
+  ) {
     Icon? icon;
 
-    if (label.toLowerCase().contains('pickup') || label.toLowerCase().contains('dropoff')) {
+    if (label.toLowerCase().contains('pickup') ||
+        label.toLowerCase().contains('dropoff')) {
       icon = Icon(Icons.location_on, color: Colors.brown);
     } else if (label.toLowerCase().contains('date')) {
       icon = Icon(Icons.calendar_today, color: Colors.brown);
@@ -174,7 +227,10 @@ class _OrderPageState extends State<OrderPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        Text(
+          label,
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
         TextField(
           controller: controller,
           readOnly: true,
@@ -192,7 +248,9 @@ class _OrderPageState extends State<OrderPage> {
   }
 
   Future<String> getLocationName(double lat, double lon) async {
-    final url = Uri.parse("https://nominatim.openstreetmap.org/reverse?format=json&lat=$lat&lon=$lon");
+    final url = Uri.parse(
+      "https://nominatim.openstreetmap.org/reverse?format=json&lat=$lat&lon=$lon",
+    );
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {

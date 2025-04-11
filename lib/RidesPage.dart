@@ -28,7 +28,7 @@ class RidesPage extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   _buildTab("Rides", true), // Active
-                  _buildTab("Services", false), // Inactive
+                  _buildTab("Vehicles", false), // Inactive
                 ],
               ),
               SizedBox(height: 15),
@@ -94,6 +94,18 @@ class RidesPage extends StatelessWidget {
           BottomNavigationBarItem(
               icon: Icon(Icons.add_circle), label: "Add Ride"),
         ],
+        onTap: (index) {
+          // Handle navigation when tapping on bottom nav items
+          if (index == 0) {
+            Navigator.pushNamed(context, '/'); // Home
+          } else if (index == 1) {
+            Navigator.pushNamed(context, '/order'); // Order
+          } else if (index == 2) {
+            Navigator.pushNamed(context, '/book'); // Book
+          } else if (index == 3) {
+            Navigator.pushNamed(context, '/addRide'); // Add Ride
+          }
+        },
       ),
     );
   }
