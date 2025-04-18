@@ -44,12 +44,12 @@ class AccountsPage extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
-                      Text("\MWK",
+                      Text("\$",
                           style: TextStyle(
                               color: Colors.green,
                               fontWeight: FontWeight.bold)),
                       SizedBox(width: 5),
-                      Text("1000.50",
+                      Text("20.5",
                           style: TextStyle(
                               color: Colors.green,
                               fontWeight: FontWeight.bold)),
@@ -89,6 +89,10 @@ class AccountsPage extends StatelessWidget {
                   _buildDivider(),
                   _buildPaymentOption("PayPal",
                       "https://www.top-bank.ch/images/logo_540/paypal.png"),
+                      _buildDivider(),
+                  _buildPaymentOption("MO626",
+                        "https://www.natbank.co.mw/images/nbm_plc_logo.png"),
+                        
                 ],
               ),
             ),

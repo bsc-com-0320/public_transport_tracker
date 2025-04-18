@@ -74,10 +74,25 @@ class _OrderPageState extends State<OrderPage> {
       'type': isOrderActive ? 'order' : 'book',
     };
 
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => Center(child: CircularProgressIndicator()),
+    );
+
     try {
       await supabase.from('orders').insert(rideData);
-      setState(() => confirmationMessage = "Ride has successfully Confirmed!");
+
+      // Wait 2 seconds before navigating
+      await Future.delayed(Duration(seconds: 2));
+
+      if (mounted) {
+        Navigator.pop(context); // Close the loading dialog
+        Navigator.pushNamed(context, '/accounts'); // Navigate to accounts page
+      }
     } catch (e) {
+      Navigator.pop(context); // Close loading on error
       print("Supabase Error: $e");
       setState(() => confirmationMessage = "Error confirming ride. Try again.");
     }
