@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:public_transport_tracker/AccountPage.dart';
 import 'package:public_transport_tracker/AccountsPage.dart';
 import 'package:public_transport_tracker/CheckPage.dart';
 import 'package:public_transport_tracker/EditProfilePage.dart';
@@ -44,10 +43,9 @@ class MyApp extends StatelessWidget {
         '/login': (context) => LoginPage(),
         '/signup': (context) => SignUpPage(),
        '/book': (context) => BookPage(),
-       ///'/rides': (context) => RidesPage(),
+       '/rides': (context) => RidesPage(),
        '/order': (context) => OrderPage(),
        '/accounts': (context) => AccountsPage(),
-        '/account': (context) => AccountPage(),
         '/check': (context) => CheckPage(),
          '/editprofile': (context) => EditProfilePage(),
          '/gps': (context) => GPSPage(),

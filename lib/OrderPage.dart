@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:http/http.dart' as http;
 
+
 class OrderPage extends StatefulWidget {
   @override
   _OrderPageState createState() => _OrderPageState();
@@ -82,7 +83,7 @@ class _OrderPageState extends State<OrderPage> {
     );
 
     try {
-      await supabase.from('orders').insert(rideData);
+      await supabase.from('request_ride').insert(rideData);
 
       // Wait 2 seconds before navigating
       await Future.delayed(Duration(seconds: 2));
@@ -104,7 +105,7 @@ class _OrderPageState extends State<OrderPage> {
       backgroundColor: Color(0xFFF5F5DC),
       appBar: AppBar(
         backgroundColor: Color(0xFF8B5E3B),
-        title: Text("Order Ride", style: TextStyle(color: Colors.white)),
+        title: Text("Request Ride", style: TextStyle(color: Colors.white)),
         centerTitle: true,
       ),
       body: Padding(
@@ -113,7 +114,7 @@ class _OrderPageState extends State<OrderPage> {
           children: [
             Row(
               children: [
-                Expanded(child: _buildToggleButton("Order", isOrderActive, () => setState(() => isOrderActive = true))),
+                Expanded(child: _buildToggleButton("Request Ride", isOrderActive, () => setState(() => isOrderActive = true))),
                 SizedBox(width: 10),
                 Expanded(child: _buildToggleButton("Book", !isOrderActive, () => setState(() => isOrderActive = false))),
               ],
@@ -161,7 +162,7 @@ class _OrderPageState extends State<OrderPage> {
         _buildTextField("pickup point", _pickupController, _selectPickup),
         _buildTextField("dropoff point", _dropoffController, _selectDropoff),
         _buildTextField("select date & time", _dateTimeController, _selectDateTime),
-        ElevatedButton(onPressed: _confirmRide, child: Text("Order Ride Now")),
+        ElevatedButton(onPressed: _confirmRide, child: Text("Request Ride Now")),
       ],
     );
   }
