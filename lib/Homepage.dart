@@ -31,6 +31,7 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       backgroundColor: Color(0xFFF5F5DC),
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         backgroundColor: Color(0xFF8B5E3B),
         title: Text("Transport Tracker", style: TextStyle(color: Colors.white)),
         actions: [

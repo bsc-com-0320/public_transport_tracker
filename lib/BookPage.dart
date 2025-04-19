@@ -120,6 +120,7 @@ class _BookPageState extends State<BookPage> {
     return Scaffold(
       backgroundColor: Color(0xFFF5F5DC),
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         backgroundColor: Color(0xFF8B5E3B),
         title: Text("Book a Ride", style: TextStyle(color: Colors.white)),
         centerTitle: true,

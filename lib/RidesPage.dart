@@ -6,6 +6,7 @@ class RidesPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: Color(0xFF5A3D1F), // Brown background
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         backgroundColor: Color(0xFF5A3D1F),
         title: Text("Add Service",
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),

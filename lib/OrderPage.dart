@@ -6,7 +6,6 @@ import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:http/http.dart' as http;
 
-
 class OrderPage extends StatefulWidget {
   @override
   _OrderPageState createState() => _OrderPageState();
@@ -19,8 +18,27 @@ class _OrderPageState extends State<OrderPage> {
   DateTime? selectedDateTime;
   bool isOrderActive = true;
   String confirmationMessage = "";
+  int _selectedIndex = 1;
 
   final SupabaseClient supabase = Supabase.instance.client;
+
+  void _onItemTapped(int index) {
+    setState(() => _selectedIndex = index);
+    switch (index) {
+      case 0:
+        Navigator.pushNamed(context, '/home');
+        break;
+      case 1:
+        // Already on OrderPage
+        break;
+      case 2:
+        Navigator.pushNamed(context, '/book');
+        break;
+      case 3:
+        Navigator.pushNamed(context, '/addRide');
+        break;
+    }
+  }
 
   void _selectPickup() async {
     final LatLng? result = await Navigator.pushNamed(context, '/map') as LatLng?;
@@ -75,7 +93,6 @@ class _OrderPageState extends State<OrderPage> {
       'type': isOrderActive ? 'order' : 'book',
     };
 
-    // Show loading dialog
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -84,16 +101,14 @@ class _OrderPageState extends State<OrderPage> {
 
     try {
       await supabase.from('request_ride').insert(rideData);
-
-      // Wait 2 seconds before navigating
       await Future.delayed(Duration(seconds: 2));
 
       if (mounted) {
-        Navigator.pop(context); // Close the loading dialog
-        Navigator.pushNamed(context, '/accounts'); // Navigate to accounts page
+        Navigator.pop(context);
+        Navigator.pushNamed(context, '/accounts');
       }
     } catch (e) {
-      Navigator.pop(context); // Close loading on error
+      Navigator.pop(context);
       print("Supabase Error: $e");
       setState(() => confirmationMessage = "Error confirming ride. Try again.");
     }
@@ -104,6 +119,7 @@ class _OrderPageState extends State<OrderPage> {
     return Scaffold(
       backgroundColor: Color(0xFFF5F5DC),
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         backgroundColor: Color(0xFF8B5E3B),
         title: Text("Request Ride", style: TextStyle(color: Colors.white)),
         centerTitle: true,
@@ -130,6 +146,20 @@ class _OrderPageState extends State<OrderPage> {
               ),
           ],
         ),
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        backgroundColor: Colors.white,
+        selectedItemColor: Color(0xFF8B5E3B),
+        unselectedItemColor: Color(0xFF5A3D1F),
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
+        type: BottomNavigationBarType.fixed,
+        items: [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
+          BottomNavigationBarItem(icon: Icon(Icons.directions_bus), label: "Order"),
+          BottomNavigationBarItem(icon: Icon(Icons.book_online), label: "Book"),
+          BottomNavigationBarItem(icon: Icon(Icons.add), label: "Add Ride"),
+        ],
       ),
     );
   }
