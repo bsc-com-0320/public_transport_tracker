@@ -10,13 +10,19 @@ class RidesPage extends StatefulWidget {
 class _RidesPageState extends State<RidesPage> {
   File? _selectedImage;
   final _formKey = GlobalKey<FormState>();
+  bool _isRideSelected = true; // Track which tab is selected
   
-  // Controllers for all input fields
+  // Controllers for ride fields
   final TextEditingController _rideNumberController = TextEditingController();
   final TextEditingController _routeController = TextEditingController();
   final TextEditingController _departureTimeController = TextEditingController();
   final TextEditingController _capacityController = TextEditingController();
   final TextEditingController _totalCostController = TextEditingController();
+  
+  // Controllers for vehicle fields
+  final TextEditingController _vehicleNumberController = TextEditingController();
+  final TextEditingController _vehicleTypeController = TextEditingController();
+  final TextEditingController _vehicleCapacityController = TextEditingController();
   
   TimeOfDay? _selectedTime;
 
@@ -51,6 +57,9 @@ class _RidesPageState extends State<RidesPage> {
     _departureTimeController.dispose();
     _capacityController.dispose();
     _totalCostController.dispose();
+    _vehicleNumberController.dispose();
+    _vehicleTypeController.dispose();
+    _vehicleCapacityController.dispose();
     super.dispose();
   }
 
@@ -60,7 +69,7 @@ class _RidesPageState extends State<RidesPage> {
       backgroundColor: Color(0xFF5A3D1F),
       appBar: AppBar(
         backgroundColor: Color(0xFF5A3D1F),
-        title: Text("Add Service",
+        title: Text(_isRideSelected ? "Add Ride" : "Add Vehicle",
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         centerTitle: true,
         actions: [
@@ -78,12 +87,27 @@ class _RidesPageState extends State<RidesPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Rides & Services Tabs
+                // Rides & Vehicles Tabs
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    _buildTab("Rides", true),
-                    _buildTab("Vehicles", false),
+                    GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _isRideSelected = true;
+                        });
+                      },
+                      child: _buildTab("Rides", _isRideSelected),
+                    ),
+                    SizedBox(width: 10),
+                    GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _isRideSelected = false;
+                        });
+                      },
+                      child: _buildTab("Vehicles", !_isRideSelected),
+                    ),
                   ],
                 ),
                 SizedBox(height: 15),
@@ -126,94 +150,145 @@ class _RidesPageState extends State<RidesPage> {
                 ),
                 SizedBox(height: 15),
 
-                // Ride Number (Numbers only)
-                _buildInputField(
-                  context,
-                  Icons.directions_bus,
-                  "Ride number",
-                  _rideNumberController,
-                  TextInputType.number,
-                  (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter ride number';
-                    }
-                    if (!RegExp(r'^[0-9]+$').hasMatch(value)) {
-                      return 'Please enter numbers only';
-                    }
-                    return null;
-                  },
-                ),
+                // Show Ride or Vehicle fields based on selection
+                if (_isRideSelected) ...[
+                  // Ride Number (Numbers only)
+                  _buildInputField(
+                    context,
+                    Icons.directions_bus,
+                    "Ride number",
+                    _rideNumberController,
+                    TextInputType.number,
+                    (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter ride number';
+                      }
+                      if (!RegExp(r'^[0-9]+$').hasMatch(value)) {
+                        return 'Please enter numbers only';
+                      }
+                      return null;
+                    },
+                  ),
 
-                // Route (Text)
-                _buildInputField(
-                  context,
-                  Icons.location_on,
-                  "Route",
-                  _routeController,
-                  TextInputType.text,
-                  (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter route';
-                    }
-                    return null;
-                  },
-                ),
+                  // Route (Text)
+                  _buildInputField(
+                    context,
+                    Icons.location_on,
+                    "Route",
+                    _routeController,
+                    TextInputType.text,
+                    (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter route';
+                      }
+                      return null;
+                    },
+                  ),
 
-                // Departure Time (Time picker)
-                GestureDetector(
-                  onTap: () => _selectTime(context),
-                  child: AbsorbPointer(
-                    child: _buildInputField(
-                      context,
-                      Icons.access_time,
-                      "Departure Time",
-                      _departureTimeController,
-                      TextInputType.datetime,
-                      (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please select departure time';
-                        }
-                        return null;
-                      },
+                  // Departure Time (Time picker)
+                  GestureDetector(
+                    onTap: () => _selectTime(context),
+                    child: AbsorbPointer(
+                      child: _buildInputField(
+                        context,
+                        Icons.access_time,
+                        "Departure Time",
+                        _departureTimeController,
+                        TextInputType.datetime,
+                        (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please select departure time';
+                          }
+                          return null;
+                        },
+                      ),
                     ),
                   ),
-                ),
 
-                // Capacity (Numbers only)
-                _buildInputField(
-                  context,
-                  Icons.people,
-                  "Capacity",
-                  _capacityController,
-                  TextInputType.number,
-                  (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter capacity';
-                    }
-                    if (!RegExp(r'^[0-9]+$').hasMatch(value)) {
-                      return 'Please enter numbers only';
-                    }
-                    return null;
-                  },
-                ),
+                  // Capacity (Numbers only)
+                  _buildInputField(
+                    context,
+                    Icons.people,
+                    "Capacity",
+                    _capacityController,
+                    TextInputType.number,
+                    (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter capacity';
+                      }
+                      if (!RegExp(r'^[0-9]+$').hasMatch(value)) {
+                        return 'Please enter numbers only';
+                      }
+                      return null;
+                    },
+                  ),
 
-                // Total Route Cost (Numbers with decimal)
-                _buildInputField(
-                  context,
-                  Icons.monetization_on,
-                  "Total Route Cost",
-                  _totalCostController,
-                  TextInputType.numberWithOptions(decimal: true),
-                  (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter total cost';
-                    }
-                    if (!RegExp(r'^[0-9]+(\.[0-9]{1,2})?$').hasMatch(value)) {
-                      return 'Please enter valid amount';
-                    }
-                    return null;
-                  },
-                ),
+                  // Total Route Cost (Numbers with decimal)
+                  _buildInputField(
+                    context,
+                    Icons.monetization_on,
+                    "Total Route Cost",
+                    _totalCostController,
+                    TextInputType.numberWithOptions(decimal: true),
+                    (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter total cost';
+                      }
+                      if (!RegExp(r'^[0-9]+(\.[0-9]{1,2})?$').hasMatch(value)) {
+                        return 'Please enter valid amount';
+                      }
+                      return null;
+                    },
+                  ),
+                ] else ...[
+                  // Vehicle Number
+                  _buildInputField(
+                    context,
+                    Icons.directions_car,
+                    "Number Plate",
+                    _vehicleNumberController,
+                    TextInputType.text,
+                    (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter Number plate';
+                      }
+                      return null;
+                    },
+                  ),
+
+                  // Vehicle Type
+                  _buildInputField(
+                    context,
+                    Icons.category,
+                    "Vehicle Type",
+                    _vehicleTypeController,
+                    TextInputType.text,
+                    (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter vehicle type';
+                      }
+                      return null;
+                    },
+                  ),
+
+                  // Vehicle Capacity
+                  _buildInputField(
+                    context,
+                    Icons.people,
+                    "Seating Capacity",
+                    _vehicleCapacityController,
+                    TextInputType.number,
+                    (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter seating capacity';
+                      }
+                      if (!RegExp(r'^[0-9]+$').hasMatch(value)) {
+                        return 'Please enter numbers only';
+                      }
+                      return null;
+                    },
+                  ),
+                ],
 
                 SizedBox(height: 20),
 
@@ -224,9 +299,8 @@ class _RidesPageState extends State<RidesPage> {
                     _buildActionButton(Icons.cancel, "Cancel", Colors.red, () {
                       Navigator.pop(context);
                     }),
-                    _buildActionButton(Icons.check, "Add Service", Colors.green, () {
+                    _buildActionButton(Icons.check, _isRideSelected ? "Add Ride" : "Add Vehicle", Colors.green, () {
                       if (_formKey.currentState!.validate()) {
-                        // Form is valid, proceed with submission
                         _submitForm();
                       }
                     }),
@@ -266,16 +340,23 @@ class _RidesPageState extends State<RidesPage> {
   }
 
   void _submitForm() {
-    // Handle form submission here
-    print('Ride Number: ${_rideNumberController.text}');
-    print('Route: ${_routeController.text}');
-    print('Departure Time: ${_departureTimeController.text}');
-    print('Capacity: ${_capacityController.text}');
-    print('Total Cost: ${_totalCostController.text}');
+    if (_isRideSelected) {
+      // Handle ride submission
+      print('Ride Number: ${_rideNumberController.text}');
+      print('Route: ${_routeController.text}');
+      print('Departure Time: ${_departureTimeController.text}');
+      print('Capacity: ${_capacityController.text}');
+      print('Total Cost: ${_totalCostController.text}');
+    } else {
+      // Handle vehicle submission
+      print('Number Plate: ${_vehicleNumberController.text}');
+      print('Vehicle Type: ${_vehicleTypeController.text}');
+      print('Seating Capacity: ${_vehicleCapacityController.text}');
+    }
     
     // Show success message
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Service added successfully!')),
+      SnackBar(content: Text(_isRideSelected ? 'Ride added successfully!' : 'Vehicle added successfully!')),
     );
   }
 
