@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'BookPage.dart'; // 
+import 'package:public_transport_tracker/RecordsPage.dart';
 
 class HomePage extends StatefulWidget {
   @override
@@ -94,7 +94,7 @@ class _HomePageState extends State<HomePage> {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                      builder: (context) => BookPage()),
+                                      builder: (context) => RecordsPage()),
                                 );
                               },
                               child: Text("Order Now",

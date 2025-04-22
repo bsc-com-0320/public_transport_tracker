@@ -17,7 +17,7 @@ class _RidesPageState extends State<RidesPage> {
   int _selectedIndex = 3; // Add Ride is the 4th item (index 3)
 
   // Navigation routes
-  final List<String> _pages = ['/', '/order', '/book', '/rides'];
+  final List<String> _pages = ['/', '/order', '/records', '/rides'];
 
   // Vehicle type dropdown options
   final List<String> _vehicleTypes = [
@@ -464,7 +464,7 @@ class _RidesPageState extends State<RidesPage> {
           BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
           BottomNavigationBarItem(
               icon: Icon(Icons.directions_bus), label: "Order"),
-          BottomNavigationBarItem(icon: Icon(Icons.book_online), label: "Book"),
+          BottomNavigationBarItem(icon: Icon(Icons.book_online), label: "Records"),
           BottomNavigationBarItem(icon: Icon(Icons.add), label: "Add Ride"),
         ],
       ),

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'homepage.dart'; 
-import 'BookPage.dart';
+import 'RecordsPage.dart';
 import 'OrderPage.dart';
 import 'RidesPage.dart';
 import 'map_screen.dart';
@@ -27,7 +27,7 @@ class MyApp extends StatelessWidget {
       initialRoute: '/',
       routes: {
         '/': (context) => HomePage(),
-        '/book': (context) => BookPage(),
+        '/records': (context) => RecordsPage(),
         '/rides': (context) => RidesPage(),
         '/order': (context) => OrderPage(),
         '/map': (context) => MapScreen(),
