@@ -19,13 +19,32 @@ class _OrderPageState extends State<OrderPage> {
   bool isOrderActive = true;
   String confirmationMessage = "";
 
+  // Vehicle type selection
+  final List<String> _vehicleTypes = [
+    'Bus',
+    'Coster',
+    'Minibus',
+    'Taxi',
+    'Van',
+    'Any'
+  ];
+  String? _selectedVehicleType;
+
   final SupabaseClient supabase = Supabase.instance.client;
 
-  int _selectedIndex = 0; // Add an index for the BottomNavigationBar
+  // Navigation state
+  int _selectedIndex = 1; // Order is the 2nd item (index 1)
+  final List<String> _pages = ['/', '/order', '/book', '/rides'];
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+    Navigator.pushNamed(context, _pages[index]);
+  }
 
   void _selectPickup() async {
-    final LatLng? result =
-        await Navigator.pushNamed(context, '/map') as LatLng?;
+    final LatLng? result = await Navigator.pushNamed(context, '/map') as LatLng?;
     if (result != null) {
       String locationName = await getLocationName(
         result.latitude,
@@ -36,8 +55,7 @@ class _OrderPageState extends State<OrderPage> {
   }
 
   void _selectDropoff() async {
-    final LatLng? result =
-        await Navigator.pushNamed(context, '/map') as LatLng?;
+    final LatLng? result = await Navigator.pushNamed(context, '/map') as LatLng?;
     if (result != null) {
       String locationName = await getLocationName(
         result.latitude,
@@ -68,9 +86,7 @@ class _OrderPageState extends State<OrderPage> {
             pickedTime.hour,
             pickedTime.minute,
           );
-          _dateTimeController.text = DateFormat(
-            "yyyy-MM-dd HH:mm",
-          ).format(selectedDateTime!);
+          _dateTimeController.text = DateFormat("yyyy-MM-dd HH:mm").format(selectedDateTime!);
         });
       }
     }
@@ -79,7 +95,8 @@ class _OrderPageState extends State<OrderPage> {
   Future<void> _confirmRide() async {
     if (_pickupController.text.isEmpty ||
         _dropoffController.text.isEmpty ||
-        (!isOrderActive && _dateTimeController.text.isEmpty)) {
+        (!isOrderActive && _dateTimeController.text.isEmpty) ||
+        _selectedVehicleType == null) {
       setState(() => confirmationMessage = "Please fill in all fields.");
       return;
     }
@@ -89,6 +106,7 @@ class _OrderPageState extends State<OrderPage> {
       'dropoff': _dropoffController.text,
       'date_time': isOrderActive ? null : _dateTimeController.text,
       'type': isOrderActive ? 'order' : 'book',
+      'vehicle_type': _selectedVehicleType,
     };
 
     try {
@@ -98,13 +116,6 @@ class _OrderPageState extends State<OrderPage> {
       print("Supabase Error: $e");
       setState(() => confirmationMessage = "Error confirming ride. Try again.");
     }
-  }
-
-  // Method to handle bottom navigation bar item tap
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
   }
 
   @override
@@ -118,37 +129,113 @@ class _OrderPageState extends State<OrderPage> {
         centerTitle: true,
       ),
       body: Padding(
-        padding: EdgeInsets.all(8.0),
+        padding: EdgeInsets.all(16.0),
         child: Column(
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        isOrderActive = true;
-                      });
-                    },
-                    child: Text("Order"),
+            // Order/Book toggle
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.grey[200],
+                borderRadius: BorderRadius.circular(30),
+              ),
+              padding: EdgeInsets.all(4),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => setState(() => isOrderActive = true),
+                      child: Container(
+                        padding: EdgeInsets.symmetric(vertical: 15),
+                        decoration: BoxDecoration(
+                          color: isOrderActive ? Color(0xFF8B5E3B) : Colors.transparent,
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        child: Center(
+                          child: Text(
+                            "Request Now",
+                            style: TextStyle(
+                              color: isOrderActive ? Colors.white : Colors.black,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => setState(() => isOrderActive = false),
+                      child: Container(
+                        padding: EdgeInsets.symmetric(vertical: 15),
+                        decoration: BoxDecoration(
+                          color: !isOrderActive ? Color(0xFF8B5E3B) : Colors.transparent,
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        child: Center(
+                          child: Text(
+                            "Book Later",
+                            style: TextStyle(
+                              color: !isOrderActive ? Colors.white : Colors.black,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 20),
+
+            // Vehicle type selection
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Select Vehicle Type",
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        isOrderActive = false;
-                      });
-                    },
-                    child: Text("Book"),
+                SizedBox(height: 10),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: _vehicleTypes.map((type) {
+                      bool isSelected = _selectedVehicleType == type;
+                      return Padding(
+                        padding: EdgeInsets.only(right: 8),
+                        child: ChoiceChip(
+                          label: Text(type),
+                          selected: isSelected,
+                          onSelected: (selected) {
+                            setState(() {
+                              _selectedVehicleType = selected ? type : null;
+                            });
+                          },
+                          selectedColor: Color(0xFF8B5E3B),
+                          labelStyle: TextStyle(
+                            color: isSelected ? Colors.white : Colors.black,
+                          ),
+                          backgroundColor: Colors.grey[200],
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        ),
+                      );
+                    }).toList(),
                   ),
                 ),
               ],
             ),
-            SizedBox(height: 10),
+            SizedBox(height: 20),
+
+            // Form content
             Expanded(
               child: isOrderActive ? buildOrderContent() : buildBookContent(),
             ),
+
+            // Confirmation message
             if (confirmationMessage.isNotEmpty)
               Padding(
                 padding: EdgeInsets.all(8.0),
@@ -164,55 +251,55 @@ class _OrderPageState extends State<OrderPage> {
           ],
         ),
       ),
-      // Add Bottom Navigation Bar
       bottomNavigationBar: BottomNavigationBar(
+        backgroundColor: Colors.white,
+        selectedItemColor: Color(0xFF8B5E3B),
+        unselectedItemColor: Color(0xFF5A3D1F),
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
+        type: BottomNavigationBarType.fixed,
         items: [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
           BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.search),
-            label: 'Search',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: 'Settings',
-          ),
+              icon: Icon(Icons.directions_bus), label: "Order"),
+          BottomNavigationBarItem(icon: Icon(Icons.book_online), label: "Book"),
+          BottomNavigationBarItem(icon: Icon(Icons.add), label: "Add Ride"),
         ],
       ),
     );
   }
 
   Widget buildOrderContent() {
-    return Column(
-      children: [
-        _buildTextField("pickup point", _pickupController, _selectPickup),
-        _buildTextField("dropoff point", _dropoffController, _selectDropoff),
-        _buildTextField(
-          "select date & time",
-          _dateTimeController,
-          _selectDateTime,
-        ),
-        ElevatedButton(onPressed: _confirmRide, child: Text("Order Ride Now")),
-      ],
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          _buildTextField("Pickup point", _pickupController, _selectPickup),
+          SizedBox(height: 16),
+          _buildTextField("Dropoff point", _dropoffController, _selectDropoff),
+          SizedBox(height: 24),
+          _buildConfirmButton("View Rides to Request"),
+        ],
+      ),
     );
   }
 
   Widget buildBookContent() {
-    return Column(
-      children: [
-        _buildTextField("pickup point", _pickupController, _selectPickup),
-        _buildTextField("dropoff point", _dropoffController, _selectDropoff),
-        _buildTextField(
-          "select date & time",
-          _dateTimeController,
-          _selectDateTime,
-        ),
-        ElevatedButton(onPressed: _confirmRide, child: Text("Book Now")),
-      ],
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          _buildTextField("Pickup point", _pickupController, _selectPickup),
+          SizedBox(height: 16),
+          _buildTextField("Dropoff point", _dropoffController, _selectDropoff),
+          SizedBox(height: 16),
+          _buildTextField(
+            "Select date & time",
+            _dateTimeController,
+            _selectDateTime,
+          ),
+          SizedBox(height: 24),
+          _buildConfirmButton("View Rides to Book"),
+        ],
+      ),
     );
   }
 
@@ -221,14 +308,9 @@ class _OrderPageState extends State<OrderPage> {
     TextEditingController controller,
     VoidCallback onTap,
   ) {
-    Icon? icon;
-
-    if (label.toLowerCase().contains('pickup') ||
-        label.toLowerCase().contains('dropoff')) {
-      icon = Icon(Icons.location_on, color: Colors.brown);
-    } else if (label.toLowerCase().contains('date')) {
-      icon = Icon(Icons.calendar_today, color: Colors.brown);
-    }
+    Icon? icon = label.toLowerCase().contains('pickup') || label.toLowerCase().contains('dropoff')
+        ? Icon(Icons.location_on, color: Color(0xFF8B5E3B))
+        : Icon(Icons.calendar_today, color: Color(0xFF8B5E3B));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -237,6 +319,7 @@ class _OrderPageState extends State<OrderPage> {
           label,
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
+        SizedBox(height: 8),
         TextField(
           controller: controller,
           readOnly: true,
@@ -245,11 +328,34 @@ class _OrderPageState extends State<OrderPage> {
             prefixIcon: icon,
             filled: true,
             fillColor: Colors.white,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide.none,
+            ),
+            contentPadding: EdgeInsets.symmetric(vertical: 15, horizontal: 15),
           ),
         ),
-        SizedBox(height: 10),
       ],
+    );
+  }
+
+  Widget _buildConfirmButton(String text) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Color(0xFF8B5E3B),
+          padding: EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+        onPressed: _confirmRide,
+        child: Text(
+          text,
+          style: TextStyle(color: Colors.white, fontSize: 18),
+        ),
+      ),
     );
   }
 
