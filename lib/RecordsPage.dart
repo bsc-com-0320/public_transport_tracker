@@ -2,6 +2,34 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
 
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize Supabase - replace with your actual credentials
+  await Supabase.initialize(
+    url: 'https://your-supabase-url.supabase.co',
+    anonKey: 'your-anon-key',
+  );
+  
+  runApp(const MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Booking Records',
+      theme: ThemeData(
+        primarySwatch: Colors.brown,
+        scaffoldBackgroundColor: const Color(0xFFF8F4E9),
+      ),
+      home: const RecordsPage(),
+    );
+  }
+}
+
 class RecordsPage extends StatefulWidget {
   const RecordsPage({Key? key}) : super(key: key);
 
@@ -26,13 +54,9 @@ class _RecordsPageState extends State<RecordsPage> {
     setState(() => isLoading = true);
     
     try {
-      final userId = supabase.auth.currentUser?.id;
-      if (userId == null) throw Exception('User not logged in');
-
       final response = await supabase
-          .from('bookings')
+          .from('booking')
           .select('*')
-          .eq('user_id', userId)
           .order('datetime', ascending: false);
 
       setState(() {
@@ -51,12 +75,12 @@ class _RecordsPageState extends State<RecordsPage> {
     try {
       setState(() => isLoading = true);
       await supabase
-          .from('bookings')
+          .from('booking')
           .delete()
           .eq('id', bookingId);
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Booking cancelled successfully')),
+        const SnackBar(content: Text('Booking cancelled successfully')),
       );
       await _loadBookings();
     } catch (e) {
@@ -73,7 +97,7 @@ class _RecordsPageState extends State<RecordsPage> {
       backgroundColor: const Color(0xFFF8F4E9),
       appBar: AppBar(
         backgroundColor: const Color(0xFF5D4037),
-        title: const Text('My Bookings', style: TextStyle(
+        title: const Text('All Bookings', style: TextStyle(
           color: Colors.white,
           fontWeight: FontWeight.bold,
           fontSize: 20,
@@ -101,7 +125,7 @@ class _RecordsPageState extends State<RecordsPage> {
     if (isLoading) {
       return Center(
         child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF5D4037)),
+          valueColor: AlwaysStoppedAnimation<Color>(const Color(0xFF5D4037)),
         ),
       );
     }
@@ -111,10 +135,10 @@ class _RecordsPageState extends State<RecordsPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.calendar_today, size: 60, color: Colors.grey),
+            const Icon(Icons.calendar_today, size: 60, color: Colors.grey),
             const SizedBox(height: 16),
             Text(
-              'No bookings yet',
+              'No bookings found',
               style: TextStyle(
                 fontSize: 18,
                 color: Colors.grey[600],
@@ -122,7 +146,7 @@ class _RecordsPageState extends State<RecordsPage> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Your upcoming rides will appear here',
+              'Check back later for new bookings',
               style: TextStyle(
                 fontSize: 14,
                 color: Colors.grey[500],
@@ -251,6 +275,7 @@ class _RecordsPageState extends State<RecordsPage> {
       final pickup = booking['pickup_point']?.toString() ?? 'Unknown location';
       final dropoff = booking['dropoff_point']?.toString() ?? 'Unknown location';
       final status = booking['status']?.toString() ?? 'confirmed';
+      final userName = booking['user_name']?.toString() ?? 'Unknown user';
 
       return Card(
         elevation: 3,
@@ -296,7 +321,15 @@ class _RecordsPageState extends State<RecordsPage> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 8),
+                Text(
+                  'User: $userName',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(height: 8),
                 _buildLocationRow(Icons.location_on, 'Pickup:', pickup),
                 const SizedBox(height: 8),
                 _buildLocationRow(Icons.location_off, 'Dropoff:', dropoff),
@@ -346,29 +379,28 @@ class _RecordsPageState extends State<RecordsPage> {
                         ),
                       ],
                     ),
-                    if (status == 'confirmed')
-                      ElevatedButton(
-                        onPressed: () => _showCancelDialog(booking['id']),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red[50],
-                          foregroundColor: Colors.red,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            side: const BorderSide(color: Colors.red),
-                          ),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
+                    ElevatedButton(
+                      onPressed: () => _showCancelDialog(booking['id']),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red[50],
+                        foregroundColor: Colors.red,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          side: const BorderSide(color: Colors.red),
                         ),
-                        child: const Text(
-                          'Cancel',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                          ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
                         ),
                       ),
+                      child: const Text(
+                        'Cancel',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ],
