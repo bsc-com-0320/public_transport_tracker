@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:public_transport_tracker/AccountsPage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'homepage.dart'; 
+import 'homepage.dart';
 import 'RecordsPage.dart';
 import 'OrderPage.dart';
 import 'RidesPage.dart';
@@ -12,7 +13,8 @@ void main() async {
 
   await Supabase.initialize(
     url: 'https://oilotmwaixynjaupkucd.supabase.co',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9pbG90bXdhaXh5bmphdXBrdWNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI4MzMyMzcsImV4cCI6MjA1ODQwOTIzN30.iQcQ1FxZz5jollXQgkAflSuIUFoPHgfbc6_L8c66QwM',
+    anonKey:
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9pbG90bXdhaXh5bmphdXBrdWNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI4MzMyMzcsImV4cCI6MjA1ODQwOTIzN30.iQcQ1FxZz5jollXQgkAflSuIUFoPHgfbc6_L8c66QwM',
   );
 
   runApp(MyApp());
@@ -31,6 +33,7 @@ class MyApp extends StatelessWidget {
         '/rides': (context) => RidesPage(),
         '/order': (context) => OrderPage(),
         '/map': (context) => MapScreen(),
+        '/account': (context) => AccountsPage(), // 👈 Add this line
       },
     );
   }

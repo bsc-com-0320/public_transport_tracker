@@ -29,13 +29,13 @@ class _OrderPageState extends State<OrderPage> {
     'Coster',
     'Minibus',
     'Taxi',
-    'Van'
+    'Van',
   ];
   String? _selectedVehicleType;
 
   final SupabaseClient supabase = Supabase.instance.client;
   int _selectedIndex = 1;
-  final List<String> _pages = ['/', '/order', '/book', '/rides'];
+  final List<String> _pages = ['/', '/order', '/records', '/rides'];
 
   void _onItemTapped(int index) {
     setState(() {
@@ -45,15 +45,18 @@ class _OrderPageState extends State<OrderPage> {
   }
 
   Future<void> _loadAvailableRides() async {
-    if (_selectedVehicleType == null || _selectedVehicleType == 'Any') return;
-    
     setState(() => isLoadingRides = true);
     try {
-      final response = await supabase
-          .from('ride')
-          .select('*')
-          .eq('vehicle_type', _selectedVehicleType!)
-          .order('departure_time', ascending: true);
+      // Create a query builder
+      final query = supabase.from('ride').select('*');
+
+      // Only add the vehicle_type filter if something other than 'All' is selected
+      if (_selectedVehicleType != null && _selectedVehicleType != 'All') {
+        query.eq('vehicle_type', _selectedVehicleType!);
+      }
+
+      // Execute the query and order the results
+      final response = await query.order('departure_time', ascending: true);
 
       setState(() {
         availableRides = List<Map<String, dynamic>>.from(response);
@@ -61,14 +64,15 @@ class _OrderPageState extends State<OrderPage> {
       });
     } catch (e) {
       setState(() => isLoadingRides = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading rides: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error loading rides: $e')));
     }
   }
 
   void _selectPickup() async {
-    final LatLng? result = await Navigator.pushNamed(context, '/map') as LatLng?;
+    final LatLng? result =
+        await Navigator.pushNamed(context, '/map') as LatLng?;
     if (result != null) {
       String locationName = await getLocationName(
         result.latitude,
@@ -79,7 +83,8 @@ class _OrderPageState extends State<OrderPage> {
   }
 
   void _selectDropoff() async {
-    final LatLng? result = await Navigator.pushNamed(context, '/map') as LatLng?;
+    final LatLng? result =
+        await Navigator.pushNamed(context, '/map') as LatLng?;
     if (result != null) {
       String locationName = await getLocationName(
         result.latitude,
@@ -110,7 +115,9 @@ class _OrderPageState extends State<OrderPage> {
             pickedTime.hour,
             pickedTime.minute,
           );
-          _dateTimeController.text = DateFormat("yyyy-MM-dd HH:mm").format(selectedDateTime!);
+          _dateTimeController.text = DateFormat(
+            "yyyy-MM-dd HH:mm",
+          ).format(selectedDateTime!);
         });
       }
     }
@@ -170,21 +177,28 @@ class _OrderPageState extends State<OrderPage> {
                       children: [
                         Expanded(
                           child: InkWell(
-                            onTap: () => setState(() {
-                              isOrderActive = true;
-                              showAvailableRides = false;
-                            }),
+                            onTap:
+                                () => setState(() {
+                                  isOrderActive = true;
+                                  showAvailableRides = false;
+                                }),
                             child: Container(
                               padding: EdgeInsets.symmetric(vertical: 15),
                               decoration: BoxDecoration(
-                                color: isOrderActive ? Color(0xFF8B5E3B) : Colors.transparent,
+                                color:
+                                    isOrderActive
+                                        ? Color(0xFF8B5E3B)
+                                        : Colors.transparent,
                                 borderRadius: BorderRadius.circular(30),
                               ),
                               child: Center(
                                 child: Text(
                                   "Request Now",
                                   style: TextStyle(
-                                    color: isOrderActive ? Colors.white : Colors.black,
+                                    color:
+                                        isOrderActive
+                                            ? Colors.white
+                                            : Colors.black,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -194,21 +208,28 @@ class _OrderPageState extends State<OrderPage> {
                         ),
                         Expanded(
                           child: InkWell(
-                            onTap: () => setState(() {
-                              isOrderActive = false;
-                              showAvailableRides = false;
-                            }),
+                            onTap:
+                                () => setState(() {
+                                  isOrderActive = false;
+                                  showAvailableRides = false;
+                                }),
                             child: Container(
                               padding: EdgeInsets.symmetric(vertical: 15),
                               decoration: BoxDecoration(
-                                color: !isOrderActive ? Color(0xFF8B5E3B) : Colors.transparent,
+                                color:
+                                    !isOrderActive
+                                        ? Color(0xFF8B5E3B)
+                                        : Colors.transparent,
                                 borderRadius: BorderRadius.circular(30),
                               ),
                               child: Center(
                                 child: Text(
                                   "Book Later",
                                   style: TextStyle(
-                                    color: !isOrderActive ? Colors.white : Colors.black,
+                                    color:
+                                        !isOrderActive
+                                            ? Colors.white
+                                            : Colors.black,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -227,40 +248,48 @@ class _OrderPageState extends State<OrderPage> {
                     children: [
                       Text(
                         "Select Vehicle Type",
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       SizedBox(height: 10),
                       SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         child: Row(
-                          children: _vehicleTypes.map((type) {
-                            bool isSelected = _selectedVehicleType == type;
-                            return Padding(
-                              padding: EdgeInsets.only(right: 8),
-                              child: ChoiceChip(
-                                label: Text(type),
-                                selected: isSelected,
-                                onSelected: (selected) {
-                                  setState(() {
-                                    _selectedVehicleType = selected ? type : null;
-                                    if (selected) _loadAvailableRides();
-                                  });
-                                },
-                                selectedColor: Color(0xFF8B5E3B),
-                                labelStyle: TextStyle(
-                                  color: isSelected ? Colors.white : Colors.black,
-                                ),
-                                backgroundColor: Colors.grey[200],
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 8,
-                                ),
-                              ),
-                            );
-                          }).toList(),
+                          children:
+                              _vehicleTypes.map((type) {
+                                bool isSelected = _selectedVehicleType == type;
+                                return Padding(
+                                  padding: EdgeInsets.only(right: 8),
+                                  child: ChoiceChip(
+                                    label: Text(type),
+                                    selected: isSelected,
+                                    onSelected: (selected) {
+                                      setState(() {
+                                        _selectedVehicleType =
+                                            selected ? type : null;
+                                        if (selected) _loadAvailableRides();
+                                      });
+                                    },
+                                    selectedColor: Color(0xFF8B5E3B),
+                                    labelStyle: TextStyle(
+                                      color:
+                                          isSelected
+                                              ? Colors.white
+                                              : Colors.black,
+                                    ),
+                                    backgroundColor: Colors.grey[200],
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 8,
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
                         ),
                       ),
                     ],
@@ -268,9 +297,12 @@ class _OrderPageState extends State<OrderPage> {
                   SizedBox(height: 20),
 
                   // Form content
-                  if (!showAvailableRides) 
+                  if (!showAvailableRides)
                     Expanded(
-                      child: isOrderActive ? _buildOrderContent() : _buildBookContent(),
+                      child:
+                          isOrderActive
+                              ? _buildOrderContent()
+                              : _buildBookContent(),
                     ),
 
                   // Confirmation message
@@ -308,7 +340,7 @@ class _OrderPageState extends State<OrderPage> {
             icon: Icon(Icons.directions_bus),
             label: "Order",
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.book_online), label: "Book"),
+          BottomNavigationBarItem(icon: Icon(Icons.book_online), label: "Records"),
           BottomNavigationBarItem(icon: Icon(Icons.add), label: "Add Ride"),
         ],
       ),
@@ -356,11 +388,7 @@ class _OrderPageState extends State<OrderPage> {
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 10,
-            spreadRadius: 2,
-          ),
+          BoxShadow(color: Colors.black12, blurRadius: 10, spreadRadius: 2),
         ],
       ),
       child: Column(
@@ -383,10 +411,7 @@ class _OrderPageState extends State<OrderPage> {
               children: [
                 Text(
                   'Available Rides',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 IconButton(
                   icon: Icon(Icons.close),
@@ -396,164 +421,166 @@ class _OrderPageState extends State<OrderPage> {
             ),
           ),
           Expanded(
-            child: isLoadingRides
-                ? Center(child: CircularProgressIndicator())
-                : availableRides.isEmpty
+            child:
+                isLoadingRides
+                    ? Center(child: CircularProgressIndicator())
+                    : availableRides.isEmpty
                     ? Center(child: Text('No available rides found'))
                     : ListView.builder(
-                        padding: EdgeInsets.all(16),
-                        itemCount: availableRides.length,
-                        itemBuilder: (context, index) {
-                          final ride = availableRides[index];
-                          try {
-                            return _buildRideCard(ride);
-                          } catch (e) {
-                            return _buildErrorCard(e.toString());
-                          }
-                        },
-                      ),
+                      padding: EdgeInsets.all(16),
+                      itemCount: availableRides.length,
+                      itemBuilder: (context, index) {
+                        final ride = availableRides[index];
+                        try {
+                          return _buildRideCard(ride);
+                        } catch (e) {
+                          return _buildErrorCard(e.toString());
+                        }
+                      },
+                    ),
           ),
         ],
       ),
     );
   }
 
-Widget _buildRideCard(Map<String, dynamic> ride) {
-  try {
-    // Parse departure time from string with custom format
-    DateTime departureTime;
+  Widget _buildRideCard(Map<String, dynamic> ride) {
     try {
-      // First try parsing with ISO format (if stored that way)
-      departureTime = DateTime.tryParse(ride['departure_time']) ?? DateTime.now();
-      
-      // If that fails, try parsing with your custom format
-      if (departureTime == DateTime.now()) {
-        final formatsToTry = [
-          "yyyy-MM-dd HH:mm:ss",  // e.g., "2023-12-25 14:30:00"
-          "dd/MM/yyyy h:mm a",    // e.g., "25/12/2023 2:30 PM"
-          "MMM dd, yyyy HH:mm",   // e.g., "Dec 25, 2023 14:30"
-          "yyyy-MM-dd HH:mm",     // e.g., "2023-12-25 14:30"
-        ];
-        
-        for (final format in formatsToTry) {
-          try {
-            departureTime = DateFormat(format).parse(ride['departure_time']);
-            break;
-          } catch (e) {
-            continue;
+      // Parse departure time from string with custom format
+      DateTime departureTime;
+      try {
+        // First try parsing with ISO format (if stored that way)
+        departureTime =
+            DateTime.tryParse(ride['departure_time']) ?? DateTime.now();
+
+        // If that fails, try parsing with your custom format
+        if (departureTime == DateTime.now()) {
+          final formatsToTry = [
+            "yyyy-MM-dd HH:mm:ss", // e.g., "2023-12-25 14:30:00"
+            "dd/MM/yyyy h:mm a", // e.g., "25/12/2023 2:30 PM"
+            "MMM dd, yyyy HH:mm", // e.g., "Dec 25, 2023 14:30"
+            "yyyy-MM-dd HH:mm", // e.g., "2023-12-25 14:30"
+          ];
+
+          for (final format in formatsToTry) {
+            try {
+              departureTime = DateFormat(format).parse(ride['departure_time']);
+              break;
+            } catch (e) {
+              continue;
+            }
           }
         }
+      } catch (e) {
+        departureTime = DateTime.now();
       }
-    } catch (e) {
-      departureTime = DateTime.now();
-    }
-    
-    final formattedDate = DateFormat('EEE, MMM d').format(departureTime);
-    final formattedTime = DateFormat('h:mm a').format(departureTime);
-    final seatsAvailable = ride['capacity'] is int ? ride['capacity'] : 0;
-    final isFull = seatsAvailable <= 0;
-    final totalCost = ride['total_cost'] is num 
-        ? (ride['total_cost'] as num).toDouble() 
-        : 0.0;
 
-    return Card(
-      margin: EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Padding(
-        padding: EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Ride #${ride['ride_number']?.toString() ?? 'N/A'}',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+      final formattedDate = DateFormat('EEE, MMM d').format(departureTime);
+      final formattedTime = DateFormat('h:mm a').format(departureTime);
+      final seatsAvailable = ride['capacity'] is int ? ride['capacity'] : 0;
+      final isFull = seatsAvailable <= 0;
+      final totalCost =
+          ride['total_cost'] is num
+              ? (ride['total_cost'] as num).toDouble()
+              : 0.0;
+
+      return Card(
+        margin: EdgeInsets.only(bottom: 12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Padding(
+          padding: EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Ride #${ride['ride_number']?.toString() ?? 'N/A'}',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
-                ),
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: isFull ? Colors.red[100] : Colors.green[100],
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    isFull ? 'FULL' : '$seatsAvailable seats',
-                    style: TextStyle(
-                      color: isFull ? Colors.red[800] : Colors.green[800],
-                      fontWeight: FontWeight.bold,
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isFull ? Colors.red[100] : Colors.green[100],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      isFull ? 'FULL' : '$seatsAvailable seats',
+                      style: TextStyle(
+                        color: isFull ? Colors.red[800] : Colors.green[800],
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
-            SizedBox(height: 8),
-            Row(
-              children: [
-                Icon(Icons.route, color: Color(0xFF8B5E3B), size: 18),
-                SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    ride['route']?.toString() ?? 'No route specified',
-                    style: TextStyle(fontSize: 14),
+                ],
+              ),
+              SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(Icons.route, color: Color(0xFF8B5E3B), size: 18),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      ride['route']?.toString() ?? 'No route specified',
+                      style: TextStyle(fontSize: 14),
+                    ),
                   ),
-                ),
-              ],
-            ),
-            SizedBox(height: 8),
-            Row(
-              children: [
-                Icon(Icons.calendar_today, color: Color(0xFF8B5E3B), size: 18),
-                SizedBox(width: 8),
-                Text(formattedDate, style: TextStyle(fontSize: 12)),
-                SizedBox(width: 16),
-                Icon(Icons.access_time, color: Color(0xFF8B5E3B), size: 18),
-                SizedBox(width: 8),
-                Text(formattedTime, style: TextStyle(fontSize: 12)),
-              ],
-            ),
-            SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Total Cost:', style: TextStyle(fontSize: 12)),
-                Text(
-                  '\$${totalCost.toStringAsFixed(2)}',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
+                ],
+              ),
+              SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(
+                    Icons.calendar_today,
                     color: Color(0xFF8B5E3B),
+                    size: 18,
+                  ),
+                  SizedBox(width: 8),
+                  Text(formattedDate, style: TextStyle(fontSize: 12)),
+                  SizedBox(width: 16),
+                  Icon(Icons.access_time, color: Color(0xFF8B5E3B), size: 18),
+                  SizedBox(width: 8),
+                  Text(formattedTime, style: TextStyle(fontSize: 12)),
+                ],
+              ),
+              SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Total Cost:', style: TextStyle(fontSize: 12)),
+                  Text(
+                    '\$${totalCost.toStringAsFixed(2)}',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF8B5E3B),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 8),
+              ElevatedButton(
+                onPressed: isFull ? null : () => _bookRide(ride),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Color(0xFF8B5E3B),
+                  minimumSize: Size(double.infinity, 36),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-              ],
-            ),
-            SizedBox(height: 8),
-            ElevatedButton(
-              onPressed: isFull ? null : () => _bookRide(ride),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Color(0xFF8B5E3B),
-                minimumSize: Size(double.infinity, 36),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                child: Text(
+                  isFull ? 'NO SEATS AVAILABLE' : 'BOOK NOW',
+                  style: TextStyle(fontSize: 14),
                 ),
               ),
-              child: Text(
-                isFull ? 'NO SEATS AVAILABLE' : 'BOOK NOW',
-                style: TextStyle(fontSize: 14),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
-    );
-  } catch (e) {
-    return _buildErrorCard(e.toString());
+      );
+    } catch (e) {
+      return _buildErrorCard(e.toString());
+    }
   }
-}
 
   Widget _buildErrorCard(String error) {
     return Card(
@@ -561,10 +588,7 @@ Widget _buildRideCard(Map<String, dynamic> ride) {
       color: Colors.red[50],
       child: Padding(
         padding: EdgeInsets.all(12),
-        child: Text(
-          'Error: $error',
-          style: TextStyle(color: Colors.red),
-        ),
+        child: Text('Error: $error', style: TextStyle(color: Colors.red)),
       ),
     );
   }
@@ -574,10 +598,11 @@ Widget _buildRideCard(Map<String, dynamic> ride) {
     TextEditingController controller,
     VoidCallback onTap,
   ) {
-    Icon? icon = label.toLowerCase().contains('pickup') ||
-            label.toLowerCase().contains('dropoff')
-        ? Icon(Icons.location_on, color: Color(0xFF8B5E3B))
-        : Icon(Icons.calendar_today, color: Color(0xFF8B5E3B));
+    Icon? icon =
+        label.toLowerCase().contains('pickup') ||
+                label.toLowerCase().contains('dropoff')
+            ? Icon(Icons.location_on, color: Color(0xFF8B5E3B))
+            : Icon(Icons.calendar_today, color: Color(0xFF8B5E3B));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -619,7 +644,9 @@ Widget _buildRideCard(Map<String, dynamic> ride) {
         ),
         onPressed: () {
           if (_selectedVehicleType == null) {
-            setState(() => confirmationMessage = "Please select a vehicle type");
+            setState(
+              () => confirmationMessage = "Please select a vehicle type",
+            );
             return;
           }
           setState(() {
@@ -645,9 +672,9 @@ Widget _buildRideCard(Map<String, dynamic> ride) {
       );
       // Implement your actual booking logic here
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to book ride: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to book ride: $e')));
     }
   }
 

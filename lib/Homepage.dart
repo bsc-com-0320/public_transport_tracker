@@ -10,9 +10,12 @@ class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
   String _selectedTransport = "All";
 
-  final List<String> _pages = ['/', '/order', '/gps', '/rides'];
+  final List<String> _pages = ['/', '/order', '/records', '/rides'];
 
   void _onItemTapped(int index) {
+    if (_selectedIndex == index)
+      return; // Don't navigate to the same page again
+
     setState(() {
       _selectedIndex = index;
     });
@@ -31,6 +34,7 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       backgroundColor: Color(0xFFF5F5DC),
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         backgroundColor: Color(0xFF8B5E3B),
         title: Text("Transport Tracker", style: TextStyle(color: Colors.white)),
         actions: [
@@ -45,11 +49,14 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("Choose What You Need",
-                style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black)),
+            Text(
+              "Choose What You Need",
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
+            ),
             SizedBox(height: 10),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -60,11 +67,14 @@ class _HomePageState extends State<HomePage> {
               ],
             ),
             SizedBox(height: 20),
-            Text("Available Rides",
-                style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black)),
+            Text(
+              "Available Rides",
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
+            ),
             Expanded(
               child: ListView.builder(
                 itemCount: 5,
@@ -74,34 +84,39 @@ class _HomePageState extends State<HomePage> {
                           (index % 3 == 1 && _selectedTransport == "Bus") ||
                           (index % 3 == 2 && _selectedTransport == "Bike")
                       ? Card(
-                          margin: EdgeInsets.symmetric(vertical: 8),
-                          child: ListTile(
-                            leading: Icon(
-                              _selectedTransport == "Bus"
-                                  ? Icons.directions_bus
-                                  : _selectedTransport == "Bike"
-                                      ? Icons.pedal_bike
-                                      : Icons.local_taxi,
-                              color: Color(0xFF8B5E3B),
+                        margin: EdgeInsets.symmetric(vertical: 8),
+                        child: ListTile(
+                          leading: Icon(
+                            _selectedTransport == "Bus"
+                                ? Icons.directions_bus
+                                : _selectedTransport == "Bike"
+                                ? Icons.pedal_bike
+                                : Icons.local_taxi,
+                            color: Color(0xFF8B5E3B),
+                          ),
+                          title: Text(
+                            "${_selectedTransport} Ride ${index + 1}",
+                          ),
+                          subtitle: Text("6 Miles - 30 Minutes (Approx)"),
+                          trailing: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Color(0xFF8B5E3B),
                             ),
-                            title:
-                                Text("${_selectedTransport} Ride ${index + 1}"),
-                            subtitle: Text("6 Miles - 30 Minutes (Approx)"),
-                            trailing: ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                  backgroundColor: Color(0xFF8B5E3B)),
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (context) => RecordsPage()),
-                                );
-                              },
-                              child: Text("Order Now",
-                                  style: TextStyle(color: Colors.white)),
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => RecordsPage(),
+                                ),
+                              );
+                            },
+                            child: Text(
+                              "Order Now",
+                              style: TextStyle(color: Colors.white),
                             ),
                           ),
-                        )
+                        ),
+                      )
                       : SizedBox();
                 },
               ),
@@ -119,8 +134,13 @@ class _HomePageState extends State<HomePage> {
         items: [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
           BottomNavigationBarItem(
-              icon: Icon(Icons.directions_bus), label: "Order"),
-          BottomNavigationBarItem(icon: Icon(Icons.book_online), label: "Book"),
+            icon: Icon(Icons.directions_bus),
+            label: "Order",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.book_online),
+            label: "Records",
+          ),
           BottomNavigationBarItem(icon: Icon(Icons.add), label: "Add Ride"),
         ],
       ),
@@ -139,13 +159,17 @@ class _HomePageState extends State<HomePage> {
             child: Icon(icon, color: Colors.white, size: 30),
           ),
           SizedBox(height: 5),
-          Text(label,
-              style: TextStyle(
-                  fontSize: 16,
-                  color: isActive ? Colors.green : Colors.black,
-                  fontWeight: isActive ? FontWeight.bold : FontWeight.normal)),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 16,
+              color: isActive ? Colors.green : Colors.black,
+              fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
         ],
       ),
     );
   }
 }
+//book

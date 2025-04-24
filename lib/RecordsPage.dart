@@ -16,7 +16,7 @@ class _RecordsPageState extends State<RecordsPage> {
   List<Map<String, dynamic>> availableRides = [];
   bool isLoading = true;
   int _selectedIndex = 3;
-  final List<String> _pages = ['/', '/order', '/book', '/records'];
+  final List<String> _pages = ['/', '/order', '/records', '/rides'];
 
   @override
   void initState() {
@@ -90,7 +90,7 @@ class _RecordsPageState extends State<RecordsPage> {
           BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
           BottomNavigationBarItem(
               icon: Icon(Icons.directions_bus), label: "Order"),
-          BottomNavigationBarItem(icon: Icon(Icons.book_online), label: "Book"),
+          BottomNavigationBarItem(icon: Icon(Icons.book_online), label: "Records"),
           BottomNavigationBarItem(icon: Icon(Icons.add), label: "Add Ride"),
         ],
       ),
