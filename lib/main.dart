@@ -50,6 +50,11 @@ class MyApp extends StatelessWidget {
          '/editprofile': (context) => EditProfilePage(),
          '/gps': (context) => GPSPage(),
          '/map': (context) => MapScreen(),
+         
+         
+
+         
+         
 
 
 
