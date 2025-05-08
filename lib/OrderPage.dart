@@ -189,9 +189,9 @@ class _OrderPageState extends State<OrderPage> {
   Widget buildOrderContent() {
     return Column(
       children: [
-        _buildTextField("pickup point", _pickupController, _selectPickup),
-        _buildTextField("dropoff point", _dropoffController, _selectDropoff),
-        _buildTextField("select date & time", _dateTimeController, _selectDateTime),
+        _buildTextField("Pickup point", _pickupController, _selectPickup),
+        _buildTextField("Dropoff point", _dropoffController, _selectDropoff),
+        _buildTextField("Select date & time", _dateTimeController, _selectDateTime),
         ElevatedButton(onPressed: _confirmRide, child: Text("Request Ride Now")),
       ],
     );
@@ -200,40 +200,37 @@ class _OrderPageState extends State<OrderPage> {
   Widget buildBookContent() {
     return Column(
       children: [
-        _buildTextField("pickup point", _pickupController, _selectPickup),
-        _buildTextField("dropoff point", _dropoffController, _selectDropoff),
-        _buildTextField("select date & time", _dateTimeController, _selectDateTime),
+        _buildTextField("Pickup point", _pickupController, _selectPickup),
+        _buildTextField("Dropoff point", _dropoffController, _selectDropoff),
+        _buildTextField("Select date & time", _dateTimeController, _selectDateTime),
         ElevatedButton(onPressed: _confirmRide, child: Text("Book Now")),
       ],
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller, VoidCallback onTap) {
+  Widget _buildTextField(String hint, TextEditingController controller, VoidCallback onTap) {
     Icon? icon;
 
-    if (label.toLowerCase().contains('pickup') || label.toLowerCase().contains('dropoff')) {
+    if (hint.toLowerCase().contains('pickup') || hint.toLowerCase().contains('dropoff')) {
       icon = Icon(Icons.location_on, color: Colors.brown);
-    } else if (label.toLowerCase().contains('date')) {
+    } else if (hint.toLowerCase().contains('date')) {
       icon = Icon(Icons.calendar_today, color: Colors.brown);
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        TextField(
-          controller: controller,
-          readOnly: true,
-          onTap: onTap,
-          decoration: InputDecoration(
-            prefixIcon: icon,
-            filled: true,
-            fillColor: Colors.white,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-          ),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10.0),
+      child: TextField(
+        controller: controller,
+        readOnly: true,
+        onTap: onTap,
+        decoration: InputDecoration(
+          prefixIcon: icon,
+          hintText: hint,
+          filled: true,
+          fillColor: Colors.white,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
         ),
-        SizedBox(height: 10),
-      ],
+      ),
     );
   }
 
