@@ -15,8 +15,7 @@ class _AccountsPageState extends State<AccountsPage> {
   final TextEditingController _narrationController = TextEditingController();
 
   final FundAccountService fundService =
-      FundAccountService(baseUrl: "https://dashboard.render.com/d/dpg-d0b8jdp5pdvs73cf9a9g-a");
-
+      FundAccountService(baseUrl: "https://unimatherapyapplication.com/publictransporttracker");
   void _cancel() {
     _fullNameController.clear();
     _phoneController.clear();
@@ -27,15 +26,15 @@ class _AccountsPageState extends State<AccountsPage> {
     );
   }
 
-  Future<void> _confirmDeposit() async {
-    if (_formKey.currentState!.validate()) {
+   Future<void> _confirmDeposit() async {
+   if (_formKey.currentState!.validate()) {
       try {
         final payment = PaymentsDto(
           fullName: _fullNameController.text,
           phoneNumber: _phoneController.text,
           amount: double.parse(_amountController.text),
           narration: _narrationController.text,
-          paymentMethod: "Mpamba",
+          paymentMethod: "",
           currency: "MWK",
         );
 

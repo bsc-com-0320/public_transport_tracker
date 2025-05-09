@@ -1,8 +1,6 @@
-// fund_account_service.dart
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:public_transport_tracker/server/fund_account.model.dart';
-
 
 class FundAccountService {
   final String baseUrl;
@@ -16,8 +14,13 @@ class FundAccountService {
       body: jsonEncode(dto.toJson()),
     );
 
-    if (response.statusCode == 200) {
-      return PaymentResponse.fromJson(jsonDecode(response.body));
+    print('processPayment - Status code: ${response.statusCode}');
+    print('processPayment - Response body: ${response.body}');
+
+    final Map<String, dynamic> data = jsonDecode(response.body);
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return PaymentResponse.fromJson(data);
     } else {
       throw Exception('Failed to process payment: ${response.body}');
     }
@@ -28,10 +31,18 @@ class FundAccountService {
       Uri.parse('$baseUrl/payments/status/$txRef'),
     );
 
+    print('getPaymentStatus - Status code: ${response.statusCode}');
+    print('getPaymentStatus - Response body: ${response.body}');
+
     if (response.statusCode == 200) {
       return PaymentResponse.fromJson(jsonDecode(response.body));
     } else {
-      throw Exception('Failed to retrieve payment status: ${response.body}');
+      try {
+        final error = jsonDecode(response.body);
+        throw Exception('Failed to retrieve payment status: ${error['message'] ?? response.body}');
+      } catch (_) {
+        throw Exception('Failed to retrieve payment status: ${response.body}');
+      }
     }
   }
 
@@ -40,10 +51,18 @@ class FundAccountService {
       Uri.parse('$baseUrl/payments/verify/$txRef'),
     );
 
+    print('verifyPayment - Status code: ${response.statusCode}');
+    print('verifyPayment - Response body: ${response.body}');
+
     if (response.statusCode == 200) {
       return PaymentResponse.fromJson(jsonDecode(response.body));
     } else {
-      throw Exception('Failed to verify payment: ${response.body}');
+      try {
+        final error = jsonDecode(response.body);
+        throw Exception('Failed to verify payment: ${error['message'] ?? response.body}');
+      } catch (_) {
+        throw Exception('Failed to verify payment: ${response.body}');
+      }
     }
   }
 
@@ -54,10 +73,18 @@ class FundAccountService {
       body: jsonEncode(dto.toJson()),
     );
 
+    print('initiatePayout - Status code: ${response.statusCode}');
+    print('initiatePayout - Response body: ${response.body}');
+
     if (response.statusCode == 200) {
       return PaymentResponse.fromJson(jsonDecode(response.body));
     } else {
-      throw Exception('Failed to initiate payout: ${response.body}');
+      try {
+        final error = jsonDecode(response.body);
+        throw Exception('Failed to initiate payout: ${error['message'] ?? response.body}');
+      } catch (_) {
+        throw Exception('Failed to initiate payout: ${response.body}');
+      }
     }
   }
 }
