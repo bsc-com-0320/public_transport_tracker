@@ -4,13 +4,13 @@ import 'package:intl/intl.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Initialize Supabase - replace with your actual credentials
   await Supabase.initialize(
     url: 'https://your-supabase-url.supabase.co',
     anonKey: 'your-anon-key',
   );
-  
+
   runApp(const MyApp());
 }
 
@@ -52,12 +52,22 @@ class _RecordsPageState extends State<RecordsPage> {
 
   Future<void> _loadBookings() async {
     setState(() => isLoading = true);
-    
+
     try {
       final response = await supabase
-          .from('booking')
-          .select('*')
-          .order('datetime', ascending: false);
+          .from('request_ride') // Changed from 'booking' to 'request_ride'
+          .select('''
+            id,
+            ride_id,
+            pickup,
+            dropoff,
+            booking_time,
+            type,
+            vehicle_type,
+            departure_time,
+            total_cost
+          ''')
+          .order('booking_time', ascending: false);
 
       setState(() {
         bookings = List<Map<String, dynamic>>.from(response);
@@ -65,9 +75,9 @@ class _RecordsPageState extends State<RecordsPage> {
       });
     } catch (e) {
       setState(() => isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading bookings: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error loading bookings: $e')));
     }
   }
 
@@ -75,7 +85,7 @@ class _RecordsPageState extends State<RecordsPage> {
     try {
       setState(() => isLoading = true);
       await supabase
-          .from('booking')
+          .from('request_ride') // Changed from 'booking' to 'request_ride'
           .delete()
           .eq('id', bookingId);
 
@@ -85,9 +95,9 @@ class _RecordsPageState extends State<RecordsPage> {
       await _loadBookings();
     } catch (e) {
       setState(() => isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to cancel booking: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to cancel booking: $e')));
     }
   }
 
@@ -96,19 +106,20 @@ class _RecordsPageState extends State<RecordsPage> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F4E9),
       appBar: AppBar(
-          automaticallyImplyLeading: false,
+        automaticallyImplyLeading: false,
         backgroundColor: const Color(0xFF5D4037),
-        title: const Text('All Bookings', style: TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.bold,
-          fontSize: 20,
-        )),
+        title: const Text(
+          'All Bookings',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
         centerTitle: true,
         elevation: 4,
         shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(
-            bottom: Radius.circular(15),
-          ),
+          borderRadius: BorderRadius.vertical(bottom: Radius.circular(15)),
         ),
         actions: [
           IconButton(
@@ -140,18 +151,12 @@ class _RecordsPageState extends State<RecordsPage> {
             const SizedBox(height: 16),
             Text(
               'No bookings found',
-              style: TextStyle(
-                fontSize: 18,
-                color: Colors.grey[600],
-              ),
+              style: TextStyle(fontSize: 18, color: Colors.grey[600]),
             ),
             const SizedBox(height: 8),
             Text(
               'Check back later for new bookings',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[500],
-              ),
+              style: TextStyle(fontSize: 14, color: Colors.grey[500]),
             ),
           ],
         ),
@@ -181,11 +186,7 @@ class _RecordsPageState extends State<RecordsPage> {
       decoration: BoxDecoration(
         borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
         boxShadow: const [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 10,
-            spreadRadius: 2,
-          ),
+          BoxShadow(color: Colors.black12, blurRadius: 10, spreadRadius: 2),
         ],
       ),
       child: ClipRRect(
@@ -232,9 +233,7 @@ class _RecordsPageState extends State<RecordsPage> {
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       color: Colors.red[50],
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -255,10 +254,7 @@ class _RecordsPageState extends State<RecordsPage> {
               ],
             ),
             const SizedBox(height: 8),
-            Text(
-              error,
-              style: const TextStyle(color: Colors.red),
-            ),
+            Text(error, style: const TextStyle(color: Colors.red)),
           ],
         ),
       ),
@@ -267,28 +263,30 @@ class _RecordsPageState extends State<RecordsPage> {
 
   Widget _buildBookingCard(Map<String, dynamic> booking) {
     try {
-      final datetime = booking['datetime'] != null
-          ? DateTime.parse(booking['datetime'])
-          : DateTime.now();
-      
-      final formattedDate = DateFormat('MMM d, y').format(datetime);
-      final formattedTime = DateFormat('h:mm a').format(datetime);
-      final pickup = booking['pickup_point']?.toString() ?? 'Unknown location';
-      final dropoff = booking['dropoff_point']?.toString() ?? 'Unknown location';
-      final status = booking['status']?.toString() ?? 'confirmed';
-      final userName = booking['user_name']?.toString() ?? 'Unknown user';
+      // Parse dates
+      final bookingTime =
+          booking['booking_time'] != null
+              ? DateTime.parse(booking['booking_time'])
+              : DateTime.now();
+      final departureTime =
+          booking['departure_time'] != null
+              ? DateTime.parse(booking['departure_time'])
+              : null;
+
+      // Format dates
+      final formattedBookingDate = DateFormat('MMM d, y').format(bookingTime);
+      final formattedBookingTime = DateFormat('h:mm a').format(bookingTime);
+      final formattedDeparture =
+          departureTime != null
+              ? DateFormat('MMM d, h:mm a').format(departureTime)
+              : 'Not specified';
 
       return Card(
         elevation: 3,
         margin: const EdgeInsets.only(bottom: 16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(15),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
         child: InkWell(
           borderRadius: BorderRadius.circular(15),
-          onTap: () {
-            // You could add a detail view here
-          },
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -306,13 +304,16 @@ class _RecordsPageState extends State<RecordsPage> {
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
-                        color: _getStatusColor(status),
+                        color: _getStatusColor(booking['type'] ?? 'book'),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        status.toUpperCase(),
+                        (booking['type'] ?? 'book').toUpperCase(),
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
@@ -322,18 +323,28 @@ class _RecordsPageState extends State<RecordsPage> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  'User: $userName',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                  ),
+                const SizedBox(height: 16),
+                _buildInfoRow(
+                  'Vehicle Type:',
+                  booking['vehicle_type'] ?? 'Unknown',
                 ),
                 const SizedBox(height: 8),
-                _buildLocationRow(Icons.location_on, 'Pickup:', pickup),
+                _buildInfoRow(
+                  'Pickup:',
+                  booking['pickup'] ?? 'Unknown location',
+                ),
                 const SizedBox(height: 8),
-                _buildLocationRow(Icons.location_off, 'Dropoff:', dropoff),
+                _buildInfoRow(
+                  'Dropoff:',
+                  booking['dropoff'] ?? 'Unknown location',
+                ),
+                const SizedBox(height: 8),
+                _buildInfoRow('Departure:', formattedDeparture),
+                const SizedBox(height: 8),
+                _buildInfoRow(
+                  'Total Cost:',
+                  '\$${booking['total_cost']?.toStringAsFixed(2) ?? '0.00'}',
+                ),
                 const SizedBox(height: 16),
                 Divider(height: 1, color: Colors.grey[300]),
                 const SizedBox(height: 12),
@@ -344,7 +355,7 @@ class _RecordsPageState extends State<RecordsPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Date',
+                          'Booked on',
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.grey[600],
@@ -352,7 +363,7 @@ class _RecordsPageState extends State<RecordsPage> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          formattedDate,
+                          formattedBookingDate,
                           style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
@@ -364,7 +375,7 @@ class _RecordsPageState extends State<RecordsPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Time',
+                          'at',
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.grey[600],
@@ -372,7 +383,7 @@ class _RecordsPageState extends State<RecordsPage> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          formattedTime,
+                          formattedBookingTime,
                           style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
@@ -397,9 +408,7 @@ class _RecordsPageState extends State<RecordsPage> {
                       ),
                       child: const Text(
                         'Cancel',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),
                   ],
@@ -414,6 +423,28 @@ class _RecordsPageState extends State<RecordsPage> {
     }
   }
 
+  Widget _buildInfoRow(String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 100,
+          child: Text(
+            label,
+            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildLocationRow(IconData icon, String label, String location) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -426,10 +457,7 @@ class _RecordsPageState extends State<RecordsPage> {
             children: [
               Text(
                 label,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[600],
-                ),
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
               ),
               const SizedBox(height: 4),
               Text(
@@ -446,13 +474,11 @@ class _RecordsPageState extends State<RecordsPage> {
     );
   }
 
-  Color _getStatusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'confirmed':
+  Color _getStatusColor(String type) {
+    switch (type.toLowerCase()) {
+      case 'order':
         return Colors.green;
-      case 'cancelled':
-        return Colors.red;
-      case 'completed':
+      case 'book':
         return Colors.blue;
       default:
         return Colors.orange;
