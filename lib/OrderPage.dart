@@ -632,94 +632,13 @@ class _OrderPageState extends State<OrderPage> {
       ),
     );
   }
-Future<void> _bookRide(Map<String, dynamic> ride) async {
-  // First show confirmation dialog
-  final confirmed = await showDialog<bool>(
-    context: context,
-    builder: (context) {
-      // Parse departure time with fallback formats
-      DateTime departureTime;
-      String formattedTime;
-      
-      try {
-        // Try ISO format first
-        departureTime = DateTime.tryParse(ride['departure_time']) ?? DateTime.now();
-        
-        // If that fails, try other formats
-        if (departureTime == DateTime.now()) {
-          final formatsToTry = [
-            "yyyy-MM-dd HH:mm:ss",
-            "dd/MM/yyyy h:mm a",
-            "MMM dd, yyyy HH:mm",
-            "yyyy-MM-dd HH:mm",
-          ];
 
-          for (final format in formatsToTry) {
-            try {
-              departureTime = DateFormat(format).parse(ride['departure_time']);
-              break;
-            } catch (e) {
-              continue;
-            }
-          }
-        }
-        
-        formattedTime = DateFormat('MMM dd, hh:mm a').format(departureTime);
-      } catch (e) {
-        departureTime = DateTime.now();
-        formattedTime = 'Unknown time';
-      }
-
-      return AlertDialog(
-        title: Text('Confirm Booking'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Are you sure you want to book this ride?'),
-            SizedBox(height: 10),
-            Text(
-              'Ride #${ride['ride_number'] ?? 'N/A'}',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            Text('${ride['vehicle_type']} - $formattedTime'),
-            Text('Cost: \$${ride['total_cost']}'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text('Cancel'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Color(0xFF8B5E3B),
-            ),
-            onPressed: () => Navigator.pop(context, true),
-            child: Text('Confirm Booking'),
-          ),
-        ],
-      );
-    },
-  );
-
-  // Rest of the _bookRide method remains the same...
-  if (confirmed != true) return;
-
-  try {
-    // Get current user ID
-    final userId = supabase.auth.currentUser?.id;
-    if (userId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('You must be logged in to book a ride')),
-      );
-      return;
-    }
-
-    // Parse departure time again for the booking data
+  Future<void> _bookRide(Map<String, dynamic> ride) async {
+    // First parse the departure time
     DateTime departureTime;
     try {
-      departureTime = DateTime.tryParse(ride['departure_time']) ?? DateTime.now();
+      departureTime =
+          DateTime.tryParse(ride['departure_time']) ?? DateTime.now();
       if (departureTime == DateTime.now()) {
         final formatsToTry = [
           "yyyy-MM-dd HH:mm:ss",
@@ -741,56 +660,100 @@ Future<void> _bookRide(Map<String, dynamic> ride) async {
       departureTime = DateTime.now();
     }
 
-    // Show loading indicator
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(width: 10),
-            Text('Processing your booking...'),
+    // Show confirmation dialog with the parsed time
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        final formattedTime = DateFormat(
+          'MMM dd, hh:mm a',
+        ).format(departureTime);
+
+        return AlertDialog(
+          title: Text('Confirm Booking'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Are you sure you want to book this ride?'),
+              SizedBox(height: 10),
+              Text(
+                'Ride #${ride['ride_number'] ?? 'N/A'}',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              Text('${ride['vehicle_type']} - $formattedTime'),
+              Text('Cost: \$${ride['total_cost']}'),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Color(0xFF8B5E3B),
+              ),
+              onPressed: () => Navigator.pop(context, true),
+              child: Text('Confirm Booking'),
+            ),
           ],
+        );
+      },
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      // Show loading indicator
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(width: 10),
+              Text('Processing your booking...'),
+            ],
+          ),
+          duration: Duration(seconds: 2),
         ),
-        duration: Duration(seconds: 2),
-      ),
-    );
+      );
 
-    // Create booking data
-    final bookingData = {
-      'ride_id': ride['id'],
-      'user_id': userId,
-      'pickup_location': _pickupController.text,
-      'dropoff_location': _dropoffController.text,
-      'booking_time': DateTime.now().toIso8601String(),
-      'status': 'confirmed',
-      'vehicle_type': ride['vehicle_type'],
-      'departure_time': departureTime.toIso8601String(), // Use parsed DateTime
-      'total_cost': ride['total_cost'],
-    };
+      // Create booking data
+      final bookingData = {
+        'ride_id': ride['id'],
+        'pickup': _pickupController.text,
+        'dropoff': _dropoffController.text,
+        'booking_time': DateTime.now().toIso8601String(),
+        'type': isOrderActive ? 'order' : 'book', // Add type field
+        'vehicle_type': ride['vehicle_type'],
+        'departure_time': departureTime.toIso8601String(),
+        'total_cost': ride['total_cost'],
+      };
 
-    // Insert into bookings table
-    await supabase.from('bookings').insert(bookingData);
+      // Insert into request_ride table
+      await supabase.from('request_ride').insert(bookingData);
 
-    // Booking successful - show confirmation
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('🎉 Ride booked successfully!')));
+      // Booking successful
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('🎉 Ride booked successfully!')));
 
-    // Update the ride's available seats
-    if (ride['capacity'] > 0) {
-      await supabase
-          .from('ride')
-          .update({'capacity': ride['capacity'] - 1})
-          .eq('id', ride['id']);
+      // Update the ride's available seats
+      if (ride['capacity'] > 0) {
+        await supabase
+            .from('ride')
+            .update({'capacity': ride['capacity'] - 1})
+            .eq('id', ride['id']);
+      }
+
+      // Refresh available rides
+      _loadAvailableRides();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('❌ Failed to book ride: ${e.toString()}')),
+      );
     }
-
-    // Refresh available rides
-    _loadAvailableRides();
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('❌ Failed to book ride: ${e.toString()}')),
-    );
   }
-}
 
   Future<String> getLocationName(double lat, double lon) async {
     final url = Uri.parse(
