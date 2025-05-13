@@ -196,6 +196,88 @@ class _OrderPageState extends State<OrderPage> {
     );
   }
 
+  Widget _buildDropoffField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Dropoff point",
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: TypeAheadField<String>(
+                controller: _dropoffController,
+                builder: (context, controller, focusNode) {
+                  return TextField(
+                    controller: controller,
+                    focusNode: focusNode,
+                    decoration: InputDecoration(
+                      prefixIcon: Icon(
+                        Icons.location_on,
+                        color: Color(0xFF8B5E3B),
+                      ),
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: EdgeInsets.symmetric(
+                        vertical: 15,
+                        horizontal: 15,
+                      ),
+                      hintText: 'Search or select location',
+                    ),
+                  );
+                },
+                suggestionsCallback: (pattern) async {
+                  if (pattern.length < 3) return [];
+                  try {
+                    final url = Uri.parse(
+                      "https://nominatim.openstreetmap.org/search?format=json&q=$pattern&limit=5",
+                    );
+                    final response = await http.get(url);
+                    if (response.statusCode == 200) {
+                      final data = json.decode(response.body) as List;
+                      return data
+                          .map<String>((item) => item['display_name'] as String)
+                          .toList();
+                    }
+                    return [];
+                  } catch (e) {
+                    return [];
+                  }
+                },
+                itemBuilder: (context, suggestion) {
+                  return ListTile(title: Text(suggestion));
+                },
+                onSelected: (suggestion) {
+                  setState(() {
+                    _dropoffController.text = suggestion;
+                  });
+                },
+              ),
+            ),
+            SizedBox(width: 8),
+            PopupMenuButton(
+              icon: Icon(Icons.more_vert, color: Color(0xFF8B5E3B)),
+              itemBuilder:
+                  (context) => [
+                    PopupMenuItem(
+                      child: Text("Select on map"),
+                      onTap: () => _selectDropoff(),
+                    ),
+                  ],
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
   void _selectPickup() async {
     final LatLng? result =
         await Navigator.pushNamed(context, '/map') as LatLng?;
@@ -444,9 +526,9 @@ class _OrderPageState extends State<OrderPage> {
     return SingleChildScrollView(
       child: Column(
         children: [
-          _buildPickupField(), // Using the new pickup field
+          _buildPickupField(),
           SizedBox(height: 16),
-          _buildTextField("Dropoff point", _dropoffController, _selectDropoff),
+          _buildDropoffField(), // Changed from _buildTextField
           SizedBox(height: 24),
           _buildConfirmButton("View Rides to Request"),
         ],
@@ -458,9 +540,9 @@ class _OrderPageState extends State<OrderPage> {
     return SingleChildScrollView(
       child: Column(
         children: [
-          _buildPickupField(), // Using the new pickup field
+          _buildPickupField(),
           SizedBox(height: 16),
-          _buildTextField("Dropoff point", _dropoffController, _selectDropoff),
+          _buildDropoffField(), // Changed from _buildTextField
           SizedBox(height: 16),
           _buildTextField(
             "Select date & time",
