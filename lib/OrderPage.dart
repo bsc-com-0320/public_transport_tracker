@@ -47,15 +47,12 @@ class _OrderPageState extends State<OrderPage> {
   Future<void> _loadAvailableRides() async {
     setState(() => isLoadingRides = true);
     try {
-      // Create a query builder
-      final query = supabase.from('ride').select('*');
+      var query = supabase.from('ride').select('*');
 
-      // Only add the vehicle_type filter if something other than 'All' is selected
       if (_selectedVehicleType != null && _selectedVehicleType != 'All') {
-        query.eq('vehicle_type', _selectedVehicleType!);
+        query = query.eq('vehicle_type', _selectedVehicleType!);
       }
 
-      // Execute the query and order the results
       final response = await query.order('departure_time', ascending: true);
 
       setState(() {
@@ -167,79 +164,43 @@ class _OrderPageState extends State<OrderPage> {
               child: Column(
                 children: [
                   // Order/Book toggle
+                  // Single Toggle: Book Later or Request Now
                   Container(
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     decoration: BoxDecoration(
-                      color: Colors.grey[200],
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                    padding: EdgeInsets.all(4),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: InkWell(
-                            onTap:
-                                () => setState(() {
-                                  isOrderActive = true;
-                                  showAvailableRides = false;
-                                }),
-                            child: Container(
-                              padding: EdgeInsets.symmetric(vertical: 15),
-                              decoration: BoxDecoration(
-                                color:
-                                    isOrderActive
-                                        ? Color(0xFF8B5E3B)
-                                        : Colors.transparent,
-                                borderRadius: BorderRadius.circular(30),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  "Request Now",
-                                  style: TextStyle(
-                                    color:
-                                        isOrderActive
-                                            ? Colors.white
-                                            : Colors.black,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          child: InkWell(
-                            onTap:
-                                () => setState(() {
-                                  isOrderActive = false;
-                                  showAvailableRides = false;
-                                }),
-                            child: Container(
-                              padding: EdgeInsets.symmetric(vertical: 15),
-                              decoration: BoxDecoration(
-                                color:
-                                    !isOrderActive
-                                        ? Color(0xFF8B5E3B)
-                                        : Colors.transparent,
-                                borderRadius: BorderRadius.circular(30),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  "Book Later",
-                                  style: TextStyle(
-                                    color:
-                                        !isOrderActive
-                                            ? Colors.white
-                                            : Colors.black,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.grey.withOpacity(0.2),
+                          spreadRadius: 2,
+                          blurRadius: 6,
+                          offset: Offset(0, 2),
                         ),
                       ],
                     ),
+                    child: SwitchListTile(
+                      title: Text(
+                        isOrderActive ? "Request Now" : "Book for Later",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: Color(0xFF5A3D1F),
+                        ),
+                      ),
+                      activeColor: Color(0xFF8B5E3B),
+                      inactiveThumbColor: Colors.grey,
+                      inactiveTrackColor: Colors.grey[300],
+                      value: !isOrderActive,
+                      onChanged: (bool value) {
+                        setState(() {
+                          isOrderActive = !value;
+                          showAvailableRides = false;
+                        });
+                      },
+                    ),
                   ),
+
                   SizedBox(height: 20),
 
                   // Vehicle type selection
@@ -340,7 +301,10 @@ class _OrderPageState extends State<OrderPage> {
             icon: Icon(Icons.directions_bus),
             label: "Order",
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.book_online), label: "Records"),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.book_online),
+            label: "Records",
+          ),
           BottomNavigationBarItem(icon: Icon(Icons.add), label: "Add Ride"),
         ],
       ),

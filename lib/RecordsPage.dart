@@ -96,6 +96,7 @@ class _RecordsPageState extends State<RecordsPage> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F4E9),
       appBar: AppBar(
+          automaticallyImplyLeading: false,
         backgroundColor: const Color(0xFF5D4037),
         title: const Text('All Bookings', style: TextStyle(
           color: Colors.white,
