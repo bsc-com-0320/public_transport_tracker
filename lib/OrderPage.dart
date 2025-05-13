@@ -1,11 +1,13 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter_typeahead/flutter_typeahead.dart';
 
 class OrderPage extends StatefulWidget {
   @override
@@ -65,6 +67,133 @@ class _OrderPageState extends State<OrderPage> {
         context,
       ).showSnackBar(SnackBar(content: Text('Error loading rides: $e')));
     }
+  }
+
+  Future<void> _getCurrentLocation() async {
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Location services are disabled')));
+      return;
+    }
+
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Location permissions are denied')),
+        );
+        return;
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Location permissions are permanently denied')),
+      );
+      return;
+    }
+
+    try {
+      Position position = await Geolocator.getCurrentPosition();
+      String locationName = await getLocationName(
+        position.latitude,
+        position.longitude,
+      );
+      setState(() => _pickupController.text = locationName);
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error getting location: $e')));
+    }
+  }
+
+  Widget _buildPickupField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Pickup point",
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: TypeAheadField<String>(
+                controller: _pickupController,
+                builder: (context, controller, focusNode) {
+                  return TextField(
+                    controller: controller,
+                    focusNode: focusNode,
+                    decoration: InputDecoration(
+                      prefixIcon: Icon(
+                        Icons.location_on,
+                        color: Color(0xFF8B5E3B),
+                      ),
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: EdgeInsets.symmetric(
+                        vertical: 15,
+                        horizontal: 15,
+                      ),
+                      hintText: 'Search or select location',
+                    ),
+                  );
+                },
+                suggestionsCallback: (pattern) async {
+                  if (pattern.length < 3) return [];
+                  try {
+                    final url = Uri.parse(
+                      "https://nominatim.openstreetmap.org/search?format=json&q=$pattern&limit=5",
+                    );
+                    final response = await http.get(url);
+                    if (response.statusCode == 200) {
+                      final data = json.decode(response.body) as List;
+                      return data
+                          .map<String>((item) => item['display_name'] as String)
+                          .toList();
+                    }
+                    return [];
+                  } catch (e) {
+                    return [];
+                  }
+                },
+                itemBuilder: (context, suggestion) {
+                  return ListTile(title: Text(suggestion));
+                },
+                onSelected: (suggestion) {
+                  setState(() {
+                    _pickupController.text = suggestion;
+                  });
+                },
+              ),
+            ),
+            SizedBox(width: 8),
+            PopupMenuButton(
+              icon: Icon(Icons.more_vert, color: Color(0xFF8B5E3B)),
+              itemBuilder:
+                  (context) => [
+                    PopupMenuItem(
+                      child: Text("Use current location"),
+                      onTap: () => _getCurrentLocation(),
+                    ),
+                    PopupMenuItem(
+                      child: Text("Select on map"),
+                      onTap: () => _selectPickup(),
+                    ),
+                  ],
+            ),
+          ],
+        ),
+      ],
+    );
   }
 
   void _selectPickup() async {
@@ -315,7 +444,7 @@ class _OrderPageState extends State<OrderPage> {
     return SingleChildScrollView(
       child: Column(
         children: [
-          _buildTextField("Pickup point", _pickupController, _selectPickup),
+          _buildPickupField(), // Using the new pickup field
           SizedBox(height: 16),
           _buildTextField("Dropoff point", _dropoffController, _selectDropoff),
           SizedBox(height: 24),
@@ -329,7 +458,7 @@ class _OrderPageState extends State<OrderPage> {
     return SingleChildScrollView(
       child: Column(
         children: [
-          _buildTextField("Pickup point", _pickupController, _selectPickup),
+          _buildPickupField(), // Using the new pickup field
           SizedBox(height: 16),
           _buildTextField("Dropoff point", _dropoffController, _selectDropoff),
           SizedBox(height: 16),
