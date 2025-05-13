@@ -472,7 +472,7 @@ class _RecordsPageState extends State<RecordsPage> {
         ),
       ],
     );
-  }
+  }//
 
   Color _getStatusColor(String type) {
     switch (type.toLowerCase()) {
