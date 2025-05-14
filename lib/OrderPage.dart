@@ -104,9 +104,7 @@ class _OrderPageState extends State<OrderPage> {
 
         _mapController.fitBounds(
           LatLngBounds.fromPoints(points),
-          options: FitBoundsOptions(
-            padding: EdgeInsets.all(50),
-          ),
+          options: FitBoundsOptions(padding: EdgeInsets.all(50)),
         );
       }
     } catch (e) {
@@ -114,9 +112,17 @@ class _OrderPageState extends State<OrderPage> {
     }
   }
 
-  double _coordinateDistance(double lat1, double lon1, double lat2, double lon2) {
+  double _coordinateDistance(
+    double lat1,
+    double lon1,
+    double lat2,
+    double lon2,
+  ) {
     const p = pi / 180;
-    final a = 0.5 - cos((lat2 - lat1) * p) / 2 + cos(lat1 * p) * cos(lat2 * p) * (1 - cos((lon2 - lon1) * p)) / 2;
+    final a =
+        0.5 -
+        cos((lat2 - lat1) * p) / 2 +
+        cos(lat1 * p) * cos(lat2 * p) * (1 - cos((lon2 - lon1) * p)) / 2;
     return 12742 * asin(sqrt(a));
   }
 
@@ -167,14 +173,18 @@ class _OrderPageState extends State<OrderPage> {
       });
     } catch (e) {
       setState(() => isLoadingRides = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error loading rides: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error loading rides: $e')));
     }
   }
 
   Future<void> _getCurrentLocation() async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Location services are disabled')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Location services are disabled')));
       return;
     }
 
@@ -198,10 +208,15 @@ class _OrderPageState extends State<OrderPage> {
 
     try {
       Position position = await Geolocator.getCurrentPosition();
-      String locationName = await getLocationName(position.latitude, position.longitude);
+      String locationName = await getLocationName(
+        position.latitude,
+        position.longitude,
+      );
       setState(() => _pickupController.text = locationName);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error getting location: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error getting location: $e')));
     }
   }
 
@@ -209,7 +224,10 @@ class _OrderPageState extends State<OrderPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("Pickup point", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        Text(
+          "Pickup point",
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
         SizedBox(height: 8),
         Row(
           children: [
@@ -221,14 +239,20 @@ class _OrderPageState extends State<OrderPage> {
                     controller: controller,
                     focusNode: focusNode,
                     decoration: InputDecoration(
-                      prefixIcon: Icon(Icons.location_on, color: Color(0xFF8B5E3B)),
+                      prefixIcon: Icon(
+                        Icons.location_on,
+                        color: Color(0xFF8B5E3B),
+                      ),
                       filled: true,
                       fillColor: Colors.white,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
                         borderSide: BorderSide.none,
                       ),
-                      contentPadding: EdgeInsets.symmetric(vertical: 15, horizontal: 15),
+                      contentPadding: EdgeInsets.symmetric(
+                        vertical: 15,
+                        horizontal: 15,
+                      ),
                       hintText: 'Search or select location',
                     ),
                   );
@@ -236,18 +260,23 @@ class _OrderPageState extends State<OrderPage> {
                 suggestionsCallback: (pattern) async {
                   if (pattern.length < 3) return [];
                   try {
-                    final url = Uri.parse("https://nominatim.openstreetmap.org/search?format=json&q=$pattern&limit=5");
+                    final url = Uri.parse(
+                      "https://nominatim.openstreetmap.org/search?format=json&q=$pattern&limit=5",
+                    );
                     final response = await http.get(url);
                     if (response.statusCode == 200) {
                       final data = json.decode(response.body) as List;
-                      return data.map<String>((item) => item['display_name'] as String).toList();
+                      return data
+                          .map<String>((item) => item['display_name'] as String)
+                          .toList();
                     }
                     return [];
                   } catch (e) {
                     return [];
                   }
                 },
-                itemBuilder: (context, suggestion) => ListTile(title: Text(suggestion)),
+                itemBuilder:
+                    (context, suggestion) => ListTile(title: Text(suggestion)),
                 onSelected: (suggestion) async {
                   _pickupController.text = suggestion;
                   _pickupLatLng = await _getCoordinatesFromAddress(suggestion);
@@ -258,16 +287,17 @@ class _OrderPageState extends State<OrderPage> {
             SizedBox(width: 8),
             PopupMenuButton(
               icon: Icon(Icons.more_vert, color: Color(0xFF8B5E3B)),
-              itemBuilder: (context) => [
-                PopupMenuItem(
-                  child: Text("Use current location"),
-                  onTap: () => _getCurrentLocation(),
-                ),
-                PopupMenuItem(
-                  child: Text("Select on map"),
-                  onTap: () => _selectPickup(),
-                ),
-              ],
+              itemBuilder:
+                  (context) => [
+                    PopupMenuItem(
+                      child: Text("Use current location"),
+                      onTap: () => _getCurrentLocation(),
+                    ),
+                    PopupMenuItem(
+                      child: Text("Select on map"),
+                      onTap: () => _selectPickup(),
+                    ),
+                  ],
             ),
           ],
         ),
@@ -279,7 +309,10 @@ class _OrderPageState extends State<OrderPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("Dropoff point", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        Text(
+          "Dropoff point",
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
         SizedBox(height: 8),
         Row(
           children: [
@@ -291,14 +324,20 @@ class _OrderPageState extends State<OrderPage> {
                     controller: controller,
                     focusNode: focusNode,
                     decoration: InputDecoration(
-                      prefixIcon: Icon(Icons.location_on, color: Color(0xFF8B5E3B)),
+                      prefixIcon: Icon(
+                        Icons.location_on,
+                        color: Color(0xFF8B5E3B),
+                      ),
                       filled: true,
                       fillColor: Colors.white,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
                         borderSide: BorderSide.none,
                       ),
-                      contentPadding: EdgeInsets.symmetric(vertical: 15, horizontal: 15),
+                      contentPadding: EdgeInsets.symmetric(
+                        vertical: 15,
+                        horizontal: 15,
+                      ),
                       hintText: 'Search or select location',
                     ),
                   );
@@ -306,18 +345,23 @@ class _OrderPageState extends State<OrderPage> {
                 suggestionsCallback: (pattern) async {
                   if (pattern.length < 3) return [];
                   try {
-                    final url = Uri.parse("https://nominatim.openstreetmap.org/search?format=json&q=$pattern&limit=5");
+                    final url = Uri.parse(
+                      "https://nominatim.openstreetmap.org/search?format=json&q=$pattern&limit=5",
+                    );
                     final response = await http.get(url);
                     if (response.statusCode == 200) {
                       final data = json.decode(response.body) as List;
-                      return data.map<String>((item) => item['display_name'] as String).toList();
+                      return data
+                          .map<String>((item) => item['display_name'] as String)
+                          .toList();
                     }
                     return [];
                   } catch (e) {
                     return [];
                   }
                 },
-                itemBuilder: (context, suggestion) => ListTile(title: Text(suggestion)),
+                itemBuilder:
+                    (context, suggestion) => ListTile(title: Text(suggestion)),
                 onSelected: (suggestion) async {
                   _dropoffController.text = suggestion;
                   _dropoffLatLng = await _getCoordinatesFromAddress(suggestion);
@@ -328,12 +372,13 @@ class _OrderPageState extends State<OrderPage> {
             SizedBox(width: 8),
             PopupMenuButton(
               icon: Icon(Icons.more_vert, color: Color(0xFF8B5E3B)),
-              itemBuilder: (context) => [
-                PopupMenuItem(
-                  child: Text("Select on map"),
-                  onTap: () => _selectDropoff(),
-                ),
-              ],
+              itemBuilder:
+                  (context) => [
+                    PopupMenuItem(
+                      child: Text("Select on map"),
+                      onTap: () => _selectDropoff(),
+                    ),
+                  ],
             ),
           ],
         ),
@@ -344,7 +389,10 @@ class _OrderPageState extends State<OrderPage> {
   void _selectPickup() async {
     final result = await Navigator.pushNamed(context, '/map') as LatLng?;
     if (result != null) {
-      String locationName = await getLocationName(result.latitude, result.longitude);
+      String locationName = await getLocationName(
+        result.latitude,
+        result.longitude,
+      );
       setState(() {
         _pickupController.text = locationName;
         _pickupLatLng = result;
@@ -356,7 +404,10 @@ class _OrderPageState extends State<OrderPage> {
   void _selectDropoff() async {
     final result = await Navigator.pushNamed(context, '/map') as LatLng?;
     if (result != null) {
-      String locationName = await getLocationName(result.latitude, result.longitude);
+      String locationName = await getLocationName(
+        result.latitude,
+        result.longitude,
+      );
       setState(() {
         _dropoffController.text = locationName;
         _dropoffLatLng = result;
@@ -365,15 +416,181 @@ class _OrderPageState extends State<OrderPage> {
     }
   }
 
+  void _showFullScreenMapWithRides() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder:
+            (context) => Scaffold(
+              appBar: AppBar(
+                title: Text('Available Rides'),
+                backgroundColor: Color(0xFF8B5E3B),
+              ),
+              body: Stack(
+                children: [
+                  FlutterMap(
+                    mapController: _mapController,
+                    options: MapOptions(
+                      center:
+                          _pickupLatLng ??
+                          LatLng(
+                            -15.7861,
+                            35.0058,
+                          ), // Default to Malawi coordinates
+                      zoom: 13.0,
+                    ),
+                    children: [
+                      TileLayer(
+                        urlTemplate:
+                            'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        subdomains: ['a', 'b', 'c'],
+                      ),
+                      if (_pickupLatLng != null)
+                        MarkerLayer(
+                          markers: [
+                            Marker(
+                              width: 80,
+                              height: 80,
+                              point: _pickupLatLng!,
+                              builder:
+                                  (ctx) => Icon(
+                                    Icons.location_pin,
+                                    color: Colors.green,
+                                    size: 40,
+                                  ),
+                            ),
+                          ],
+                        ),
+                      if (_dropoffLatLng != null)
+                        MarkerLayer(
+                          markers: [
+                            Marker(
+                              width: 80,
+                              height: 80,
+                              point: _dropoffLatLng!,
+                              builder:
+                                  (ctx) => Icon(
+                                    Icons.location_pin,
+                                    color: Colors.red,
+                                    size: 40,
+                                  ),
+                            ),
+                          ],
+                        ),
+                      if (_routePoints.isNotEmpty)
+                        PolylineLayer(
+                          polylines: [
+                            Polyline(
+                              points: _routePoints,
+                              color: Colors.blue,
+                              strokeWidth: 4.0,
+                            ),
+                          ],
+                        ),
+                    ],
+                  ),
+                  DraggableScrollableSheet(
+                    initialChildSize: 0.3,
+                    minChildSize: 0.2,
+                    maxChildSize: 0.7,
+                    builder: (
+                      BuildContext context,
+                      ScrollController scrollController,
+                    ) {
+                      return Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.vertical(
+                            top: Radius.circular(20),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black12,
+                              blurRadius: 10,
+                              spreadRadius: 2,
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            Padding(
+                              padding: EdgeInsets.symmetric(vertical: 8),
+                              child: Container(
+                                width: 40,
+                                height: 4,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[300],
+                                  borderRadius: BorderRadius.circular(2),
+                                ),
+                              ),
+                            ),
+                            Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'Available Rides',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: Icon(Icons.close),
+                                    onPressed: () => Navigator.pop(context),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Expanded(
+                              child:
+                                  isLoadingRides
+                                      ? Center(
+                                        child: CircularProgressIndicator(),
+                                      )
+                                      : availableRides.isEmpty
+                                      ? Center(
+                                        child: Text('No available rides found'),
+                                      )
+                                      : ListView.builder(
+                                        controller: scrollController,
+                                        padding: EdgeInsets.all(16),
+                                        itemCount: availableRides.length,
+                                        itemBuilder: (context, index) {
+                                          final ride = availableRides[index];
+                                          try {
+                                            return _buildRideCard(ride);
+                                          } catch (e) {
+                                            return _buildErrorCard(
+                                              e.toString(),
+                                            );
+                                          }
+                                        },
+                                      ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+      ),
+    );
+  }
+
   Widget _buildMap() {
     return Container(
       height: 300,
       child: FlutterMap(
         mapController: _mapController,
-        options: MapOptions(
-          center: _pickupLatLng ?? LatLng(0, 0),
-          zoom: 13.0,
-        ),
+        options: MapOptions(center: _pickupLatLng ?? LatLng(0, 0), zoom: 13.0),
         children: [
           TileLayer(
             urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
@@ -386,7 +603,8 @@ class _OrderPageState extends State<OrderPage> {
                   width: 80,
                   height: 80,
                   point: _pickupLatLng!,
-                  builder: (ctx) => Icon(Icons.location_pin, color: Colors.green),
+                  builder:
+                      (ctx) => Icon(Icons.location_pin, color: Colors.green),
                 ),
               ],
             ),
@@ -462,7 +680,9 @@ class _OrderPageState extends State<OrderPage> {
             pickedTime.hour,
             pickedTime.minute,
           );
-          _dateTimeController.text = DateFormat("yyyy-MM-dd HH:mm").format(selectedDateTime!);
+          _dateTimeController.text = DateFormat(
+            "yyyy-MM-dd HH:mm",
+          ).format(selectedDateTime!);
         });
       }
     }
@@ -541,7 +761,6 @@ class _OrderPageState extends State<OrderPage> {
                       onChanged: (bool value) {
                         setState(() {
                           isOrderActive = !value;
-                          showAvailableRides = false;
                         });
                       },
                     ),
@@ -552,49 +771,58 @@ class _OrderPageState extends State<OrderPage> {
                     children: [
                       Text(
                         "Select Vehicle Type",
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       SizedBox(height: 10),
                       SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         child: Row(
-                          children: _vehicleTypes.map((type) {
-                            bool isSelected = _selectedVehicleType == type;
-                            return Padding(
-                              padding: EdgeInsets.only(right: 8),
-                              child: ChoiceChip(
-                                label: Text(type),
-                                selected: isSelected,
-                                onSelected: (selected) {
-                                  setState(() {
-                                    _selectedVehicleType = selected ? type : null;
-                                    if (selected) _loadAvailableRides();
-                                  });
-                                },
-                                selectedColor: Color(0xFF8B5E3B),
-                                labelStyle: TextStyle(
-                                  color: isSelected ? Colors.white : Colors.black,
-                                ),
-                                backgroundColor: Colors.grey[200],
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 8,
-                                ),
-                              ),
-                            );
-                          }).toList(),
+                          children:
+                              _vehicleTypes.map((type) {
+                                bool isSelected = _selectedVehicleType == type;
+                                return Padding(
+                                  padding: EdgeInsets.only(right: 8),
+                                  child: ChoiceChip(
+                                    label: Text(type),
+                                    selected: isSelected,
+                                    onSelected: (selected) {
+                                      setState(() {
+                                        _selectedVehicleType =
+                                            selected ? type : null;
+                                      });
+                                    },
+                                    selectedColor: Color(0xFF8B5E3B),
+                                    labelStyle: TextStyle(
+                                      color:
+                                          isSelected
+                                              ? Colors.white
+                                              : Colors.black,
+                                    ),
+                                    backgroundColor: Colors.grey[200],
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 8,
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
                         ),
                       ),
                     ],
                   ),
                   SizedBox(height: 20),
-                  if (!showAvailableRides)
-                    Expanded(
-                      child: isOrderActive ? _buildOrderContent() : _buildBookContent(),
-                    ),
+                  Expanded(
+                    child:
+                        isOrderActive
+                            ? _buildOrderContent()
+                            : _buildBookContent(),
+                  ),
                   if (confirmationMessage.isNotEmpty)
                     Padding(
                       padding: EdgeInsets.all(8.0),
@@ -611,7 +839,6 @@ class _OrderPageState extends State<OrderPage> {
               ),
             ),
           ),
-          if (showAvailableRides) _buildAvailableRidesSection(),
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
@@ -679,73 +906,12 @@ class _OrderPageState extends State<OrderPage> {
     );
   }
 
-  Widget _buildAvailableRidesSection() {
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.4,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        boxShadow: [
-          BoxShadow(color: Colors.black12, blurRadius: 10, spreadRadius: 2),
-        ],
-      ),
-      child: Column(
-        children: [
-          Padding(
-            padding: EdgeInsets.symmetric(vertical: 8),
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Available Rides',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                IconButton(
-                  icon: Icon(Icons.close),
-                  onPressed: () => setState(() => showAvailableRides = false),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: isLoadingRides
-                ? Center(child: CircularProgressIndicator())
-                : availableRides.isEmpty
-                    ? Center(child: Text('No available rides found'))
-                    : ListView.builder(
-                        padding: EdgeInsets.all(16),
-                        itemCount: availableRides.length,
-                        itemBuilder: (context, index) {
-                          final ride = availableRides[index];
-                          try {
-                            return _buildRideCard(ride);
-                          } catch (e) {
-                            return _buildErrorCard(e.toString());
-                          }
-                        },
-                      ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildRideCard(Map<String, dynamic> ride) {
     try {
       DateTime departureTime;
       try {
-        departureTime = DateTime.tryParse(ride['departure_time']) ?? DateTime.now();
+        departureTime =
+            DateTime.tryParse(ride['departure_time']) ?? DateTime.now();
         if (departureTime == DateTime.now()) {
           final formatsToTry = [
             "yyyy-MM-dd HH:mm:ss",
@@ -771,7 +937,10 @@ class _OrderPageState extends State<OrderPage> {
       final formattedTime = DateFormat('h:mm a').format(departureTime);
       final seatsAvailable = ride['capacity'] is int ? ride['capacity'] : 0;
       final isFull = seatsAvailable <= 0;
-      final totalCost = ride['total_cost'] is num ? (ride['total_cost'] as num).toDouble() : 0.0;
+      final totalCost =
+          ride['total_cost'] is num
+              ? (ride['total_cost'] as num).toDouble()
+              : 0.0;
 
       return Card(
         margin: EdgeInsets.only(bottom: 12),
@@ -820,7 +989,11 @@ class _OrderPageState extends State<OrderPage> {
               SizedBox(height: 8),
               Row(
                 children: [
-                  Icon(Icons.calendar_today, color: Color(0xFF8B5E3B), size: 18),
+                  Icon(
+                    Icons.calendar_today,
+                    color: Color(0xFF8B5E3B),
+                    size: 18,
+                  ),
                   SizedBox(width: 8),
                   Text(formattedDate, style: TextStyle(fontSize: 12)),
                   SizedBox(width: 16),
@@ -887,9 +1060,11 @@ class _OrderPageState extends State<OrderPage> {
     TextEditingController controller,
     VoidCallback onTap,
   ) {
-    Icon? icon = label.toLowerCase().contains('pickup') || label.toLowerCase().contains('dropoff')
-        ? Icon(Icons.location_on, color: Color(0xFF8B5E3B))
-        : Icon(Icons.calendar_today, color: Color(0xFF8B5E3B));
+    Icon? icon =
+        label.toLowerCase().contains('pickup') ||
+                label.toLowerCase().contains('dropoff')
+            ? Icon(Icons.location_on, color: Color(0xFF8B5E3B))
+            : Icon(Icons.calendar_today, color: Color(0xFF8B5E3B));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -918,6 +1093,7 @@ class _OrderPageState extends State<OrderPage> {
     );
   }
 
+  // Update your _buildConfirmButton method to use this new function
   Widget _buildConfirmButton(String text) {
     return SizedBox(
       width: double.infinity,
@@ -931,12 +1107,13 @@ class _OrderPageState extends State<OrderPage> {
         ),
         onPressed: () {
           if (_selectedVehicleType == null) {
-            setState(() => confirmationMessage = "Please select a vehicle type");
+            setState(
+              () => confirmationMessage = "Please select a vehicle type",
+            );
             return;
           }
-          setState(() {
-            showAvailableRides = true;
-            _loadAvailableRides();
+          _loadAvailableRides().then((_) {
+            _showFullScreenMapWithRides();
           });
         },
         child: Row(
@@ -953,7 +1130,8 @@ class _OrderPageState extends State<OrderPage> {
   Future<void> _bookRide(Map<String, dynamic> ride) async {
     DateTime departureTime;
     try {
-      departureTime = DateTime.tryParse(ride['departure_time']) ?? DateTime.now();
+      departureTime =
+          DateTime.tryParse(ride['departure_time']) ?? DateTime.now();
       if (departureTime == DateTime.now()) {
         final formatsToTry = [
           "yyyy-MM-dd HH:mm:ss",
@@ -978,7 +1156,9 @@ class _OrderPageState extends State<OrderPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) {
-        final formattedTime = DateFormat('MMM dd, hh:mm a').format(departureTime);
+        final formattedTime = DateFormat(
+          'MMM dd, hh:mm a',
+        ).format(departureTime);
 
         return AlertDialog(
           title: Text('Confirm Booking'),
@@ -1042,8 +1222,9 @@ class _OrderPageState extends State<OrderPage> {
 
       await supabase.from('request_ride').insert(bookingData);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('🎉 Ride booked successfully!')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('🎉 Ride booked successfully!')));
 
       if (ride['capacity'] > 0) {
         await supabase
@@ -1061,7 +1242,9 @@ class _OrderPageState extends State<OrderPage> {
   }
 
   Future<String> getLocationName(double lat, double lon) async {
-    final url = Uri.parse("https://nominatim.openstreetmap.org/reverse?format=json&lat=$lat&lon=$lon");
+    final url = Uri.parse(
+      "https://nominatim.openstreetmap.org/reverse?format=json&lat=$lat&lon=$lon",
+    );
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {
