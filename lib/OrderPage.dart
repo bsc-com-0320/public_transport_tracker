@@ -1,5 +1,4 @@
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -8,6 +7,9 @@ import 'package:geocoding/geocoding.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_typeahead/flutter_typeahead.dart';
+import 'dart:async';
+import 'dart:math';
+import 'package:flutter_map/flutter_map.dart';
 
 class OrderPage extends StatefulWidget {
   @override
@@ -15,15 +17,23 @@ class OrderPage extends StatefulWidget {
 }
 
 class _OrderPageState extends State<OrderPage> {
-  final TextEditingController _pickupController = TextEditingController();
-  final TextEditingController _dropoffController = TextEditingController();
-  final TextEditingController _dateTimeController = TextEditingController();
+  late TextEditingController _pickupController;
+  late TextEditingController _dropoffController;
+  late TextEditingController _dateTimeController;
+  late MapController _mapController;
+
   DateTime? selectedDateTime;
   bool isOrderActive = true;
   String confirmationMessage = "";
   bool showAvailableRides = false;
   List<Map<String, dynamic>> availableRides = [];
   bool isLoadingRides = false;
+  List<LatLng> _routePoints = [];
+  Set<Marker> _markers = {};
+  Set<Polyline> _polylines = {};
+  double _distanceInKm = 0.0;
+  LatLng? _pickupLatLng;
+  LatLng? _dropoffLatLng;
 
   final List<String> _vehicleTypes = [
     'All',
@@ -39,11 +49,105 @@ class _OrderPageState extends State<OrderPage> {
   int _selectedIndex = 1;
   final List<String> _pages = ['/', '/order', '/records', '/rides'];
 
+  @override
+  void initState() {
+    super.initState();
+    _pickupController = TextEditingController();
+    _dropoffController = TextEditingController();
+    _dateTimeController = TextEditingController();
+    _mapController = MapController();
+  }
+
+  @override
+  void dispose() {
+    _pickupController.dispose();
+    _dropoffController.dispose();
+    _dateTimeController.dispose();
+    super.dispose();
+  }
+
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
     });
     Navigator.pushNamed(context, _pages[index]);
+  }
+
+  Future<void> _drawRoute() async {
+    if (_pickupLatLng == null || _dropoffLatLng == null) return;
+
+    setState(() {
+      _routePoints = [];
+      _distanceInKm = 0.0;
+    });
+
+    try {
+      final response = await http.get(
+        Uri.parse(
+          'http://router.project-osrm.org/route/v1/driving/'
+          '${_pickupLatLng!.longitude},${_pickupLatLng!.latitude};'
+          '${_dropoffLatLng!.longitude},${_dropoffLatLng!.latitude}?overview=full',
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final geometry = data['routes'][0]['geometry'];
+        final distance = data['routes'][0]['distance'] / 1000; // Convert to km
+
+        final points = _decodePolyline(geometry);
+
+        setState(() {
+          _routePoints = points;
+          _distanceInKm = distance;
+        });
+
+        _mapController.fitBounds(
+          LatLngBounds.fromPoints(points),
+          options: FitBoundsOptions(
+            padding: EdgeInsets.all(50),
+          ),
+        );
+      }
+    } catch (e) {
+      print("Error drawing route: $e");
+    }
+  }
+
+  double _coordinateDistance(double lat1, double lon1, double lat2, double lon2) {
+    const p = pi / 180;
+    final a = 0.5 - cos((lat2 - lat1) * p) / 2 + cos(lat1 * p) * cos(lat2 * p) * (1 - cos((lon2 - lon1) * p)) / 2;
+    return 12742 * asin(sqrt(a));
+  }
+
+  List<LatLng> _decodePolyline(String encoded) {
+    final List<LatLng> points = [];
+    int index = 0, len = encoded.length;
+    int lat = 0, lng = 0;
+
+    while (index < len) {
+      int b, shift = 0, result = 0;
+      do {
+        b = encoded.codeUnitAt(index++) - 63;
+        result |= (b & 0x1f) << shift;
+        shift += 5;
+      } while (b >= 0x20);
+      int dlat = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
+      lat += dlat;
+
+      shift = 0;
+      result = 0;
+      do {
+        b = encoded.codeUnitAt(index++) - 63;
+        result |= (b & 0x1f) << shift;
+        shift += 5;
+      } while (b >= 0x20);
+      int dlng = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
+      lng += dlng;
+
+      points.add(LatLng(lat / 1E5, lng / 1E5));
+    }
+    return points;
   }
 
   Future<void> _loadAvailableRides() async {
@@ -63,18 +167,14 @@ class _OrderPageState extends State<OrderPage> {
       });
     } catch (e) {
       setState(() => isLoadingRides = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error loading rides: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error loading rides: $e')));
     }
   }
 
   Future<void> _getCurrentLocation() async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Location services are disabled')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Location services are disabled')));
       return;
     }
 
@@ -98,15 +198,10 @@ class _OrderPageState extends State<OrderPage> {
 
     try {
       Position position = await Geolocator.getCurrentPosition();
-      String locationName = await getLocationName(
-        position.latitude,
-        position.longitude,
-      );
+      String locationName = await getLocationName(position.latitude, position.longitude);
       setState(() => _pickupController.text = locationName);
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error getting location: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error getting location: $e')));
     }
   }
 
@@ -114,10 +209,7 @@ class _OrderPageState extends State<OrderPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          "Pickup point",
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
+        Text("Pickup point", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         SizedBox(height: 8),
         Row(
           children: [
@@ -129,20 +221,14 @@ class _OrderPageState extends State<OrderPage> {
                     controller: controller,
                     focusNode: focusNode,
                     decoration: InputDecoration(
-                      prefixIcon: Icon(
-                        Icons.location_on,
-                        color: Color(0xFF8B5E3B),
-                      ),
+                      prefixIcon: Icon(Icons.location_on, color: Color(0xFF8B5E3B)),
                       filled: true,
                       fillColor: Colors.white,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
                         borderSide: BorderSide.none,
                       ),
-                      contentPadding: EdgeInsets.symmetric(
-                        vertical: 15,
-                        horizontal: 15,
-                      ),
+                      contentPadding: EdgeInsets.symmetric(vertical: 15, horizontal: 15),
                       hintText: 'Search or select location',
                     ),
                   );
@@ -150,45 +236,38 @@ class _OrderPageState extends State<OrderPage> {
                 suggestionsCallback: (pattern) async {
                   if (pattern.length < 3) return [];
                   try {
-                    final url = Uri.parse(
-                      "https://nominatim.openstreetmap.org/search?format=json&q=$pattern&limit=5",
-                    );
+                    final url = Uri.parse("https://nominatim.openstreetmap.org/search?format=json&q=$pattern&limit=5");
                     final response = await http.get(url);
                     if (response.statusCode == 200) {
                       final data = json.decode(response.body) as List;
-                      return data
-                          .map<String>((item) => item['display_name'] as String)
-                          .toList();
+                      return data.map<String>((item) => item['display_name'] as String).toList();
                     }
                     return [];
                   } catch (e) {
                     return [];
                   }
                 },
-                itemBuilder: (context, suggestion) {
-                  return ListTile(title: Text(suggestion));
-                },
-                onSelected: (suggestion) {
-                  setState(() {
-                    _pickupController.text = suggestion;
-                  });
+                itemBuilder: (context, suggestion) => ListTile(title: Text(suggestion)),
+                onSelected: (suggestion) async {
+                  _pickupController.text = suggestion;
+                  _pickupLatLng = await _getCoordinatesFromAddress(suggestion);
+                  _drawRoute();
                 },
               ),
             ),
             SizedBox(width: 8),
             PopupMenuButton(
               icon: Icon(Icons.more_vert, color: Color(0xFF8B5E3B)),
-              itemBuilder:
-                  (context) => [
-                    PopupMenuItem(
-                      child: Text("Use current location"),
-                      onTap: () => _getCurrentLocation(),
-                    ),
-                    PopupMenuItem(
-                      child: Text("Select on map"),
-                      onTap: () => _selectPickup(),
-                    ),
-                  ],
+              itemBuilder: (context) => [
+                PopupMenuItem(
+                  child: Text("Use current location"),
+                  onTap: () => _getCurrentLocation(),
+                ),
+                PopupMenuItem(
+                  child: Text("Select on map"),
+                  onTap: () => _selectPickup(),
+                ),
+              ],
             ),
           ],
         ),
@@ -200,10 +279,7 @@ class _OrderPageState extends State<OrderPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          "Dropoff point",
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
+        Text("Dropoff point", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         SizedBox(height: 8),
         Row(
           children: [
@@ -215,20 +291,14 @@ class _OrderPageState extends State<OrderPage> {
                     controller: controller,
                     focusNode: focusNode,
                     decoration: InputDecoration(
-                      prefixIcon: Icon(
-                        Icons.location_on,
-                        color: Color(0xFF8B5E3B),
-                      ),
+                      prefixIcon: Icon(Icons.location_on, color: Color(0xFF8B5E3B)),
                       filled: true,
                       fillColor: Colors.white,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
                         borderSide: BorderSide.none,
                       ),
-                      contentPadding: EdgeInsets.symmetric(
-                        vertical: 15,
-                        horizontal: 15,
-                      ),
+                      contentPadding: EdgeInsets.symmetric(vertical: 15, horizontal: 15),
                       hintText: 'Search or select location',
                     ),
                   );
@@ -236,41 +306,34 @@ class _OrderPageState extends State<OrderPage> {
                 suggestionsCallback: (pattern) async {
                   if (pattern.length < 3) return [];
                   try {
-                    final url = Uri.parse(
-                      "https://nominatim.openstreetmap.org/search?format=json&q=$pattern&limit=5",
-                    );
+                    final url = Uri.parse("https://nominatim.openstreetmap.org/search?format=json&q=$pattern&limit=5");
                     final response = await http.get(url);
                     if (response.statusCode == 200) {
                       final data = json.decode(response.body) as List;
-                      return data
-                          .map<String>((item) => item['display_name'] as String)
-                          .toList();
+                      return data.map<String>((item) => item['display_name'] as String).toList();
                     }
                     return [];
                   } catch (e) {
                     return [];
                   }
                 },
-                itemBuilder: (context, suggestion) {
-                  return ListTile(title: Text(suggestion));
-                },
-                onSelected: (suggestion) {
-                  setState(() {
-                    _dropoffController.text = suggestion;
-                  });
+                itemBuilder: (context, suggestion) => ListTile(title: Text(suggestion)),
+                onSelected: (suggestion) async {
+                  _dropoffController.text = suggestion;
+                  _dropoffLatLng = await _getCoordinatesFromAddress(suggestion);
+                  _drawRoute();
                 },
               ),
             ),
             SizedBox(width: 8),
             PopupMenuButton(
               icon: Icon(Icons.more_vert, color: Color(0xFF8B5E3B)),
-              itemBuilder:
-                  (context) => [
-                    PopupMenuItem(
-                      child: Text("Select on map"),
-                      onTap: () => _selectDropoff(),
-                    ),
-                  ],
+              itemBuilder: (context) => [
+                PopupMenuItem(
+                  child: Text("Select on map"),
+                  onTap: () => _selectDropoff(),
+                ),
+              ],
             ),
           ],
         ),
@@ -279,27 +342,103 @@ class _OrderPageState extends State<OrderPage> {
   }
 
   void _selectPickup() async {
-    final LatLng? result =
-        await Navigator.pushNamed(context, '/map') as LatLng?;
+    final result = await Navigator.pushNamed(context, '/map') as LatLng?;
     if (result != null) {
-      String locationName = await getLocationName(
-        result.latitude,
-        result.longitude,
-      );
-      setState(() => _pickupController.text = locationName);
+      String locationName = await getLocationName(result.latitude, result.longitude);
+      setState(() {
+        _pickupController.text = locationName;
+        _pickupLatLng = result;
+      });
+      _drawRoute();
     }
   }
 
   void _selectDropoff() async {
-    final LatLng? result =
-        await Navigator.pushNamed(context, '/map') as LatLng?;
+    final result = await Navigator.pushNamed(context, '/map') as LatLng?;
     if (result != null) {
-      String locationName = await getLocationName(
-        result.latitude,
-        result.longitude,
-      );
-      setState(() => _dropoffController.text = locationName);
+      String locationName = await getLocationName(result.latitude, result.longitude);
+      setState(() {
+        _dropoffController.text = locationName;
+        _dropoffLatLng = result;
+      });
+      _drawRoute();
     }
+  }
+
+  Widget _buildMap() {
+    return Container(
+      height: 300,
+      child: FlutterMap(
+        mapController: _mapController,
+        options: MapOptions(
+          center: _pickupLatLng ?? LatLng(0, 0),
+          zoom: 13.0,
+        ),
+        children: [
+          TileLayer(
+            urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+            subdomains: ['a', 'b', 'c'],
+          ),
+          if (_pickupLatLng != null)
+            MarkerLayer(
+              markers: [
+                Marker(
+                  width: 80,
+                  height: 80,
+                  point: _pickupLatLng!,
+                  builder: (ctx) => Icon(Icons.location_pin, color: Colors.green),
+                ),
+              ],
+            ),
+          if (_dropoffLatLng != null)
+            MarkerLayer(
+              markers: [
+                Marker(
+                  width: 80,
+                  height: 80,
+                  point: _dropoffLatLng!,
+                  builder: (ctx) => Icon(Icons.location_pin, color: Colors.red),
+                ),
+              ],
+            ),
+          if (_routePoints.isNotEmpty)
+            PolylineLayer(
+              polylines: [
+                Polyline(
+                  points: _routePoints,
+                  color: Colors.blue,
+                  strokeWidth: 4.0,
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<LatLng?> _getCoordinatesFromAddress(String address) async {
+    try {
+      List<Location> locations = await locationFromAddress(address);
+      if (locations.isNotEmpty) {
+        final loc = locations.first;
+        return LatLng(loc.latitude, loc.longitude);
+      }
+    } catch (e) {
+      print("Error getting coordinates: $e");
+    }
+    return null;
+  }
+
+  Future<LatLng?> _getCoordinates(String address) async {
+    try {
+      final locations = await locationFromAddress(address);
+      if (locations.isNotEmpty) {
+        return LatLng(locations.first.latitude, locations.first.longitude);
+      }
+    } catch (e) {
+      print("Error getting coordinates: $e");
+    }
+    return null;
   }
 
   void _selectDateTime() async {
@@ -323,9 +462,7 @@ class _OrderPageState extends State<OrderPage> {
             pickedTime.hour,
             pickedTime.minute,
           );
-          _dateTimeController.text = DateFormat(
-            "yyyy-MM-dd HH:mm",
-          ).format(selectedDateTime!);
+          _dateTimeController.text = DateFormat("yyyy-MM-dd HH:mm").format(selectedDateTime!);
         });
       }
     }
@@ -374,8 +511,6 @@ class _OrderPageState extends State<OrderPage> {
               padding: EdgeInsets.all(16.0),
               child: Column(
                 children: [
-                  // Order/Book toggle
-                  // Single Toggle: Book Later or Request Now
                   Container(
                     padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     decoration: BoxDecoration(
@@ -411,73 +546,55 @@ class _OrderPageState extends State<OrderPage> {
                       },
                     ),
                   ),
-
                   SizedBox(height: 20),
-
-                  // Vehicle type selection
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         "Select Vehicle Type",
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                       SizedBox(height: 10),
                       SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         child: Row(
-                          children:
-                              _vehicleTypes.map((type) {
-                                bool isSelected = _selectedVehicleType == type;
-                                return Padding(
-                                  padding: EdgeInsets.only(right: 8),
-                                  child: ChoiceChip(
-                                    label: Text(type),
-                                    selected: isSelected,
-                                    onSelected: (selected) {
-                                      setState(() {
-                                        _selectedVehicleType =
-                                            selected ? type : null;
-                                        if (selected) _loadAvailableRides();
-                                      });
-                                    },
-                                    selectedColor: Color(0xFF8B5E3B),
-                                    labelStyle: TextStyle(
-                                      color:
-                                          isSelected
-                                              ? Colors.white
-                                              : Colors.black,
-                                    ),
-                                    backgroundColor: Colors.grey[200],
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 8,
-                                    ),
-                                  ),
-                                );
-                              }).toList(),
+                          children: _vehicleTypes.map((type) {
+                            bool isSelected = _selectedVehicleType == type;
+                            return Padding(
+                              padding: EdgeInsets.only(right: 8),
+                              child: ChoiceChip(
+                                label: Text(type),
+                                selected: isSelected,
+                                onSelected: (selected) {
+                                  setState(() {
+                                    _selectedVehicleType = selected ? type : null;
+                                    if (selected) _loadAvailableRides();
+                                  });
+                                },
+                                selectedColor: Color(0xFF8B5E3B),
+                                labelStyle: TextStyle(
+                                  color: isSelected ? Colors.white : Colors.black,
+                                ),
+                                backgroundColor: Colors.grey[200],
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
+                              ),
+                            );
+                          }).toList(),
                         ),
                       ),
                     ],
                   ),
                   SizedBox(height: 20),
-
-                  // Form content
                   if (!showAvailableRides)
                     Expanded(
-                      child:
-                          isOrderActive
-                              ? _buildOrderContent()
-                              : _buildBookContent(),
+                      child: isOrderActive ? _buildOrderContent() : _buildBookContent(),
                     ),
-
-                  // Confirmation message
                   if (confirmationMessage.isNotEmpty)
                     Padding(
                       padding: EdgeInsets.all(8.0),
@@ -494,8 +611,6 @@ class _OrderPageState extends State<OrderPage> {
               ),
             ),
           ),
-
-          // Available rides section
           if (showAvailableRides) _buildAvailableRidesSection(),
         ],
       ),
@@ -528,8 +643,16 @@ class _OrderPageState extends State<OrderPage> {
         children: [
           _buildPickupField(),
           SizedBox(height: 16),
-          _buildDropoffField(), // Changed from _buildTextField
-          SizedBox(height: 24),
+          _buildDropoffField(),
+          SizedBox(height: 16),
+          if (_distanceInKm > 0)
+            Text(
+              'Distance: ${_distanceInKm.toStringAsFixed(1)} km',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+          SizedBox(height: 16),
+          _buildMap(),
+          SizedBox(height: 16),
           _buildConfirmButton("View Rides to Request"),
         ],
       ),
@@ -542,7 +665,7 @@ class _OrderPageState extends State<OrderPage> {
         children: [
           _buildPickupField(),
           SizedBox(height: 16),
-          _buildDropoffField(), // Changed from _buildTextField
+          _buildDropoffField(),
           SizedBox(height: 16),
           _buildTextField(
             "Select date & time",
@@ -596,23 +719,22 @@ class _OrderPageState extends State<OrderPage> {
             ),
           ),
           Expanded(
-            child:
-                isLoadingRides
-                    ? Center(child: CircularProgressIndicator())
-                    : availableRides.isEmpty
+            child: isLoadingRides
+                ? Center(child: CircularProgressIndicator())
+                : availableRides.isEmpty
                     ? Center(child: Text('No available rides found'))
                     : ListView.builder(
-                      padding: EdgeInsets.all(16),
-                      itemCount: availableRides.length,
-                      itemBuilder: (context, index) {
-                        final ride = availableRides[index];
-                        try {
-                          return _buildRideCard(ride);
-                        } catch (e) {
-                          return _buildErrorCard(e.toString());
-                        }
-                      },
-                    ),
+                        padding: EdgeInsets.all(16),
+                        itemCount: availableRides.length,
+                        itemBuilder: (context, index) {
+                          final ride = availableRides[index];
+                          try {
+                            return _buildRideCard(ride);
+                          } catch (e) {
+                            return _buildErrorCard(e.toString());
+                          }
+                        },
+                      ),
           ),
         ],
       ),
@@ -621,20 +743,15 @@ class _OrderPageState extends State<OrderPage> {
 
   Widget _buildRideCard(Map<String, dynamic> ride) {
     try {
-      // Parse departure time from string with custom format
       DateTime departureTime;
       try {
-        // First try parsing with ISO format (if stored that way)
-        departureTime =
-            DateTime.tryParse(ride['departure_time']) ?? DateTime.now();
-
-        // If that fails, try parsing with your custom format
+        departureTime = DateTime.tryParse(ride['departure_time']) ?? DateTime.now();
         if (departureTime == DateTime.now()) {
           final formatsToTry = [
-            "yyyy-MM-dd HH:mm:ss", // e.g., "2023-12-25 14:30:00"
-            "dd/MM/yyyy h:mm a", // e.g., "25/12/2023 2:30 PM"
-            "MMM dd, yyyy HH:mm", // e.g., "Dec 25, 2023 14:30"
-            "yyyy-MM-dd HH:mm", // e.g., "2023-12-25 14:30"
+            "yyyy-MM-dd HH:mm:ss",
+            "dd/MM/yyyy h:mm a",
+            "MMM dd, yyyy HH:mm",
+            "yyyy-MM-dd HH:mm",
           ];
 
           for (final format in formatsToTry) {
@@ -654,10 +771,7 @@ class _OrderPageState extends State<OrderPage> {
       final formattedTime = DateFormat('h:mm a').format(departureTime);
       final seatsAvailable = ride['capacity'] is int ? ride['capacity'] : 0;
       final isFull = seatsAvailable <= 0;
-      final totalCost =
-          ride['total_cost'] is num
-              ? (ride['total_cost'] as num).toDouble()
-              : 0.0;
+      final totalCost = ride['total_cost'] is num ? (ride['total_cost'] as num).toDouble() : 0.0;
 
       return Card(
         margin: EdgeInsets.only(bottom: 12),
@@ -706,11 +820,7 @@ class _OrderPageState extends State<OrderPage> {
               SizedBox(height: 8),
               Row(
                 children: [
-                  Icon(
-                    Icons.calendar_today,
-                    color: Color(0xFF8B5E3B),
-                    size: 18,
-                  ),
+                  Icon(Icons.calendar_today, color: Color(0xFF8B5E3B), size: 18),
                   SizedBox(width: 8),
                   Text(formattedDate, style: TextStyle(fontSize: 12)),
                   SizedBox(width: 16),
@@ -777,11 +887,9 @@ class _OrderPageState extends State<OrderPage> {
     TextEditingController controller,
     VoidCallback onTap,
   ) {
-    Icon? icon =
-        label.toLowerCase().contains('pickup') ||
-                label.toLowerCase().contains('dropoff')
-            ? Icon(Icons.location_on, color: Color(0xFF8B5E3B))
-            : Icon(Icons.calendar_today, color: Color(0xFF8B5E3B));
+    Icon? icon = label.toLowerCase().contains('pickup') || label.toLowerCase().contains('dropoff')
+        ? Icon(Icons.location_on, color: Color(0xFF8B5E3B))
+        : Icon(Icons.calendar_today, color: Color(0xFF8B5E3B));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -823,9 +931,7 @@ class _OrderPageState extends State<OrderPage> {
         ),
         onPressed: () {
           if (_selectedVehicleType == null) {
-            setState(
-              () => confirmationMessage = "Please select a vehicle type",
-            );
+            setState(() => confirmationMessage = "Please select a vehicle type");
             return;
           }
           setState(() {
@@ -845,11 +951,9 @@ class _OrderPageState extends State<OrderPage> {
   }
 
   Future<void> _bookRide(Map<String, dynamic> ride) async {
-    // First parse the departure time
     DateTime departureTime;
     try {
-      departureTime =
-          DateTime.tryParse(ride['departure_time']) ?? DateTime.now();
+      departureTime = DateTime.tryParse(ride['departure_time']) ?? DateTime.now();
       if (departureTime == DateTime.now()) {
         final formatsToTry = [
           "yyyy-MM-dd HH:mm:ss",
@@ -871,13 +975,10 @@ class _OrderPageState extends State<OrderPage> {
       departureTime = DateTime.now();
     }
 
-    // Show confirmation dialog with the parsed time
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) {
-        final formattedTime = DateFormat(
-          'MMM dd, hh:mm a',
-        ).format(departureTime);
+        final formattedTime = DateFormat('MMM dd, hh:mm a').format(departureTime);
 
         return AlertDialog(
           title: Text('Confirm Booking'),
@@ -915,7 +1016,6 @@ class _OrderPageState extends State<OrderPage> {
     if (confirmed != true) return;
 
     try {
-      // Show loading indicator
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
@@ -929,27 +1029,22 @@ class _OrderPageState extends State<OrderPage> {
         ),
       );
 
-      // Create booking data
       final bookingData = {
         'ride_id': ride['id'],
         'pickup': _pickupController.text,
         'dropoff': _dropoffController.text,
         'booking_time': DateTime.now().toIso8601String(),
-        'type': isOrderActive ? 'order' : 'book', // Add type field
+        'type': isOrderActive ? 'order' : 'book',
         'vehicle_type': ride['vehicle_type'],
         'departure_time': departureTime.toIso8601String(),
         'total_cost': ride['total_cost'],
       };
 
-      // Insert into request_ride table
       await supabase.from('request_ride').insert(bookingData);
 
-      // Booking successful
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('🎉 Ride booked successfully!')));
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('🎉 Ride booked successfully!')));
 
-      // Update the ride's available seats
       if (ride['capacity'] > 0) {
         await supabase
             .from('ride')
@@ -957,7 +1052,6 @@ class _OrderPageState extends State<OrderPage> {
             .eq('id', ride['id']);
       }
 
-      // Refresh available rides
       _loadAvailableRides();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -967,9 +1061,7 @@ class _OrderPageState extends State<OrderPage> {
   }
 
   Future<String> getLocationName(double lat, double lon) async {
-    final url = Uri.parse(
-      "https://nominatim.openstreetmap.org/reverse?format=json&lat=$lat&lon=$lon",
-    );
+    final url = Uri.parse("https://nominatim.openstreetmap.org/reverse?format=json&lat=$lat&lon=$lon");
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {
