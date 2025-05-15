@@ -411,192 +411,228 @@ class _OrderPageState extends State<OrderPage> {
       );
     }
   }
-
-  Widget _buildPickupField() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          "Pickup point",
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
-        SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: TypeAheadField<String>(
-                controller: _pickupController,
-                builder: (context, controller, focusNode) {
-                  return TextField(
-                    controller: controller,
-                    focusNode: focusNode,
-                    decoration: InputDecoration(
-                      prefixIcon: Icon(
-                        Icons.location_on,
-                        color: Color(0xFF8B5E3B),
-                      ),
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide.none,
-                      ),
-                      contentPadding: EdgeInsets.symmetric(
-                        vertical: 15,
-                        horizontal: 15,
-                      ),
-                      hintText: 'Search or select location',
+Widget _buildPickupField() {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        "Pickup point",
+        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+      ),
+      SizedBox(height: 8),
+      Row(
+        children: [
+          Expanded(
+            child: TypeAheadField<String>(
+              controller: _pickupController,
+              builder: (context, controller, focusNode) {
+                return TextField(
+                  controller: controller,
+                  focusNode: focusNode,
+                  decoration: InputDecoration(
+                    prefixIcon: Icon(
+                      Icons.location_on,
+                      color: Color(0xFF8B5E3B),
                     ),
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: EdgeInsets.symmetric(
+                      vertical: 15,
+                      horizontal: 15,
+                    ),
+                    hintText: 'Search or select location',
+                  ),
+                );
+              },
+              suggestionsCallback: (pattern) async {
+                if (pattern.length < 3) return [];
+                try {
+                  final url = Uri.parse(
+                    "https://nominatim.openstreetmap.org/search?format=json&q=$pattern&limit=5",
                   );
-                },
-                suggestionsCallback: (pattern) async {
-                  if (pattern.length < 3) return [];
-                  try {
-                    final url = Uri.parse(
-                      "https://nominatim.openstreetmap.org/search?format=json&q=$pattern&limit=5",
-                    );
-                    final response = await http.get(url);
-                    if (response.statusCode == 200) {
-                      final data = json.decode(response.body) as List;
-                      return data
-                          .map<String>((item) => item['display_name'] as String)
-                          .toList();
-                    }
-                    return [];
-                  } catch (e) {
-                    return [];
+                  final response = await http.get(url);
+                  if (response.statusCode == 200) {
+                    final data = json.decode(response.body) as List;
+                    return data
+                        .map<String>((item) => item['display_name'] as String)
+                        .toList();
                   }
-                },
-                itemBuilder:
-                    (context, suggestion) => ListTile(title: Text(suggestion)),
-                onSelected: (suggestion) async {
-                  _pickupController.text = suggestion;
-                  final coords = await _getCoordinatesFromAddress(suggestion);
-                  if (coords != null) {
-                    setState(() {
-                      _pickupLatLng = coords;
-                      _markers.add(
-                        Marker(
-                          width: 80,
-                          height: 80,
-                          point: coords,
-                          builder:
-                              (ctx) => Tooltip(
-                                message: 'Pickup',
-                                child: Icon(
-                                  Icons.location_pin,
-                                  color: Colors.green,
-                                  size: 40,
-                                ),
-                              ),
+                  return [];
+                } catch (e) {
+                  return [];
+                }
+              },
+              itemBuilder: (context, suggestion) => ListTile(title: Text(suggestion)),
+              onSelected: (suggestion) async {
+                _pickupController.text = suggestion;
+                final coords = await _getCoordinatesFromAddress(suggestion);
+                if (coords != null) {
+                  setState(() {
+                    _pickupLatLng = coords;
+                    _markers.add(
+                      Marker(
+                        width: 80,
+                        height: 80,
+                        point: coords,
+                        builder: (ctx) => Tooltip(
+                          message: 'Pickup',
+                          child: Icon(
+                            Icons.location_pin,
+                            color: Colors.green,
+                            size: 40,
+                          ),
                         ),
-                      );
-                    });
-                    _drawRoute(); // Draw route immediately after setting coordinates
-                  }
-                },
-              ),
-            ),
-            SizedBox(width: 8),
-            PopupMenuButton(
-              icon: Icon(Icons.more_vert, color: Color(0xFF8B5E3B)),
-              itemBuilder:
-                  (context) => [
-                    PopupMenuItem(
-                      child: Text("Use current location"),
-                      onTap: () => _getCurrentLocation(),
-                    ),
-                    PopupMenuItem(
-                      child: Text("Select on map"),
-                      onTap: () => _selectPickup(),
-                    ),
-                  ],
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDropoffField() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          "Dropoff point",
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
-        SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: TypeAheadField<String>(
-                controller: _dropoffController,
-                builder: (context, controller, focusNode) {
-                  return TextField(
-                    controller: controller,
-                    focusNode: focusNode,
-                    decoration: InputDecoration(
-                      prefixIcon: Icon(
-                        Icons.location_on,
-                        color: Color(0xFF8B5E3B),
                       ),
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide.none,
-                      ),
-                      contentPadding: EdgeInsets.symmetric(
-                        vertical: 15,
-                        horizontal: 15,
-                      ),
-                      hintText: 'Search or select location',
-                    ),
-                  );
-                },
-                suggestionsCallback: (pattern) async {
-                  if (pattern.length < 3) return [];
-                  try {
-                    final url = Uri.parse(
-                      "https://nominatim.openstreetmap.org/search?format=json&q=$pattern&limit=5",
                     );
-                    final response = await http.get(url);
-                    if (response.statusCode == 200) {
-                      final data = json.decode(response.body) as List;
-                      return data
-                          .map<String>((item) => item['display_name'] as String)
-                          .toList();
-                    }
-                    return [];
-                  } catch (e) {
-                    return [];
-                  }
-                },
-                itemBuilder:
-                    (context, suggestion) => ListTile(title: Text(suggestion)),
-                onSelected: (suggestion) async {
-                  _dropoffController.text = suggestion;
-                  _dropoffLatLng = await _getCoordinatesFromAddress(suggestion);
-                },
-              ),
+                  });
+                  _drawRoute();
+                }
+              },
             ),
-            SizedBox(width: 8),
-            PopupMenuButton(
-              icon: Icon(Icons.more_vert, color: Color(0xFF8B5E3B)),
-              itemBuilder:
-                  (context) => [
-                    PopupMenuItem(
-                      child: Text("Select on map"),
-                      onTap: () => _selectDropoff(),
+          ),
+          SizedBox(width: 8),
+          // Changed from PopupMenuButton to a more prominent map icon button
+          Container(
+            decoration: BoxDecoration(
+              color: Color(0xFF8B5E3B), // Matching your theme color
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: IconButton(
+              icon: Icon(Icons.map, color: Colors.white),
+              onPressed: () {
+                showModalBottomSheet(
+                  context: context,
+                  builder: (context) => Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ListTile(
+                        leading: Icon(Icons.my_location),
+                        title: Text("Use current location"),
+                        onTap: () {
+                          Navigator.pop(context);
+                          _getCurrentLocation();
+                        },
+                      ),
+                      ListTile(
+                        leading: Icon(Icons.map),
+                        title: Text("Select on map"),
+                        onTap: () {
+                          Navigator.pop(context);
+                          _selectPickup();
+                        },
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    ],
+  );
+}
+Widget _buildDropoffField() {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        "Dropoff point",
+        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+      ),
+      SizedBox(height: 8),
+      Row(
+        children: [
+          Expanded(
+            child: TypeAheadField<String>(
+              controller: _dropoffController,
+              builder: (context, controller, focusNode) {
+                return TextField(
+                  controller: controller,
+                  focusNode: focusNode,
+                  decoration: InputDecoration(
+                    prefixIcon: Icon(
+                      Icons.location_on,
+                      color: Color(0xFF8B5E3B),
                     ),
-                  ],
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: EdgeInsets.symmetric(
+                      vertical: 15,
+                      horizontal: 15,
+                    ),
+                    hintText: 'Search or select location',
+                  ),
+                );
+              },
+              suggestionsCallback: (pattern) async {
+                if (pattern.length < 3) return [];
+                try {
+                  final url = Uri.parse(
+                    "https://nominatim.openstreetmap.org/search?format=json&q=$pattern&limit=5",
+                  );
+                  final response = await http.get(url);
+                  if (response.statusCode == 200) {
+                    final data = json.decode(response.body) as List;
+                    return data
+                        .map<String>((item) => item['display_name'] as String)
+                        .toList();
+                  }
+                  return [];
+                } catch (e) {
+                  return [];
+                }
+              },
+              itemBuilder: (context, suggestion) => ListTile(
+                title: Text(suggestion)),
+              onSelected: (suggestion) async {
+                _dropoffController.text = suggestion;
+                _dropoffLatLng = await _getCoordinatesFromAddress(suggestion);
+              },
             ),
-          ],
-        ),
-      ],
-    );
-  }
+          ),
+          SizedBox(width: 8),
+          // Changed to map icon button with consistent styling
+          Container(
+            decoration: BoxDecoration(
+              color: Color(0xFF8B5E3B), // Matching theme color
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: IconButton(
+              icon: Icon(Icons.map, color: Colors.white),
+              onPressed: () {
+                showModalBottomSheet(
+                  context: context,
+                  builder: (context) => Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ListTile(
+                        leading: Icon(Icons.map),
+                        title: Text("Select on map"),
+                        onTap: () {
+                          Navigator.pop(context);
+                          _selectDropoff();
+                        },
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    ],
+  );
+}
 
   void _selectPickup() async {
     try {

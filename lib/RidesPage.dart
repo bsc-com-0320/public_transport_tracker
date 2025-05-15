@@ -427,19 +427,42 @@ class _RidesPageState extends State<RidesPage> {
               ),
             ),
             SizedBox(width: 8),
-            PopupMenuButton(
-              icon: Icon(Icons.more_vert, color: Colors.white),
-              itemBuilder:
-                  (context) => [
-                    PopupMenuItem(
-                      child: Text("Use current location"),
-                      onTap: () => _getCurrentLocation(isPickup),
-                    ),
-                    PopupMenuItem(
-                      child: Text("Select on map"),
-                      onTap: () => _selectOnMap(isPickup),
-                    ),
-                  ],
+            Container(
+              decoration: BoxDecoration(
+                color: Color(0xFF8B5E3B),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: IconButton(
+                icon: Icon(Icons.map, color: Colors.white),
+                onPressed: () {
+                  showModalBottomSheet(
+                    context: context,
+                    builder:
+                        (context) => Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (isPickup)
+                              ListTile(
+                                leading: Icon(Icons.my_location),
+                                title: Text("Use current location"),
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  _getCurrentLocation(isPickup);
+                                },
+                              ),
+                            ListTile(
+                              leading: Icon(Icons.map),
+                              title: Text("Select on map"),
+                              onTap: () {
+                                Navigator.pop(context);
+                                _selectOnMap(isPickup);
+                              },
+                            ),
+                          ],
+                        ),
+                  );
+                },
+              ),
             ),
           ],
         ),
@@ -807,21 +830,26 @@ class _RidesPageState extends State<RidesPage> {
                         SizedBox(height: 20),
 
                         // Buttons Row
+                        //
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
+                            // Cancel Button - now with more contrast
                             _buildActionButton(
-                              Icons.cancel,
+                              Icons.close,
                               "Cancel",
-                              Colors.red,
+                              Colors
+                                  .red, // Changed to red for better visibility and standard cancel indication
                               () {
                                 Navigator.pop(context);
                               },
                             ),
+                            // Add Ride/Vehicle Button
                             _buildActionButton(
-                              Icons.check,
+                              Icons.check_circle,
                               _isRideSelected ? "Add Ride" : "Add Vehicle",
-                              Colors.green,
+                              Colors
+                                  .green, // Changed to green for positive action
                               () {
                                 if (_formKey.currentState!.validate()) {
                                   _isRideSelected
@@ -915,18 +943,33 @@ class _RidesPageState extends State<RidesPage> {
   ) {
     return Column(
       children: [
-        CircleAvatar(
-          radius: 25,
-          backgroundColor: color,
+        Container(
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(30),
+            border: Border.all(color: color, width: 2),
+          ),
           child: IconButton(
-            icon: Icon(icon, color: Colors.white, size: 30),
+            icon: Icon(
+              icon,
+              color:
+                  Colors
+                      .white, // Changed from color to white for better visibility
+              size: 30,
+            ),
             onPressed: onPressed,
           ),
         ),
         SizedBox(height: 5),
         Text(
           label,
-          style: TextStyle(color: color, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color:
+                Colors
+                    .white, // Changed from color to white for better visibility
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
+          ),
         ),
       ],
     );
