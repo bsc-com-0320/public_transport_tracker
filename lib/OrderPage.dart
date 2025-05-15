@@ -74,23 +74,17 @@ class _OrderPageState extends State<OrderPage> {
   }
 
   Future<Map<String, dynamic>> _drawRoute() async {
+    if (!mounted) return {}; // Check if widget is still mounted
+
     if (_pickupLatLng == null || _dropoffLatLng == null) {
-      print("Pickup or dropoff coordinates are null");
+      if (!mounted) return {};
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("Please select both pickup and dropoff locations"),
+          content: Text('Please select both pickup and dropoff locations'),
         ),
       );
       return {};
     }
-
-    print("Drawing route between: ${_pickupLatLng} and ${_dropoffLatLng}");
-
-    setState(() {
-      _routePoints = [];
-      _distanceInKm = 0.0;
-      _polylines = {};
-    });
 
     try {
       final response = await http
@@ -101,29 +95,28 @@ class _OrderPageState extends State<OrderPage> {
               '${_dropoffLatLng!.longitude},${_dropoffLatLng!.latitude}?overview=full',
             ),
           )
-          .timeout(Duration(seconds: 10)); // Add timeout
+          .timeout(Duration(seconds: 10));
 
-      print("OSRM Response: ${response.statusCode}");
-      print("OSRM Body: ${response.body}");
+      if (!mounted) return {};
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['routes'] == null || data['routes'].isEmpty) {
-          print("No routes found in response");
+          if (!mounted) return {};
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text("Could not find a route between these points"),
+              content: Text('No route found between selected locations'),
             ),
           );
           return {};
         }
 
         final geometry = data['routes'][0]['geometry'];
-        final distance = data['routes'][0]['distance'] / 1000; // Convert to km
-        final duration =
-            data['routes'][0]['duration'] / 60; // Convert to minutes
-
+        final distance = data['routes'][0]['distance'] / 1000;
+        final duration = data['routes'][0]['duration'] / 60;
         final points = _decodePolyline(geometry);
+
+        if (!mounted) return {};
 
         setState(() {
           _routePoints = points;
@@ -133,25 +126,27 @@ class _OrderPageState extends State<OrderPage> {
           };
         });
 
-        _mapController.fitBounds(
-          LatLngBounds.fromPoints(points),
-          options: FitBoundsOptions(padding: EdgeInsets.all(50)),
-        );
+        if (mounted) {
+          _mapController.fitBounds(
+            LatLngBounds.fromPoints(points),
+            options: FitBoundsOptions(padding: EdgeInsets.all(50)),
+          );
+        }
 
         return {'distance': distance, 'duration': duration, 'points': points};
       } else {
-        print("OSRM API error: ${response.statusCode}");
+        if (!mounted) return {};
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("Failed to calculate route. Please try again"),
+            content: Text('Failed to calculate route. Please try again'),
           ),
         );
         return {};
       }
     } catch (e) {
-      print("Error drawing route: $e");
+      if (!mounted) return {};
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error calculating route: ${e.toString()}")),
+        SnackBar(content: Text('Error calculating route: ${e.toString()}')),
       );
       return {};
     }
@@ -225,8 +220,11 @@ class _OrderPageState extends State<OrderPage> {
   }
 
   Future<void> _getCurrentLocation() async {
+    if (!mounted) return;
+
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
+      if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Location services are disabled')));
@@ -237,6 +235,7 @@ class _OrderPageState extends State<OrderPage> {
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Location permissions are denied')),
         );
@@ -245,6 +244,7 @@ class _OrderPageState extends State<OrderPage> {
     }
 
     if (permission == LocationPermission.deniedForever) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Location permissions are permanently denied')),
       );
@@ -253,23 +253,29 @@ class _OrderPageState extends State<OrderPage> {
 
     try {
       Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high, // Add this for better accuracy
+        desiredAccuracy: LocationAccuracy.best,
       );
 
-      // Set both the text and the coordinates
+      if (!mounted) return;
+
       setState(() {
         _pickupLatLng = LatLng(position.latitude, position.longitude);
         _pickupController.text = "Current Location";
 
-        // Add marker for current location
+        // Clear existing pickup marker by type
+        _markers.removeWhere((marker) {
+          final child = marker.builder(context);
+          return child is Tooltip && child.message == 'Pickup';
+        });
+
         _markers.add(
           Marker(
             width: 80,
             height: 80,
             point: _pickupLatLng!,
             builder:
-                (ctx) => Tooltip(
-                  message: 'Current Location',
+                (context) => Tooltip(
+                  message: 'Pickup',
                   child: Icon(
                     Icons.location_pin,
                     color: Colors.green,
@@ -280,14 +286,14 @@ class _OrderPageState extends State<OrderPage> {
         );
       });
 
-      // If dropoff is already set, draw the route
-      if (_dropoffLatLng != null) {
+      if (_dropoffLatLng != null && mounted) {
         await _drawRoute();
       }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error getting location: $e')));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error getting location: ${e.toString()}')),
+      );
     }
   }
 
