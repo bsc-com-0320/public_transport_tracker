@@ -74,24 +74,38 @@ class _OrderPageState extends State<OrderPage> {
   }
 
   Future<Map<String, dynamic>> _drawRoute() async {
-    if (_pickupLatLng == null || _dropoffLatLng == null) return {};
+    if (_pickupLatLng == null || _dropoffLatLng == null) {
+      print("Pickup or dropoff coordinates are null");
+      return {};
+    }
+
+    print("Drawing route between: ${_pickupLatLng} and ${_dropoffLatLng}");
 
     setState(() {
       _routePoints = [];
       _distanceInKm = 0.0;
+      _polylines = {};
     });
 
     try {
       final response = await http.get(
         Uri.parse(
-          'http://router.project-osrm.org/route/v1/driving/'
+          'https://router.project-osrm.org/route/v1/driving/'
           '${_pickupLatLng!.longitude},${_pickupLatLng!.latitude};'
           '${_dropoffLatLng!.longitude},${_dropoffLatLng!.latitude}?overview=full',
         ),
       );
 
+      print("OSRM Response: ${response.statusCode}");
+      print("OSRM Body: ${response.body}");
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        if (data['routes'] == null || data['routes'].isEmpty) {
+          print("No routes found in response");
+          return {};
+        }
+
         final geometry = data['routes'][0]['geometry'];
         final distance = data['routes'][0]['distance'] / 1000; // Convert to km
         final duration =
@@ -102,6 +116,9 @@ class _OrderPageState extends State<OrderPage> {
         setState(() {
           _routePoints = points;
           _distanceInKm = distance;
+          _polylines = {
+            Polyline(points: points, color: Colors.blue, strokeWidth: 4.0),
+          };
         });
 
         _mapController.fitBounds(
@@ -110,6 +127,8 @@ class _OrderPageState extends State<OrderPage> {
         );
 
         return {'distance': distance, 'duration': duration, 'points': points};
+      } else {
+        print("OSRM API error: ${response.statusCode}");
       }
     } catch (e) {
       print("Error drawing route: $e");
@@ -284,7 +303,29 @@ class _OrderPageState extends State<OrderPage> {
                     (context, suggestion) => ListTile(title: Text(suggestion)),
                 onSelected: (suggestion) async {
                   _pickupController.text = suggestion;
-                  _pickupLatLng = await _getCoordinatesFromAddress(suggestion);
+                  final coords = await _getCoordinatesFromAddress(suggestion);
+                  if (coords != null) {
+                    setState(() {
+                      _pickupLatLng = coords;
+                      _markers.add(
+                        Marker(
+                          width: 80,
+                          height: 80,
+                          point: coords,
+                          builder:
+                              (ctx) => Tooltip(
+                                message: 'Pickup',
+                                child: Icon(
+                                  Icons.location_pin,
+                                  color: Colors.green,
+                                  size: 40,
+                                ),
+                              ),
+                        ),
+                      );
+                    });
+                    _drawRoute(); // Draw route immediately after setting coordinates
+                  }
                 },
               ),
             ),
@@ -390,30 +431,62 @@ class _OrderPageState extends State<OrderPage> {
   }
 
   void _selectPickup() async {
-    final result = await Navigator.pushNamed(context, '/map') as LatLng?;
-    if (result != null) {
-      String locationName = await getLocationName(
-        result.latitude,
-        result.longitude,
+    try {
+      final result = await Navigator.pushNamed(context, '/map') as LatLng?;
+      if (result != null) {
+        setState(() {
+          _pickupLatLng = result;
+          _pickupController.text = "Getting location...";
+        });
+
+        final locationName = await getLocationName(
+          result.latitude,
+          result.longitude,
+        );
+        setState(() {
+          _pickupController.text = locationName;
+        });
+
+        // Draw route if dropoff is already set
+        if (_dropoffLatLng != null) {
+          await _drawRoute();
+        }
+      }
+    } catch (e) {
+      print("Error selecting pickup: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error selecting pickup location")),
       );
-      setState(() {
-        _pickupController.text = locationName;
-        _pickupLatLng = result;
-      });
     }
   }
 
   void _selectDropoff() async {
-    final result = await Navigator.pushNamed(context, '/map') as LatLng?;
-    if (result != null) {
-      String locationName = await getLocationName(
-        result.latitude,
-        result.longitude,
+    try {
+      final result = await Navigator.pushNamed(context, '/map') as LatLng?;
+      if (result != null) {
+        setState(() {
+          _dropoffLatLng = result;
+          _dropoffController.text = "Getting location...";
+        });
+
+        final locationName = await getLocationName(
+          result.latitude,
+          result.longitude,
+        );
+        setState(() {
+          _dropoffController.text = locationName;
+        });
+
+        // Draw route if pickup is already set
+        if (_pickupLatLng != null) {
+          await _drawRoute();
+        }
+      }
+    } catch (e) {
+      print("Error selecting dropoff: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error selecting dropoff location")),
       );
-      setState(() {
-        _dropoffController.text = locationName;
-        _dropoffLatLng = result;
-      });
     }
   }
 
@@ -422,6 +495,16 @@ class _OrderPageState extends State<OrderPage> {
     final routeInfo = await _drawRoute();
     final distance = routeInfo['distance']?.toStringAsFixed(1) ?? '0.0';
     final duration = routeInfo['duration']?.toStringAsFixed(0) ?? '0';
+
+    // Ensure we have valid coordinates
+    if (_pickupLatLng == null && _pickupController.text.isNotEmpty) {
+      _pickupLatLng = await _getCoordinatesFromAddress(_pickupController.text);
+    }
+    if (_dropoffLatLng == null && _dropoffController.text.isNotEmpty) {
+      _dropoffLatLng = await _getCoordinatesFromAddress(
+        _dropoffController.text,
+      );
+    }
 
     Navigator.push(
       context,
@@ -1230,18 +1313,42 @@ class _OrderPageState extends State<OrderPage> {
   }
 
   Future<String> getLocationName(double lat, double lon) async {
-    final url = Uri.parse(
-      "https://nominatim.openstreetmap.org/reverse?format=json&lat=$lat&lon=$lon",
-    );
     try {
-      final response = await http.get(url);
+      final url = Uri.parse(
+        "https://nominatim.openstreetmap.org/reverse?format=json&lat=$lat&lon=$lon&zoom=18&addressdetails=1",
+      );
+
+      final response = await http.get(
+        url,
+        headers: {'User-Agent': 'YourAppName/1.0'},
+      );
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        return data["display_name"] ?? "Unknown Location";
+        if (data['error'] != null) {
+          print("Nominatim error: ${data['error']}");
+          return "Selected Location";
+        }
+
+        // Try to get a meaningful address
+        final address = data['address'];
+        if (address != null) {
+          return [
+            address['road'],
+            address['neighbourhood'],
+            address['suburb'],
+            address['city'],
+            address['county'],
+          ].where((part) => part != null).join(', ');
+        }
+        return "Selected Location";
+      } else {
+        print("Nominatim API error: ${response.statusCode}");
+        return "Selected Location";
       }
-      return "Unknown Location";
     } catch (e) {
-      return "Unknown Location";
+      print("Error getting location name: $e");
+      return "Selected Location";
     }
   }
 }
