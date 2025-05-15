@@ -8,168 +8,606 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
-  String _selectedTransport = "All";
-
   final List<String> _pages = ['/', '/order', '/records', '/rides'];
+  final PageController _pageController = PageController(viewportFraction: 0.85);
+  int _currentPage = 0;
+  bool _showAlert = true;
 
   void _onItemTapped(int index) {
-    if (_selectedIndex == index)
-      return; // Don't navigate to the same page again
-
-    setState(() {
-      _selectedIndex = index;
-    });
-
+    if (_selectedIndex == index) return;
+    setState(() => _selectedIndex = index);
     Navigator.pushNamed(context, _pages[index]);
   }
 
-  void _filterTransport(String transportType) {
-    setState(() {
-      _selectedTransport = transportType;
+  @override
+  void initState() {
+    super.initState();
+    _pageController.addListener(() {
+      setState(() {
+        _currentPage = _pageController.page?.round() ?? 0;
+      });
     });
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFFF5F5DC),
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        backgroundColor: Color(0xFF8B5E3B),
-        title: Text("Transport Tracker", style: TextStyle(color: Colors.white)),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: Text(
+          "Transport",
+          style: TextStyle(
+            color: Color(0xFF5A3D1F),
+            fontWeight: FontWeight.bold,
+            fontSize: 24,
+          ),
+        ),
         actions: [
           IconButton(
-            icon: Icon(Icons.account_circle, color: Colors.white),
-            onPressed: () => Navigator.pushNamed(context, '/account'),
+            icon: Icon(Icons.notifications_none, color: Color(0xFF5A3D1F)),
+            onPressed: () {},
+          ),
+          Padding(
+            padding: EdgeInsets.only(right: 10),
+            child: CircleAvatar(
+              backgroundColor: Color(0xFF5A3D1F).withOpacity(0.1),
+              child: Icon(Icons.person, color: Color(0xFF5A3D1F)),
+            ),
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "Choose What You Need",
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
-              ),
-            ),
-            SizedBox(height: 10),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildTransportOption(Icons.local_taxi, "Taxi"),
-                _buildTransportOption(Icons.directions_bus, "Bus"),
-                _buildTransportOption(Icons.pedal_bike, "Bike"),
-              ],
-            ),
-            SizedBox(height: 20),
-            Text(
-              "Available Rides",
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
-              ),
-            ),
-            Expanded(
-              child: ListView.builder(
-                itemCount: 5,
-                itemBuilder: (context, index) {
-                  return _selectedTransport == "All" ||
-                          (index % 3 == 0 && _selectedTransport == "Taxi") ||
-                          (index % 3 == 1 && _selectedTransport == "Bus") ||
-                          (index % 3 == 2 && _selectedTransport == "Bike")
-                      ? Card(
-                        margin: EdgeInsets.symmetric(vertical: 8),
-                        child: ListTile(
-                          leading: Icon(
-                            _selectedTransport == "Bus"
-                                ? Icons.directions_bus
-                                : _selectedTransport == "Bike"
-                                ? Icons.pedal_bike
-                                : Icons.local_taxi,
-                            color: Color(0xFF8B5E3B),
-                          ),
-                          title: Text(
-                            "${_selectedTransport} Ride ${index + 1}",
-                          ),
-                          subtitle: Text("6 Miles - 30 Minutes (Approx)"),
-                          trailing: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Color(0xFF8B5E3B),
-                            ),
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => RecordsPage(),
-                                ),
-                              );
-                            },
-                            child: Text(
-                              "Order Now",
-                              style: TextStyle(color: Colors.white),
-                            ),
-                          ),
-                        ),
-                      )
-                      : SizedBox();
-                },
-              ),
-            ),
-          ],
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Fast Alert Banner
+              if (_showAlert)
+                _buildAlertBanner(),
+              
+              SizedBox(height: 20),
+              
+              // User Summary
+              _buildUserSummary(),
+              SizedBox(height: 25),
+              
+              // Action Cards
+              _buildDashboardCards(),
+              SizedBox(height: 25),
+              
+              // Quick Stats
+              _buildQuickStats(),
+              SizedBox(height: 25),
+              
+              // Recent Activity
+              _buildRecentActivity(),
+            ],
+          ),
         ),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: Colors.white,
-        selectedItemColor: Color(0xFF8B5E3B),
-        unselectedItemColor: Color(0xFF5A3D1F),
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        type: BottomNavigationBarType.fixed,
-        items: [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.directions_bus),
-            label: "Order",
+      bottomNavigationBar: _buildBottomNavBar(),
+    );
+  }
+
+  Widget _buildAlertBanner() {
+    return Container(
+      padding: EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: Color(0xFF8B5E3B).withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.flash_on, color: Color(0xFF5A3D1F)),
+          SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              "Express ride available! 15% off your next booking",
+              style: TextStyle(
+                color: Color(0xFF5A3D1F),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.book_online),
-            label: "Records",
+          IconButton(
+            icon: Icon(Icons.close, size: 18),
+            onPressed: () => setState(() => _showAlert = false),
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.add), label: "Add Ride"),
         ],
       ),
     );
   }
 
-  Widget _buildTransportOption(IconData icon, String label) {
-    bool isActive = _selectedTransport == label;
-    return GestureDetector(
-      onTap: () => _filterTransport(label),
+  Widget _buildUserSummary() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Welcome back!",
+          style: TextStyle(
+            fontSize: 18,
+            color: Colors.grey[600],
+          ),
+        ),
+        SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: _buildSummaryCard(
+                icon: Icons.directions_car,
+                value: "3",
+                label: "Active Rides",
+                color: Color(0xFF8B5E3B),
+              ),
+            ),
+            SizedBox(width: 15),
+            Expanded(
+              child: _buildSummaryCard(
+                icon: Icons.history,
+                value: "12",
+                label: "Past Trips",
+                color: Color(0xFF5A3D1F),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSummaryCard({
+    required IconData icon,
+    required String value,
+    required String label,
+    required Color color,
+  }) {
+    return Container(
+      padding: EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 28),
+          SizedBox(width: 10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
+              ),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+Widget _buildDashboardCards() {
+  return Column(
+    children: [
+      SizedBox(
+        height: 200, // Reduced from 220 to prevent overflow
+        child: PageView(
+          controller: _pageController,
+          padEnds: false,
+          children: [
+            _buildDashboardCard(
+              iconUrl: 'https://cdn-icons-png.flaticon.com/512/3663/3663360.png',
+              title: "Instant Ride",
+              subtitle: "Book now with 1 tap",
+              buttonText: "Book Now",
+              gradientColors: [Color(0xFF8B5E3B), Color(0xFF5A3D1F)],
+              onTap: () => Navigator.pushNamed(context, '/order'),
+            ),
+            _buildDashboardCard(
+              iconUrl: 'https://cdn-icons-png.flaticon.com/512/3132/3132693.png',
+              title: "Your Journeys",
+              subtitle: "Past trips & receipts",
+              buttonText: "View History",
+              gradientColors: [Color(0xFF5A3D1F), Color(0xFF3A2A15)],
+              onTap: () => Navigator.pushNamed(context, '/records'),
+            ),
+            _buildDashboardCard(
+              iconUrl: 'https://cdn-icons-png.flaticon.com/512/1570/1570887.png',
+              title: "Driver Portal",
+              subtitle: "Manage vehicles",
+              buttonText: "Dashboard",
+              gradientColors: [Color(0xFF3A2A15), Color(0xFF1A120B)],
+              onTap: () => Navigator.pushNamed(context, '/driver-records'),
+            ),
+          ],
+        ),
+      ),
+      _buildPageIndicator(),
+    ],
+  );
+}
+
+Widget _buildDashboardCard({
+  required String iconUrl,
+  required String title,
+  required String subtitle,
+  required String buttonText,
+  required List<Color> gradientColors,
+  required VoidCallback onTap,
+}) {
+  return Container(
+    margin: EdgeInsets.symmetric(horizontal: 8),
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        colors: gradientColors,
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
+      borderRadius: BorderRadius.circular(20),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black26,
+          blurRadius: 15,
+          offset: Offset(0, 10),
+        )
+      ],
+    ),
+    child: Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: onTap,
+        child: Padding(
+          padding: EdgeInsets.all(15), // Reduced padding from 20
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween, // Better space distribution
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 50, // Reduced from 60
+                height: 50, // Reduced from 60
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Center(
+                  child: Image.network(
+                    iconUrl,
+                    width: 30, // Reduced from 40
+                    height: 30, // Reduced from 40
+                    errorBuilder: (_, __, ___) => Icon(
+                      Icons.directions_car,
+                      color: Colors.white,
+                      size: 24, // Reduced from 30
+                    ),
+                  ),
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18, // Reduced from 20
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(height: 4), // Reduced from 5
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.9),
+                      fontSize: 13, // Reduced from 14
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 10), // Reduced from 15
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8), // Reduced from 10
+                  ),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 16, // Reduced from 20
+                    vertical: 8,  // Reduced from 10
+                  ),
+                ),
+                onPressed: onTap,
+                child: Text(
+                  buttonText,
+                  style: TextStyle(
+                    color: gradientColors.first,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14, // Added font size for consistency
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+//
+  Widget _buildPageIndicator() {
+    return Padding(
+      padding: EdgeInsets.only(top: 10),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: List.generate(3, (index) {
+          return Container(
+            width: 8,
+            height: 8,
+            margin: EdgeInsets.symmetric(horizontal: 4),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: index == _currentPage ? Color(0xFF5A3D1F) : Colors.grey[300],
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
+  Widget _buildQuickStats() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Your Monthly Stats",
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF5A3D1F),
+          ),
+        ),
+        SizedBox(height: 15),
+        Row(
+          children: [
+            Expanded(
+              child: _buildStatItem(
+                icon: Icons.attach_money,
+                value: "Ksh 4,250",
+                label: "Total Spent",
+              ),
+            ),
+            SizedBox(width: 15),
+            Expanded(
+              child: _buildStatItem(
+                icon: Icons.directions_walk,
+                value: "87 km",
+                label: "Distance",
+              ),
+            ),
+            SizedBox(width: 15),
+            Expanded(
+              child: _buildStatItem(
+                icon: Icons.access_time,
+                value: "12.5 hrs",
+                label: "Ride Time",
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatItem({
+    required IconData icon,
+    required String value,
+    required String label,
+  }) {
+    return Container(
+      padding: EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 6,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
       child: Column(
         children: [
-          CircleAvatar(
-            radius: 30,
-            backgroundColor: isActive ? Colors.green : Color(0xFF8B5E3B),
-            child: Icon(icon, color: Colors.white, size: 30),
+          Icon(icon, color: Color(0xFF8B5E3B), size: 24),
+          SizedBox(height: 8),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF5A3D1F),
+            ),
           ),
-          SizedBox(height: 5),
           Text(
             label,
             style: TextStyle(
-              fontSize: 16,
-              color: isActive ? Colors.green : Colors.black,
-              fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+              fontSize: 12,
+              color: Colors.grey[600],
             ),
           ),
         ],
       ),
     );
   }
+
+  Widget _buildRecentActivity() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              "Recent Activity",
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF5A3D1F),
+              ),
+            ),
+            TextButton(
+              onPressed: () {},
+              child: Text(
+                "See all",
+                style: TextStyle(color: Color(0xFF8B5E3B)),
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 10),
+        ...List.generate(3, (index) => _buildActivityItem(index)),
+      ],
+    );
+  }
+
+  Widget _buildActivityItem(int index) {
+    final activities = [
+      {
+        "icon": Icons.local_taxi,
+        "title": "Taxi Ride Completed",
+        "subtitle": "City Center to Airport",
+        "time": "2 hours ago",
+        "color": Color(0xFF8B5E3B),
+      },
+      {
+        "icon": Icons.directions_bus,
+        "title": "Bus Ride Scheduled",
+        "subtitle": "Main Station to University",
+        "time": "Yesterday",
+        "color": Color(0xFF5A3D1F),
+      },
+      {
+        "icon": Icons.payment,
+        "title": "Payment Received",
+        "subtitle": "Ksh 1,200 for ride #4582",
+        "time": "2 days ago",
+        "color": Color(0xFF3A2A15),
+      },
+    ];
+
+    return Container(
+      margin: EdgeInsets.only(bottom: 12),
+      padding: EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 6,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: activities[index]["color"] as Color,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              activities[index]["icon"] as IconData,
+              color: Colors.white,
+              size: 20,
+            ),
+          ),
+          SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  activities[index]["title"] as String,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF5A3D1F),
+                  ),
+                ),
+                Text(
+                  activities[index]["subtitle"] as String,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Text(
+            activities[index]["time"] as String,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[500],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  BottomNavigationBar _buildBottomNavBar() {
+    return BottomNavigationBar(
+      backgroundColor: Colors.white,
+      selectedItemColor: Color(0xFF5A3D1F),
+      unselectedItemColor: Colors.grey[600],
+      currentIndex: _selectedIndex,
+      onTap: _onItemTapped,
+      type: BottomNavigationBarType.fixed,
+      elevation: 10,
+      selectedLabelStyle: TextStyle(fontWeight: FontWeight.bold),
+      items: [
+        BottomNavigationBarItem(
+          icon: Icon(Icons.home_outlined),
+          activeIcon: Icon(Icons.home),
+          label: "Home",
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.directions_bus_outlined),
+          activeIcon: Icon(Icons.directions_bus),
+          label: "Order",
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.history_outlined),
+          activeIcon: Icon(Icons.history),
+          label: "Records",
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.add_circle_outline),
+          activeIcon: Icon(Icons.add_circle),
+          label: "Add Ride",
+        ),
+      ],
+    );
+  }
 }
-//book
