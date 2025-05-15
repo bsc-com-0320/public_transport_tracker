@@ -73,100 +73,104 @@ class _OrderPageState extends State<OrderPage> {
     Navigator.pushNamed(context, _pages[index]);
   }
 
-Future<Map<String, dynamic>> _drawRoute() async {
-  if (!mounted) return {};
-
-  try {
-    // Validate coordinates
-    if (_pickupLatLng == null || _dropoffLatLng == null) {
-      if (!mounted) return {};
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select both locations')),
-      );
-      return {};
-    }
-
-    print('Calculating route between:');
-    print('Pickup: ${_pickupLatLng!.latitude},${_pickupLatLng!.longitude}');
-    print('Dropoff: ${_dropoffLatLng!.latitude},${_dropoffLatLng!.longitude}');
-
-    final url = Uri.parse(
-      'https://router.project-osrm.org/route/v1/driving/'
-      '${_pickupLatLng!.longitude},${_pickupLatLng!.latitude};'
-      '${_dropoffLatLng!.longitude},${_dropoffLatLng!.latitude}'
-      '?overview=full&alternatives=false&steps=false',
-    );
-
-    print('OSRM API URL: $url');
-
-    final response = await http.get(url).timeout(const Duration(seconds: 15));
-
-    print('OSRM Response: ${response.statusCode}');
-    print('Response Body: ${response.body}');
-
+  Future<Map<String, dynamic>> _drawRoute() async {
     if (!mounted) return {};
 
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      
-      if (data['routes'] == null || data['routes'].isEmpty) {
-        print('No routes found in response');
+    try {
+      // Validate coordinates
+      if (_pickupLatLng == null || _dropoffLatLng == null) {
         if (!mounted) return {};
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No route found between these points')),
+          const SnackBar(content: Text('Please select both locations')),
         );
         return {};
       }
 
-      final route = data['routes'][0];
-      final geometry = route['geometry'];
-      final distance = route['distance'] / 1000; // km
-      final duration = route['duration'] / 60; // minutes
+      print('Calculating route between:');
+      print('Pickup: ${_pickupLatLng!.latitude},${_pickupLatLng!.longitude}');
+      print(
+        'Dropoff: ${_dropoffLatLng!.latitude},${_dropoffLatLng!.longitude}',
+      );
 
-      print('Route calculated: $distance km, $duration mins');
+      final url = Uri.parse(
+        'https://router.project-osrm.org/route/v1/driving/'
+        '${_pickupLatLng!.longitude},${_pickupLatLng!.latitude};'
+        '${_dropoffLatLng!.longitude},${_dropoffLatLng!.latitude}'
+        '?overview=full&alternatives=false&steps=false',
+      );
 
-      final points = _decodePolyline(geometry);
-      if (points.isEmpty) {
-        print('Decoded polyline is empty');
+      print('OSRM API URL: $url');
+
+      final response = await http.get(url).timeout(const Duration(seconds: 15));
+
+      print('OSRM Response: ${response.statusCode}');
+      print('Response Body: ${response.body}');
+
+      if (!mounted) return {};
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+
+        if (data['routes'] == null || data['routes'].isEmpty) {
+          print('No routes found in response');
+          if (!mounted) return {};
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No route found between these points'),
+            ),
+          );
+          return {};
+        }
+
+        final route = data['routes'][0];
+        final geometry = route['geometry'];
+        final distance = route['distance'] / 1000; // km
+        final duration = route['duration'] / 60; // minutes
+
+        print('Route calculated: $distance km, $duration mins');
+
+        final points = _decodePolyline(geometry);
+        if (points.isEmpty) {
+          print('Decoded polyline is empty');
+          return {};
+        }
+
+        if (!mounted) return {};
+
+        setState(() {
+          _routePoints = points;
+          _distanceInKm = distance;
+          _polylines = {
+            Polyline(
+              points: points,
+              color: Colors.blue.withOpacity(0.7),
+              strokeWidth: 4.0,
+            ),
+          };
+        });
+
+        return {'distance': distance, 'duration': duration, 'points': points};
+      } else {
+        print('OSRM API error: ${response.statusCode}');
+        if (!mounted) return {};
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Routing service error: ${response.statusCode}'),
+          ),
+        );
         return {};
       }
-
-      if (!mounted) return {};
-
-      setState(() {
-        _routePoints = points;
-        _distanceInKm = distance;
-        _polylines = {
-          Polyline(
-            points: points,
-            color: Colors.blue.withOpacity(0.7),
-            strokeWidth: 4.0,
-          ),
-        };
-      });
-
-      return {
-        'distance': distance,
-        'duration': duration,
-        'points': points,
-      };
-    } else {
-      print('OSRM API error: ${response.statusCode}');
+    } catch (e) {
+      print('Routing error: $e');
       if (!mounted) return {};
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Routing service error: ${response.statusCode}')),
+        const SnackBar(
+          content: Text('Failed to calculate route. Please try again'),
+        ),
       );
       return {};
     }
-  } catch (e) {
-    print('Routing error: $e');
-    if (!mounted) return {};
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Failed to calculate route. Please try again')),
-    );
-    return {};
   }
-}
 
   double _coordinateDistance(
     double lat1,
@@ -215,6 +219,17 @@ Future<Map<String, dynamic>> _drawRoute() async {
   Future<void> _loadAvailableRides() async {
     setState(() => isLoadingRides = true);
     try {
+      // First get user's current location
+      Position? userPosition;
+      try {
+        userPosition = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.best,
+        );
+      } catch (e) {
+        print("Error getting user position: $e");
+      }
+
+      // Fetch all rides
       var query = supabase.from('ride').select('*');
 
       if (_selectedVehicleType != null && _selectedVehicleType != 'All') {
@@ -223,8 +238,17 @@ Future<Map<String, dynamic>> _drawRoute() async {
 
       final response = await query.order('departure_time', ascending: true);
 
+      List<Map<String, dynamic>> rides = List<Map<String, dynamic>>.from(
+        response,
+      );
+
+      // If we have user location, sort by proximity
+      if (userPosition != null) {
+        rides = await _sortRidesByProximity(rides, userPosition);
+      }
+
       setState(() {
-        availableRides = List<Map<String, dynamic>>.from(response);
+        availableRides = rides;
         isLoadingRides = false;
       });
     } catch (e) {
@@ -233,6 +257,68 @@ Future<Map<String, dynamic>> _drawRoute() async {
         context,
       ).showSnackBar(SnackBar(content: Text('Error loading rides: $e')));
     }
+  }
+
+  Future<List<Map<String, dynamic>>> _sortRidesByProximity(
+    List<Map<String, dynamic>> rides,
+    Position userPosition,
+  ) async {
+    // Create a list of rides with their distance from user
+    List<Map<String, dynamic>> ridesWithDistance = [];
+
+    for (var ride in rides) {
+      try {
+        // Get pickup coordinates from ride
+        double? pickupLat = ride['pickup_lat']?.toDouble();
+        double? pickupLng = ride['pickup_lng']?.toDouble();
+
+        if (pickupLat == null || pickupLng == null) {
+          // If no coordinates, try to geocode the address
+          if (ride['pickup_point'] != null) {
+            List<Location> locations = await locationFromAddress(
+              ride['pickup_point'],
+            );
+            if (locations.isNotEmpty) {
+              pickupLat = locations.first.latitude;
+              pickupLng = locations.first.longitude;
+            }
+          }
+        }
+
+        // Calculate distance if we have coordinates
+        if (pickupLat != null && pickupLng != null) {
+          double distance = _coordinateDistance(
+            userPosition.latitude,
+            userPosition.longitude,
+            pickupLat,
+            pickupLng,
+          );
+
+          ridesWithDistance.add({...ride, 'distance_from_user': distance});
+        } else {
+          // If no coordinates, assign a large distance
+          ridesWithDistance.add({
+            ...ride,
+            'distance_from_user': double.maxFinite,
+          });
+        }
+      } catch (e) {
+        print("Error calculating distance for ride: $e");
+        ridesWithDistance.add({
+          ...ride,
+          'distance_from_user': double.maxFinite,
+        });
+      }
+    }
+
+    // Sort by distance (nearest first)
+    ridesWithDistance.sort(
+      (a, b) => (a['distance_from_user'] as double).compareTo(
+        b['distance_from_user'] as double,
+      ),
+    );
+
+    return ridesWithDistance;
   }
 
   Future<void> _getCurrentLocation() async {
@@ -572,222 +658,238 @@ Future<Map<String, dynamic>> _drawRoute() async {
     }
   }
 
-void _showFullScreenMapWithRides() async {
-  try {
-    // First draw the route and get the distance/duration
-    final routeInfo = await _drawRoute();
-    if (!mounted) return;
-
-    // Ensure we have valid route information
-    if (routeInfo.isEmpty || routeInfo['distance'] == null || routeInfo['duration'] == null) {
+  void _showFullScreenMapWithRides() async {
+    try {
+      // First draw the route and get the distance/duration
+      final routeInfo = await _drawRoute();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not calculate route information')),
-      );
-      return;
-    }
 
-    final distance = routeInfo['distance']?.toStringAsFixed(1) ?? '0.0';
-    final duration = routeInfo['duration']?.toStringAsFixed(0) ?? '0';
-    final routePoints = routeInfo['points'] as List<LatLng>? ?? [];
+      // Ensure we have valid route information
+      if (routeInfo.isEmpty ||
+          routeInfo['distance'] == null ||
+          routeInfo['duration'] == null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not calculate route information'),
+          ),
+        );
+        return;
+      }
 
-    // Ensure we have valid coordinates
-    if (_pickupLatLng == null && _pickupController.text.isNotEmpty) {
-      _pickupLatLng = await _getCoordinatesFromAddress(_pickupController.text);
+      final distance = routeInfo['distance']?.toStringAsFixed(1) ?? '0.0';
+      final duration = routeInfo['duration']?.toStringAsFixed(0) ?? '0';
+      final routePoints = routeInfo['points'] as List<LatLng>? ?? [];
+
+      // Ensure we have valid coordinates
+      if (_pickupLatLng == null && _pickupController.text.isNotEmpty) {
+        _pickupLatLng = await _getCoordinatesFromAddress(
+          _pickupController.text,
+        );
+        if (!mounted) return;
+      }
+      if (_dropoffLatLng == null && _dropoffController.text.isNotEmpty) {
+        _dropoffLatLng = await _getCoordinatesFromAddress(
+          _dropoffController.text,
+        );
+        if (!mounted) return;
+      }
+
       if (!mounted) return;
-    }
-    if (_dropoffLatLng == null && _dropoffController.text.isNotEmpty) {
-      _dropoffLatLng = await _getCoordinatesFromAddress(_dropoffController.text);
-      if (!mounted) return;
-    }
 
-    if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) {
+            // Create a new MapController for the new route
+            final mapController = MapController();
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) {
-          // Create a new MapController for the new route
-          final mapController = MapController();
-          
-          // Fit bounds to the route if we have points
-          if (routePoints.isNotEmpty) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              mapController.fitBounds(
-                LatLngBounds.fromPoints(routePoints),
-                options: const FitBoundsOptions(padding: EdgeInsets.all(50)),
-              );
-            });
-          }
+            // Fit bounds to the route if we have points
+            if (routePoints.isNotEmpty) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                mapController.fitBounds(
+                  LatLngBounds.fromPoints(routePoints),
+                  options: const FitBoundsOptions(padding: EdgeInsets.all(50)),
+                );
+              });
+            }
 
-          return Scaffold(
-            appBar: AppBar(
-              title: const Text('Available Rides'),
-              backgroundColor: const Color(0xFF8B5E3B),
-            ),
-            body: Stack(
-              children: [
-                FlutterMap(
-                  mapController: mapController,
-                  options: MapOptions(
-                    center: _pickupLatLng ?? LatLng(-15.7861, 35.0058),
-                    zoom: 13.0,
-                  ),
-                  children: [
-                    TileLayer(
-                      urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                      subdomains: const ['a', 'b', 'c'],
+            return Scaffold(
+              appBar: AppBar(
+                title: const Text('Available Rides'),
+                backgroundColor: const Color(0xFF8B5E3B),
+              ),
+              body: Stack(
+                children: [
+                  FlutterMap(
+                    mapController: mapController,
+                    options: MapOptions(
+                      center: _pickupLatLng ?? LatLng(-15.7861, 35.0058),
+                      zoom: 13.0,
                     ),
-                    if (_pickupLatLng != null)
-                      MarkerLayer(
-                        markers: [
-                          Marker(
-                            width: 80,
-                            height: 80,
-                            point: _pickupLatLng!,
-                            builder: (ctx) => const Tooltip(
-                              message: 'Pickup',
-                              child: Icon(
-                                Icons.location_pin,
-                                color: Colors.green,
-                                size: 40,
-                              ),
+                    children: [
+                      TileLayer(
+                        urlTemplate:
+                            'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        subdomains: const ['a', 'b', 'c'],
+                      ),
+                      if (_pickupLatLng != null)
+                        MarkerLayer(
+                          markers: [
+                            Marker(
+                              width: 80,
+                              height: 80,
+                              point: _pickupLatLng!,
+                              builder:
+                                  (ctx) => const Tooltip(
+                                    message: 'Pickup',
+                                    child: Icon(
+                                      Icons.location_pin,
+                                      color: Colors.green,
+                                      size: 40,
+                                    ),
+                                  ),
                             ),
-                          ),
-                        ],
-                      ),
-                    if (_dropoffLatLng != null)
-                      MarkerLayer(
-                        markers: [
-                          Marker(
-                            width: 80,
-                            height: 80,
-                            point: _dropoffLatLng!,
-                            builder: (ctx) => const Tooltip(
-                              message: 'Dropoff',
-                              child: Icon(
-                                Icons.location_pin,
-                                color: Colors.red,
-                                size: 40,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    if (routePoints.isNotEmpty)
-                      PolylineLayer(
-                        polylines: [
-                          Polyline(
-                            points: routePoints,
-                            color: Colors.blue,
-                            strokeWidth: 4.0,
-                          ),
-                        ],
-                      ),
-                  ],
-                ),
-                Positioned(
-                  top: 16,
-                  left: 16,
-                  right: 16,
-                  child: Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Route Information',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Text('Distance:'),
-                              Text('$distance km'),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Text('Approximate Time:'),
-                              Text('$duration mins'),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                DraggableScrollableSheet(
-                  initialChildSize: 0.3,
-                  minChildSize: 0.2,
-                  maxChildSize: 0.7,
-                  builder: (BuildContext context, ScrollController scrollController) {
-                    return Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(20),
+                          ],
                         ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black12,
-                            blurRadius: 10,
-                            spreadRadius: 2,
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            child: Container(
-                              width: 40,
-                              height: 4,
-                              decoration: BoxDecoration(
-                                color: Colors.grey[300],
-                                borderRadius: BorderRadius.circular(2),
+                      if (_dropoffLatLng != null)
+                        MarkerLayer(
+                          markers: [
+                            Marker(
+                              width: 80,
+                              height: 80,
+                              point: _dropoffLatLng!,
+                              builder:
+                                  (ctx) => const Tooltip(
+                                    message: 'Dropoff',
+                                    child: Icon(
+                                      Icons.location_pin,
+                                      color: Colors.red,
+                                      size: 40,
+                                    ),
+                                  ),
+                            ),
+                          ],
+                        ),
+                      if (routePoints.isNotEmpty)
+                        PolylineLayer(
+                          polylines: [
+                            Polyline(
+                              points: routePoints,
+                              color: Colors.blue,
+                              strokeWidth: 4.0,
+                            ),
+                          ],
+                        ),
+                    ],
+                  ),
+                  Positioned(
+                    top: 16,
+                    left: 16,
+                    right: 16,
+                    child: Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Route Information',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
                               ),
                             ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
-                            child: Row(
+                            const SizedBox(height: 8),
+                            Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                const Text(
-                                  'Available Rides',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.close),
-                                  onPressed: () => Navigator.pop(context),
-                                ),
+                                const Text('Distance:'),
+                                Text('$distance km'),
                               ],
                             ),
+                            const SizedBox(height: 4),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text('Approximate Time:'),
+                                Text('$duration mins'),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  DraggableScrollableSheet(
+                    initialChildSize: 0.3,
+                    minChildSize: 0.2,
+                    maxChildSize: 0.7,
+                    builder: (
+                      BuildContext context,
+                      ScrollController scrollController,
+                    ) {
+                      return Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(20),
                           ),
-                          Expanded(
-                            child: isLoadingRides
-                                ? const Center(
-                                    child: CircularProgressIndicator(),
-                                  )
-                                : availableRides.isEmpty
-                                    ? const Center(
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black12,
+                              blurRadius: 10,
+                              spreadRadius: 2,
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              child: Container(
+                                width: 40,
+                                height: 4,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[300],
+                                  borderRadius: BorderRadius.circular(2),
+                                ),
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  const Text(
+                                    'Available Rides',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.close),
+                                    onPressed: () => Navigator.pop(context),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Expanded(
+                              child:
+                                  isLoadingRides
+                                      ? const Center(
+                                        child: CircularProgressIndicator(),
+                                      )
+                                      : availableRides.isEmpty
+                                      ? const Center(
                                         child: Text('No available rides found'),
                                       )
-                                    : ListView.builder(
+                                      : ListView.builder(
                                         controller: scrollController,
                                         padding: const EdgeInsets.all(16),
                                         itemCount: availableRides.length,
@@ -802,29 +904,29 @@ void _showFullScreenMapWithRides() async {
                                           }
                                         },
                                       ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  } catch (e) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Error showing rides: ${e.toString()}'),
-        duration: const Duration(seconds: 2),
-      ),
-    );
-    print('Error in _showFullScreenMapWithRides: $e');
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error showing rides: ${e.toString()}'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      print('Error in _showFullScreenMapWithRides: $e');
+    }
   }
-}
 
   Future<LatLng?> _getCoordinatesFromAddress(String address) async {
     try {
@@ -1090,143 +1192,169 @@ void _showFullScreenMapWithRides() async {
     );
   }
 
-  Widget _buildRideCard(Map<String, dynamic> ride) {
+Widget _buildRideCard(Map<String, dynamic> ride) {
+  try {
+    DateTime departureTime;
     try {
-      DateTime departureTime;
-      try {
-        departureTime =
-            DateTime.tryParse(ride['departure_time']) ?? DateTime.now();
-        if (departureTime == DateTime.now()) {
-          final formatsToTry = [
-            "yyyy-MM-dd HH:mm:ss",
-            "dd/MM/yyyy h:mm a",
-            "MMM dd, yyyy HH:mm",
-            "yyyy-MM-dd HH:mm",
-          ];
+      departureTime = DateTime.tryParse(ride['departure_time']) ?? DateTime.now();
+      if (departureTime == DateTime.now()) {
+        final formatsToTry = [
+          "yyyy-MM-dd HH:mm:ss",
+          "dd/MM/yyyy h:mm a",
+          "MMM dd, yyyy HH:mm",
+          "yyyy-MM-dd HH:mm",
+        ];
 
-          for (final format in formatsToTry) {
-            try {
-              departureTime = DateFormat(format).parse(ride['departure_time']);
-              break;
-            } catch (e) {
-              continue;
-            }
+        for (final format in formatsToTry) {
+          try {
+            departureTime = DateFormat(format).parse(ride['departure_time']);
+            break;
+          } catch (e) {
+            continue;
           }
         }
-      } catch (e) {
-        departureTime = DateTime.now();
       }
+    } catch (e) {
+      departureTime = DateTime.now();
+    }
 
-      final formattedDate = DateFormat('EEE, MMM d').format(departureTime);
-      final formattedTime = DateFormat('h:mm a').format(departureTime);
-      final seatsAvailable = ride['capacity'] is int ? ride['capacity'] : 0;
-      final isFull = seatsAvailable <= 0;
-      final totalCost =
-          ride['total_cost'] is num
-              ? (ride['total_cost'] as num).toDouble()
-              : 0.0;
+    final formattedDate = DateFormat('EEE, MMM d').format(departureTime);
+    final formattedTime = DateFormat('h:mm a').format(departureTime);
+    final seatsAvailable = ride['capacity'] is int ? ride['capacity'] : 0;
+    final isFull = seatsAvailable <= 0;
+    final totalCost = ride['total_cost'] is num ? (ride['total_cost'] as num).toDouble() : 0.0;
+    final distanceFromUser = ride['distance_from_user'] is double 
+        ? (ride['distance_from_user'] as double).toStringAsFixed(1)
+        : 'N/A';
 
-      return Card(
-        margin: EdgeInsets.only(bottom: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: Padding(
-          padding: EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Ride #${ride['ride_number']?.toString() ?? 'N/A'}',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+    return Card(
+      margin: EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Ride #${ride['ride_number']?.toString() ?? 'N/A'}',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: isFull ? Colors.red[100] : Colors.green[100],
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: isFull ? Colors.red[100] : Colors.green[100],
-                      borderRadius: BorderRadius.circular(12),
+                  child: Text(
+                    isFull ? 'FULL' : '$seatsAvailable seats',
+                    style: TextStyle(
+                      color: isFull ? Colors.red[800] : Colors.green[800],
+                      fontWeight: FontWeight.bold,
                     ),
-                    child: Text(
-                      isFull ? 'FULL' : '$seatsAvailable seats',
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(Icons.route, color: Color(0xFF8B5E3B), size: 18),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    ride['pickup_point']?.toString() ?? 'No pickup specified',
+                    style: TextStyle(fontSize: 14),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 4),
+            Row(
+              children: [
+                Icon(Icons.flag, color: Color(0xFF8B5E3B), size: 18),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    ride['dropoff_point']?.toString() ?? 'No dropoff specified',
+                    style: TextStyle(fontSize: 14),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(Icons.calendar_today, color: Color(0xFF8B5E3B), size: 18),
+                SizedBox(width: 8),
+                Text(formattedDate, style: TextStyle(fontSize: 12)),
+                SizedBox(width: 16),
+                Icon(Icons.access_time, color: Color(0xFF8B5E3B), size: 18),
+                SizedBox(width: 8),
+                Text(formattedTime, style: TextStyle(fontSize: 12)),
+              ],
+            ),
+            SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Distance from you:', style: TextStyle(fontSize: 12)),
+                    Text(
+                      '$distanceFromUser km',
                       style: TextStyle(
-                        color: isFull ? Colors.red[800] : Colors.green[800],
                         fontWeight: FontWeight.bold,
+                        color: Color(0xFF8B5E3B),
                       ),
                     ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 8),
-              Row(
-                children: [
-                  Icon(Icons.route, color: Color(0xFF8B5E3B), size: 18),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      ride['route']?.toString() ?? 'No route specified',
-                      style: TextStyle(fontSize: 14),
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 8),
-              Row(
-                children: [
-                  Icon(
-                    Icons.calendar_today,
-                    color: Color(0xFF8B5E3B),
-                    size: 18,
-                  ),
-                  SizedBox(width: 8),
-                  Text(formattedDate, style: TextStyle(fontSize: 12)),
-                  SizedBox(width: 16),
-                  Icon(Icons.access_time, color: Color(0xFF8B5E3B), size: 18),
-                  SizedBox(width: 8),
-                  Text(formattedTime, style: TextStyle(fontSize: 12)),
-                ],
-              ),
-              SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('Total Cost:', style: TextStyle(fontSize: 12)),
-                  Text(
-                    '\$${totalCost.toStringAsFixed(2)}',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF8B5E3B),
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 8),
-              ElevatedButton(
-                onPressed: isFull ? null : () => _bookRide(ride),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isFull ? Colors.grey : Color(0xFF8B5E3B),
-                  minimumSize: Size(double.infinity, 36),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
+                  ],
                 ),
-                child: Text(
-                  isFull ? 'NO SEATS AVAILABLE' : 'BOOK NOW',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text('Total Cost:', style: TextStyle(fontSize: 12)),
+                    Text(
+                      '\$${totalCost.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF8B5E3B),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            SizedBox(height: 8),
+            ElevatedButton(
+              onPressed: isFull ? null : () => _bookRide(ride),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: isFull ? Colors.grey : Color(0xFF8B5E3B),
+                minimumSize: Size(double.infinity, 36),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
                 ),
               ),
-            ],
-          ),
+              child: Text(
+                isFull ? 'NO SEATS AVAILABLE' : 'BOOK NOW',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
         ),
-      );
-    } catch (e) {
-      return _buildErrorCard(e.toString());
-    }
+      ),
+    );
+  } catch (e) {
+    return _buildErrorCard(e.toString());
   }
+}
 
   Widget _buildErrorCard(String error) {
     return Card(
