@@ -74,62 +74,89 @@ class _OrderPageState extends State<OrderPage> {
   }
 
   Future<Map<String, dynamic>> _drawRoute() async {
-    if (!mounted) return {}; // Check if widget is still mounted
-
-    if (_pickupLatLng == null || _dropoffLatLng == null) {
-      if (!mounted) return {};
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Please select both pickup and dropoff locations'),
-        ),
-      );
-      return {};
-    }
+    if (!mounted) return {};
 
     try {
+      // Validate coordinates
+      if (_pickupLatLng == null || _dropoffLatLng == null) {
+        if (!mounted) return {};
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please select both locations')),
+        );
+        return {};
+      }
+
+      // Check if points are too close
+      final distanceBetween = _coordinateDistance(
+        _pickupLatLng!.latitude,
+        _pickupLatLng!.longitude,
+        _dropoffLatLng!.latitude,
+        _dropoffLatLng!.longitude,
+      );
+
+      if (distanceBetween < 0.01) {
+        // Less than 10 meters
+        if (!mounted) return {};
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Locations are too close to each other'),
+          ),
+        );
+        return {};
+      }
+
       final response = await http
           .get(
             Uri.parse(
               'https://router.project-osrm.org/route/v1/driving/'
               '${_pickupLatLng!.longitude},${_pickupLatLng!.latitude};'
-              '${_dropoffLatLng!.longitude},${_dropoffLatLng!.latitude}?overview=full',
+              '${_dropoffLatLng!.longitude},${_dropoffLatLng!.latitude}'
+              '?overview=full&alternatives=false&steps=false',
             ),
           )
-          .timeout(Duration(seconds: 10));
+          .timeout(const Duration(seconds: 15));
 
       if (!mounted) return {};
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+
         if (data['routes'] == null || data['routes'].isEmpty) {
           if (!mounted) return {};
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('No route found between selected locations'),
+            const SnackBar(
+              content: Text('No route found between these points'),
             ),
           );
           return {};
         }
 
-        final geometry = data['routes'][0]['geometry'];
-        final distance = data['routes'][0]['distance'] / 1000;
-        final duration = data['routes'][0]['duration'] / 60;
+        final route = data['routes'][0];
+        final geometry = route['geometry'];
+        final distance = route['distance'] / 1000; // km
+        final duration = route['duration'] / 60; // minutes
+
         final points = _decodePolyline(geometry);
 
         if (!mounted) return {};
 
-        setState(() {
-          _routePoints = points;
-          _distanceInKm = distance;
-          _polylines = {
-            Polyline(points: points, color: Colors.blue, strokeWidth: 4.0),
-          };
-        });
-
+        // Only update UI if still mounted
         if (mounted) {
+          setState(() {
+            _routePoints = points;
+            _distanceInKm = distance;
+            _polylines = {
+              Polyline(
+                points: points,
+                color: Colors.blue.withOpacity(0.7),
+                strokeWidth: 4.0,
+              ),
+            };
+          });
+
           _mapController.fitBounds(
             LatLngBounds.fromPoints(points),
-            options: FitBoundsOptions(padding: EdgeInsets.all(50)),
+            options: const FitBoundsOptions(padding: EdgeInsets.all(50)),
           );
         }
 
@@ -138,7 +165,7 @@ class _OrderPageState extends State<OrderPage> {
         if (!mounted) return {};
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to calculate route. Please try again'),
+            content: Text('Routing service error: ${response.statusCode}'),
           ),
         );
         return {};
@@ -146,8 +173,11 @@ class _OrderPageState extends State<OrderPage> {
     } catch (e) {
       if (!mounted) return {};
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error calculating route: ${e.toString()}')),
+        const SnackBar(
+          content: Text('Failed to calculate route. Please try again'),
+        ),
       );
+      print('Routing error: $e');
       return {};
     }
   }
@@ -258,9 +288,22 @@ class _OrderPageState extends State<OrderPage> {
 
       if (!mounted) return;
 
+      // First set the text to "Getting location..." while we fetch the address
       setState(() {
         _pickupLatLng = LatLng(position.latitude, position.longitude);
-        _pickupController.text = "Current Location";
+        _pickupController.text = "Getting location...";
+      });
+
+      // Get the actual address name
+      final address = await getLocationName(
+        position.latitude,
+        position.longitude,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _pickupController.text = address;
 
         // Clear existing pickup marker by type
         _markers.removeWhere((marker) {
@@ -544,226 +587,249 @@ class _OrderPageState extends State<OrderPage> {
   }
 
   void _showFullScreenMapWithRides() async {
-    // First draw the route and get the distance/duration
-    final routeInfo = await _drawRoute();
-    final distance = routeInfo['distance']?.toStringAsFixed(1) ?? '0.0';
-    final duration = routeInfo['duration']?.toStringAsFixed(0) ?? '0';
+    try {
+      // First draw the route and get the distance/duration
+      final routeInfo = await _drawRoute();
+      if (!mounted) return;
 
-    // Ensure we have valid coordinates
-    if (_pickupLatLng == null && _pickupController.text.isNotEmpty) {
-      _pickupLatLng = await _getCoordinatesFromAddress(_pickupController.text);
-    }
-    if (_dropoffLatLng == null && _dropoffController.text.isNotEmpty) {
-      _dropoffLatLng = await _getCoordinatesFromAddress(
-        _dropoffController.text,
-      );
-    }
+      final distance = routeInfo['distance']?.toStringAsFixed(1) ?? '0.0';
+      final duration = routeInfo['duration']?.toStringAsFixed(0) ?? '0';
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder:
-            (context) => Scaffold(
-              appBar: AppBar(
-                title: Text('Available Rides'),
-                backgroundColor: Color(0xFF8B5E3B),
-              ),
-              body: Stack(
-                children: [
-                  FlutterMap(
-                    mapController: _mapController,
-                    options: MapOptions(
-                      center: _pickupLatLng ?? LatLng(-15.7861, 35.0058),
-                      zoom: 13.0,
-                    ),
-                    children: [
-                      TileLayer(
-                        urlTemplate:
-                            'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                        subdomains: ['a', 'b', 'c'],
+      // Ensure we have valid coordinates
+      if (_pickupLatLng == null && _pickupController.text.isNotEmpty) {
+        _pickupLatLng = await _getCoordinatesFromAddress(
+          _pickupController.text,
+        );
+        if (!mounted) return;
+      }
+      if (_dropoffLatLng == null && _dropoffController.text.isNotEmpty) {
+        _dropoffLatLng = await _getCoordinatesFromAddress(
+          _dropoffController.text,
+        );
+        if (!mounted) return;
+      }
+
+      if (!mounted) return;
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder:
+              (context) => Scaffold(
+                appBar: AppBar(
+                  title: Text('Available Rides'),
+                  backgroundColor: Color(0xFF8B5E3B),
+                ),
+                body: Stack(
+                  children: [
+                    FlutterMap(
+                      mapController: _mapController,
+                      options: MapOptions(
+                        center: _pickupLatLng ?? LatLng(-15.7861, 35.0058),
+                        zoom: 13.0,
                       ),
-                      if (_pickupLatLng != null)
-                        MarkerLayer(
-                          markers: [
-                            Marker(
-                              width: 80,
-                              height: 80,
-                              point: _pickupLatLng!,
-                              builder:
-                                  (ctx) => Tooltip(
-                                    message: 'Pickup',
-                                    child: Icon(
-                                      Icons.location_pin,
-                                      color: Colors.green,
-                                      size: 40,
+                      children: [
+                        TileLayer(
+                          urlTemplate:
+                              'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                          subdomains: ['a', 'b', 'c'],
+                        ),
+                        if (_pickupLatLng != null)
+                          MarkerLayer(
+                            markers: [
+                              Marker(
+                                width: 80,
+                                height: 80,
+                                point: _pickupLatLng!,
+                                builder:
+                                    (ctx) => Tooltip(
+                                      message: 'Pickup',
+                                      child: Icon(
+                                        Icons.location_pin,
+                                        color: Colors.green,
+                                        size: 40,
+                                      ),
                                     ),
-                                  ),
-                            ),
-                          ],
-                        ),
-                      if (_dropoffLatLng != null)
-                        MarkerLayer(
-                          markers: [
-                            Marker(
-                              width: 80,
-                              height: 80,
-                              point: _dropoffLatLng!,
-                              builder:
-                                  (ctx) => Tooltip(
-                                    message: 'Dropoff',
-                                    child: Icon(
-                                      Icons.location_pin,
-                                      color: Colors.red,
-                                      size: 40,
-                                    ),
-                                  ),
-                            ),
-                          ],
-                        ),
-                      if (_routePoints.isNotEmpty)
-                        PolylineLayer(
-                          polylines: [
-                            Polyline(
-                              points: _routePoints,
-                              color: Colors.blue,
-                              strokeWidth: 4.0,
-                            ),
-                          ],
-                        ),
-                    ],
-                  ),
-                  Positioned(
-                    top: 16,
-                    left: 16,
-                    right: 16,
-                    child: Card(
-                      child: Padding(
-                        padding: EdgeInsets.all(12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Route Information',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
                               ),
-                            ),
-                            SizedBox(height: 8),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text('Distance:'),
-                                Text('${distance} km'),
-                              ],
-                            ),
-                            SizedBox(height: 4),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text('Approximate Time:'),
-                                Text('${duration} mins'),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  DraggableScrollableSheet(
-                    initialChildSize: 0.3,
-                    minChildSize: 0.2,
-                    maxChildSize: 0.7,
-                    builder: (
-                      BuildContext context,
-                      ScrollController scrollController,
-                    ) {
-                      return Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.vertical(
-                            top: Radius.circular(20),
+                            ],
                           ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black12,
-                              blurRadius: 10,
-                              spreadRadius: 2,
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          children: [
-                            Padding(
-                              padding: EdgeInsets.symmetric(vertical: 8),
-                              child: Container(
-                                width: 40,
-                                height: 4,
-                                decoration: BoxDecoration(
-                                  color: Colors.grey[300],
-                                  borderRadius: BorderRadius.circular(2),
+                        if (_dropoffLatLng != null)
+                          MarkerLayer(
+                            markers: [
+                              Marker(
+                                width: 80,
+                                height: 80,
+                                point: _dropoffLatLng!,
+                                builder:
+                                    (ctx) => Tooltip(
+                                      message: 'Dropoff',
+                                      child: Icon(
+                                        Icons.location_pin,
+                                        color: Colors.red,
+                                        size: 40,
+                                      ),
+                                    ),
+                              ),
+                            ],
+                          ),
+                        if (_routePoints.isNotEmpty)
+                          PolylineLayer(
+                            polylines: [
+                              Polyline(
+                                points: _routePoints,
+                                color: Colors.blue,
+                                strokeWidth: 4.0,
+                              ),
+                            ],
+                          ),
+                      ],
+                    ),
+                    Positioned(
+                      top: 16,
+                      left: 16,
+                      right: 16,
+                      child: Card(
+                        child: Padding(
+                          padding: EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Route Information',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
                                 ),
                               ),
-                            ),
-                            Padding(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 8,
-                              ),
-                              child: Row(
+                              SizedBox(height: 8),
+                              Row(
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text(
-                                    'Available Rides',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  IconButton(
-                                    icon: Icon(Icons.close),
-                                    onPressed: () => Navigator.pop(context),
-                                  ),
+                                  Text('Distance:'),
+                                  Text('${distance} km'),
                                 ],
                               ),
-                            ),
-                            Expanded(
-                              child:
-                                  isLoadingRides
-                                      ? Center(
-                                        child: CircularProgressIndicator(),
-                                      )
-                                      : availableRides.isEmpty
-                                      ? Center(
-                                        child: Text('No available rides found'),
-                                      )
-                                      : ListView.builder(
-                                        controller: scrollController,
-                                        padding: EdgeInsets.all(16),
-                                        itemCount: availableRides.length,
-                                        itemBuilder: (context, index) {
-                                          final ride = availableRides[index];
-                                          try {
-                                            return _buildRideCard(ride);
-                                          } catch (e) {
-                                            return _buildErrorCard(
-                                              e.toString(),
-                                            );
-                                          }
-                                        },
-                                      ),
-                            ),
-                          ],
+                              SizedBox(height: 4),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text('Approximate Time:'),
+                                  Text('${duration} mins'),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
-                      );
-                    },
-                  ),
-                ],
+                      ),
+                    ),
+                    DraggableScrollableSheet(
+                      initialChildSize: 0.3,
+                      minChildSize: 0.2,
+                      maxChildSize: 0.7,
+                      builder: (
+                        BuildContext context,
+                        ScrollController scrollController,
+                      ) {
+                        return Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.vertical(
+                              top: Radius.circular(20),
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black12,
+                                blurRadius: 10,
+                                spreadRadius: 2,
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            children: [
+                              Padding(
+                                padding: EdgeInsets.symmetric(vertical: 8),
+                                child: Container(
+                                  width: 40,
+                                  height: 4,
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[300],
+                                    borderRadius: BorderRadius.circular(2),
+                                  ),
+                                ),
+                              ),
+                              Padding(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      'Available Rides',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    IconButton(
+                                      icon: Icon(Icons.close),
+                                      onPressed: () => Navigator.pop(context),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Expanded(
+                                child:
+                                    isLoadingRides
+                                        ? Center(
+                                          child: CircularProgressIndicator(),
+                                        )
+                                        : availableRides.isEmpty
+                                        ? Center(
+                                          child: Text(
+                                            'No available rides found',
+                                          ),
+                                        )
+                                        : ListView.builder(
+                                          controller: scrollController,
+                                          padding: EdgeInsets.all(16),
+                                          itemCount: availableRides.length,
+                                          itemBuilder: (context, index) {
+                                            final ride = availableRides[index];
+                                            try {
+                                              return _buildRideCard(ride);
+                                            } catch (e) {
+                                              return _buildErrorCard(
+                                                e.toString(),
+                                              );
+                                            }
+                                          },
+                                        ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ),
-            ),
-      ),
-    );
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error showing rides: ${e.toString()}'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      print('Error in _showFullScreenMapWithRides: $e');
+    }
   }
 
   Future<LatLng?> _getCoordinatesFromAddress(String address) async {
@@ -1380,28 +1446,36 @@ class _OrderPageState extends State<OrderPage> {
         final data = json.decode(response.body);
         if (data['error'] != null) {
           print("Nominatim error: ${data['error']}");
-          return "Selected Location";
+          return "Current Location";
         }
 
-        // Try to get a meaningful address
         final address = data['address'];
         if (address != null) {
-          return [
-            address['road'],
-            address['neighbourhood'],
-            address['suburb'],
-            address['city'],
-            address['county'],
-          ].where((part) => part != null).join(', ');
+          // Try to build a meaningful address in this order
+          final parts =
+              [
+                address['road'],
+                address['neighbourhood'],
+                address['suburb'],
+                address['city'],
+                address['county'],
+                address['state'],
+                address['country'],
+              ].where((part) => part != null).toList();
+
+          // Return the most specific address we can find
+          if (parts.isNotEmpty) {
+            return parts.take(3).join(', '); // Join first 3 meaningful parts
+          }
         }
-        return "Selected Location";
+        return "Current Location";
       } else {
         print("Nominatim API error: ${response.statusCode}");
-        return "Selected Location";
+        return "Current Location";
       }
     } catch (e) {
       print("Error getting location name: $e");
-      return "Selected Location";
+      return "Current Location";
     }
   }
 }
