@@ -73,8 +73,8 @@ class _OrderPageState extends State<OrderPage> {
     Navigator.pushNamed(context, _pages[index]);
   }
 
-  Future<void> _drawRoute() async {
-    if (_pickupLatLng == null || _dropoffLatLng == null) return;
+  Future<Map<String, dynamic>> _drawRoute() async {
+    if (_pickupLatLng == null || _dropoffLatLng == null) return {};
 
     setState(() {
       _routePoints = [];
@@ -94,6 +94,8 @@ class _OrderPageState extends State<OrderPage> {
         final data = json.decode(response.body);
         final geometry = data['routes'][0]['geometry'];
         final distance = data['routes'][0]['distance'] / 1000; // Convert to km
+        final duration =
+            data['routes'][0]['duration'] / 60; // Convert to minutes
 
         final points = _decodePolyline(geometry);
 
@@ -106,10 +108,13 @@ class _OrderPageState extends State<OrderPage> {
           LatLngBounds.fromPoints(points),
           options: FitBoundsOptions(padding: EdgeInsets.all(50)),
         );
+
+        return {'distance': distance, 'duration': duration, 'points': points};
       }
     } catch (e) {
       print("Error drawing route: $e");
     }
+    return {};
   }
 
   double _coordinateDistance(
@@ -280,7 +285,6 @@ class _OrderPageState extends State<OrderPage> {
                 onSelected: (suggestion) async {
                   _pickupController.text = suggestion;
                   _pickupLatLng = await _getCoordinatesFromAddress(suggestion);
-                  _drawRoute();
                 },
               ),
             ),
@@ -365,7 +369,6 @@ class _OrderPageState extends State<OrderPage> {
                 onSelected: (suggestion) async {
                   _dropoffController.text = suggestion;
                   _dropoffLatLng = await _getCoordinatesFromAddress(suggestion);
-                  _drawRoute();
                 },
               ),
             ),
@@ -397,7 +400,6 @@ class _OrderPageState extends State<OrderPage> {
         _pickupController.text = locationName;
         _pickupLatLng = result;
       });
-      _drawRoute();
     }
   }
 
@@ -412,11 +414,15 @@ class _OrderPageState extends State<OrderPage> {
         _dropoffController.text = locationName;
         _dropoffLatLng = result;
       });
-      _drawRoute();
     }
   }
 
-  void _showFullScreenMapWithRides() {
+  void _showFullScreenMapWithRides() async {
+    // First draw the route and get the distance/duration
+    final routeInfo = await _drawRoute();
+    final distance = routeInfo['distance']?.toStringAsFixed(1) ?? '0.0';
+    final duration = routeInfo['duration']?.toStringAsFixed(0) ?? '0';
+
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -431,12 +437,7 @@ class _OrderPageState extends State<OrderPage> {
                   FlutterMap(
                     mapController: _mapController,
                     options: MapOptions(
-                      center:
-                          _pickupLatLng ??
-                          LatLng(
-                            -15.7861,
-                            35.0058,
-                          ), // Default to Malawi coordinates
+                      center: _pickupLatLng ?? LatLng(-15.7861, 35.0058),
                       zoom: 13.0,
                     ),
                     children: [
@@ -453,10 +454,13 @@ class _OrderPageState extends State<OrderPage> {
                               height: 80,
                               point: _pickupLatLng!,
                               builder:
-                                  (ctx) => Icon(
-                                    Icons.location_pin,
-                                    color: Colors.green,
-                                    size: 40,
+                                  (ctx) => Tooltip(
+                                    message: 'Pickup',
+                                    child: Icon(
+                                      Icons.location_pin,
+                                      color: Colors.green,
+                                      size: 40,
+                                    ),
                                   ),
                             ),
                           ],
@@ -469,10 +473,13 @@ class _OrderPageState extends State<OrderPage> {
                               height: 80,
                               point: _dropoffLatLng!,
                               builder:
-                                  (ctx) => Icon(
-                                    Icons.location_pin,
-                                    color: Colors.red,
-                                    size: 40,
+                                  (ctx) => Tooltip(
+                                    message: 'Dropoff',
+                                    child: Icon(
+                                      Icons.location_pin,
+                                      color: Colors.red,
+                                      size: 40,
+                                    ),
                                   ),
                             ),
                           ],
@@ -488,6 +495,44 @@ class _OrderPageState extends State<OrderPage> {
                           ],
                         ),
                     ],
+                  ),
+                  Positioned(
+                    top: 16,
+                    left: 16,
+                    right: 16,
+                    child: Card(
+                      child: Padding(
+                        padding: EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Route Information',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('Distance:'),
+                                Text('${distance} km'),
+                              ],
+                            ),
+                            SizedBox(height: 4),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('Approximate Time:'),
+                                Text('${duration} mins'),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
                   DraggableScrollableSheet(
                     initialChildSize: 0.3,
@@ -581,55 +626,6 @@ class _OrderPageState extends State<OrderPage> {
                 ],
               ),
             ),
-      ),
-    );
-  }
-
-  Widget _buildMap() {
-    return Container(
-      height: 300,
-      child: FlutterMap(
-        mapController: _mapController,
-        options: MapOptions(center: _pickupLatLng ?? LatLng(0, 0), zoom: 13.0),
-        children: [
-          TileLayer(
-            urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-            subdomains: ['a', 'b', 'c'],
-          ),
-          if (_pickupLatLng != null)
-            MarkerLayer(
-              markers: [
-                Marker(
-                  width: 80,
-                  height: 80,
-                  point: _pickupLatLng!,
-                  builder:
-                      (ctx) => Icon(Icons.location_pin, color: Colors.green),
-                ),
-              ],
-            ),
-          if (_dropoffLatLng != null)
-            MarkerLayer(
-              markers: [
-                Marker(
-                  width: 80,
-                  height: 80,
-                  point: _dropoffLatLng!,
-                  builder: (ctx) => Icon(Icons.location_pin, color: Colors.red),
-                ),
-              ],
-            ),
-          if (_routePoints.isNotEmpty)
-            PolylineLayer(
-              polylines: [
-                Polyline(
-                  points: _routePoints,
-                  color: Colors.blue,
-                  strokeWidth: 4.0,
-                ),
-              ],
-            ),
-        ],
       ),
     );
   }
@@ -871,14 +867,6 @@ class _OrderPageState extends State<OrderPage> {
           _buildPickupField(),
           SizedBox(height: 16),
           _buildDropoffField(),
-          SizedBox(height: 16),
-          if (_distanceInKm > 0)
-            Text(
-              'Distance: ${_distanceInKm.toStringAsFixed(1)} km',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-          SizedBox(height: 16),
-          _buildMap(),
           SizedBox(height: 16),
           _buildConfirmButton("View Rides to Request"),
         ],
