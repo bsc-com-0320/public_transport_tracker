@@ -76,6 +76,11 @@ class _OrderPageState extends State<OrderPage> {
   Future<Map<String, dynamic>> _drawRoute() async {
     if (_pickupLatLng == null || _dropoffLatLng == null) {
       print("Pickup or dropoff coordinates are null");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Please select both pickup and dropoff locations"),
+        ),
+      );
       return {};
     }
 
@@ -88,13 +93,15 @@ class _OrderPageState extends State<OrderPage> {
     });
 
     try {
-      final response = await http.get(
-        Uri.parse(
-          'https://router.project-osrm.org/route/v1/driving/'
-          '${_pickupLatLng!.longitude},${_pickupLatLng!.latitude};'
-          '${_dropoffLatLng!.longitude},${_dropoffLatLng!.latitude}?overview=full',
-        ),
-      );
+      final response = await http
+          .get(
+            Uri.parse(
+              'https://router.project-osrm.org/route/v1/driving/'
+              '${_pickupLatLng!.longitude},${_pickupLatLng!.latitude};'
+              '${_dropoffLatLng!.longitude},${_dropoffLatLng!.latitude}?overview=full',
+            ),
+          )
+          .timeout(Duration(seconds: 10)); // Add timeout
 
       print("OSRM Response: ${response.statusCode}");
       print("OSRM Body: ${response.body}");
@@ -103,6 +110,11 @@ class _OrderPageState extends State<OrderPage> {
         final data = json.decode(response.body);
         if (data['routes'] == null || data['routes'].isEmpty) {
           print("No routes found in response");
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Could not find a route between these points"),
+            ),
+          );
           return {};
         }
 
@@ -129,11 +141,20 @@ class _OrderPageState extends State<OrderPage> {
         return {'distance': distance, 'duration': duration, 'points': points};
       } else {
         print("OSRM API error: ${response.statusCode}");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Failed to calculate route. Please try again"),
+          ),
+        );
+        return {};
       }
     } catch (e) {
       print("Error drawing route: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error calculating route: ${e.toString()}")),
+      );
+      return {};
     }
-    return {};
   }
 
   double _coordinateDistance(
@@ -231,12 +252,38 @@ class _OrderPageState extends State<OrderPage> {
     }
 
     try {
-      Position position = await Geolocator.getCurrentPosition();
-      String locationName = await getLocationName(
-        position.latitude,
-        position.longitude,
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high, // Add this for better accuracy
       );
-      setState(() => _pickupController.text = locationName);
+
+      // Set both the text and the coordinates
+      setState(() {
+        _pickupLatLng = LatLng(position.latitude, position.longitude);
+        _pickupController.text = "Current Location";
+
+        // Add marker for current location
+        _markers.add(
+          Marker(
+            width: 80,
+            height: 80,
+            point: _pickupLatLng!,
+            builder:
+                (ctx) => Tooltip(
+                  message: 'Current Location',
+                  child: Icon(
+                    Icons.location_pin,
+                    color: Colors.green,
+                    size: 40,
+                  ),
+                ),
+          ),
+        );
+      });
+
+      // If dropoff is already set, draw the route
+      if (_dropoffLatLng != null) {
+        await _drawRoute();
+      }
     } catch (e) {
       ScaffoldMessenger.of(
         context,
