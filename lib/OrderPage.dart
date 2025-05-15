@@ -73,114 +73,100 @@ class _OrderPageState extends State<OrderPage> {
     Navigator.pushNamed(context, _pages[index]);
   }
 
-  Future<Map<String, dynamic>> _drawRoute() async {
-    if (!mounted) return {};
+Future<Map<String, dynamic>> _drawRoute() async {
+  if (!mounted) return {};
 
-    try {
-      // Validate coordinates
-      if (_pickupLatLng == null || _dropoffLatLng == null) {
-        if (!mounted) return {};
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please select both locations')),
-        );
-        return {};
-      }
-
-      // Check if points are too close
-      final distanceBetween = _coordinateDistance(
-        _pickupLatLng!.latitude,
-        _pickupLatLng!.longitude,
-        _dropoffLatLng!.latitude,
-        _dropoffLatLng!.longitude,
-      );
-
-      if (distanceBetween < 0.01) {
-        // Less than 10 meters
-        if (!mounted) return {};
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Locations are too close to each other'),
-          ),
-        );
-        return {};
-      }
-
-      final response = await http
-          .get(
-            Uri.parse(
-              'https://router.project-osrm.org/route/v1/driving/'
-              '${_pickupLatLng!.longitude},${_pickupLatLng!.latitude};'
-              '${_dropoffLatLng!.longitude},${_dropoffLatLng!.latitude}'
-              '?overview=full&alternatives=false&steps=false',
-            ),
-          )
-          .timeout(const Duration(seconds: 15));
-
-      if (!mounted) return {};
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-
-        if (data['routes'] == null || data['routes'].isEmpty) {
-          if (!mounted) return {};
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('No route found between these points'),
-            ),
-          );
-          return {};
-        }
-
-        final route = data['routes'][0];
-        final geometry = route['geometry'];
-        final distance = route['distance'] / 1000; // km
-        final duration = route['duration'] / 60; // minutes
-
-        final points = _decodePolyline(geometry);
-
-        if (!mounted) return {};
-
-        // Only update UI if still mounted
-        if (mounted) {
-          setState(() {
-            _routePoints = points;
-            _distanceInKm = distance;
-            _polylines = {
-              Polyline(
-                points: points,
-                color: Colors.blue.withOpacity(0.7),
-                strokeWidth: 4.0,
-              ),
-            };
-          });
-
-          _mapController.fitBounds(
-            LatLngBounds.fromPoints(points),
-            options: const FitBoundsOptions(padding: EdgeInsets.all(50)),
-          );
-        }
-
-        return {'distance': distance, 'duration': duration, 'points': points};
-      } else {
-        if (!mounted) return {};
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Routing service error: ${response.statusCode}'),
-          ),
-        );
-        return {};
-      }
-    } catch (e) {
+  try {
+    // Validate coordinates
+    if (_pickupLatLng == null || _dropoffLatLng == null) {
       if (!mounted) return {};
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to calculate route. Please try again'),
-        ),
+        const SnackBar(content: Text('Please select both locations')),
       );
-      print('Routing error: $e');
       return {};
     }
+
+    print('Calculating route between:');
+    print('Pickup: ${_pickupLatLng!.latitude},${_pickupLatLng!.longitude}');
+    print('Dropoff: ${_dropoffLatLng!.latitude},${_dropoffLatLng!.longitude}');
+
+    final url = Uri.parse(
+      'https://router.project-osrm.org/route/v1/driving/'
+      '${_pickupLatLng!.longitude},${_pickupLatLng!.latitude};'
+      '${_dropoffLatLng!.longitude},${_dropoffLatLng!.latitude}'
+      '?overview=full&alternatives=false&steps=false',
+    );
+
+    print('OSRM API URL: $url');
+
+    final response = await http.get(url).timeout(const Duration(seconds: 15));
+
+    print('OSRM Response: ${response.statusCode}');
+    print('Response Body: ${response.body}');
+
+    if (!mounted) return {};
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      
+      if (data['routes'] == null || data['routes'].isEmpty) {
+        print('No routes found in response');
+        if (!mounted) return {};
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No route found between these points')),
+        );
+        return {};
+      }
+
+      final route = data['routes'][0];
+      final geometry = route['geometry'];
+      final distance = route['distance'] / 1000; // km
+      final duration = route['duration'] / 60; // minutes
+
+      print('Route calculated: $distance km, $duration mins');
+
+      final points = _decodePolyline(geometry);
+      if (points.isEmpty) {
+        print('Decoded polyline is empty');
+        return {};
+      }
+
+      if (!mounted) return {};
+
+      setState(() {
+        _routePoints = points;
+        _distanceInKm = distance;
+        _polylines = {
+          Polyline(
+            points: points,
+            color: Colors.blue.withOpacity(0.7),
+            strokeWidth: 4.0,
+          ),
+        };
+      });
+
+      return {
+        'distance': distance,
+        'duration': duration,
+        'points': points,
+      };
+    } else {
+      print('OSRM API error: ${response.statusCode}');
+      if (!mounted) return {};
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Routing service error: ${response.statusCode}')),
+      );
+      return {};
+    }
+  } catch (e) {
+    print('Routing error: $e');
+    if (!mounted) return {};
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Failed to calculate route. Please try again')),
+    );
+    return {};
   }
+}
 
   double _coordinateDistance(
     double lat1,
@@ -586,251 +572,259 @@ class _OrderPageState extends State<OrderPage> {
     }
   }
 
-  void _showFullScreenMapWithRides() async {
-    try {
-      // First draw the route and get the distance/duration
-      final routeInfo = await _drawRoute();
-      if (!mounted) return;
+void _showFullScreenMapWithRides() async {
+  try {
+    // First draw the route and get the distance/duration
+    final routeInfo = await _drawRoute();
+    if (!mounted) return;
 
-      final distance = routeInfo['distance']?.toStringAsFixed(1) ?? '0.0';
-      final duration = routeInfo['duration']?.toStringAsFixed(0) ?? '0';
-
-      // Ensure we have valid coordinates
-      if (_pickupLatLng == null && _pickupController.text.isNotEmpty) {
-        _pickupLatLng = await _getCoordinatesFromAddress(
-          _pickupController.text,
-        );
-        if (!mounted) return;
-      }
-      if (_dropoffLatLng == null && _dropoffController.text.isNotEmpty) {
-        _dropoffLatLng = await _getCoordinatesFromAddress(
-          _dropoffController.text,
-        );
-        if (!mounted) return;
-      }
-
-      if (!mounted) return;
-
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder:
-              (context) => Scaffold(
-                appBar: AppBar(
-                  title: Text('Available Rides'),
-                  backgroundColor: Color(0xFF8B5E3B),
-                ),
-                body: Stack(
-                  children: [
-                    FlutterMap(
-                      mapController: _mapController,
-                      options: MapOptions(
-                        center: _pickupLatLng ?? LatLng(-15.7861, 35.0058),
-                        zoom: 13.0,
-                      ),
-                      children: [
-                        TileLayer(
-                          urlTemplate:
-                              'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                          subdomains: ['a', 'b', 'c'],
-                        ),
-                        if (_pickupLatLng != null)
-                          MarkerLayer(
-                            markers: [
-                              Marker(
-                                width: 80,
-                                height: 80,
-                                point: _pickupLatLng!,
-                                builder:
-                                    (ctx) => Tooltip(
-                                      message: 'Pickup',
-                                      child: Icon(
-                                        Icons.location_pin,
-                                        color: Colors.green,
-                                        size: 40,
-                                      ),
-                                    ),
-                              ),
-                            ],
-                          ),
-                        if (_dropoffLatLng != null)
-                          MarkerLayer(
-                            markers: [
-                              Marker(
-                                width: 80,
-                                height: 80,
-                                point: _dropoffLatLng!,
-                                builder:
-                                    (ctx) => Tooltip(
-                                      message: 'Dropoff',
-                                      child: Icon(
-                                        Icons.location_pin,
-                                        color: Colors.red,
-                                        size: 40,
-                                      ),
-                                    ),
-                              ),
-                            ],
-                          ),
-                        if (_routePoints.isNotEmpty)
-                          PolylineLayer(
-                            polylines: [
-                              Polyline(
-                                points: _routePoints,
-                                color: Colors.blue,
-                                strokeWidth: 4.0,
-                              ),
-                            ],
-                          ),
-                      ],
-                    ),
-                    Positioned(
-                      top: 16,
-                      left: 16,
-                      right: 16,
-                      child: Card(
-                        child: Padding(
-                          padding: EdgeInsets.all(12),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Route Information',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
-                              ),
-                              SizedBox(height: 8),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text('Distance:'),
-                                  Text('${distance} km'),
-                                ],
-                              ),
-                              SizedBox(height: 4),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text('Approximate Time:'),
-                                  Text('${duration} mins'),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    DraggableScrollableSheet(
-                      initialChildSize: 0.3,
-                      minChildSize: 0.2,
-                      maxChildSize: 0.7,
-                      builder: (
-                        BuildContext context,
-                        ScrollController scrollController,
-                      ) {
-                        return Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.vertical(
-                              top: Radius.circular(20),
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black12,
-                                blurRadius: 10,
-                                spreadRadius: 2,
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            children: [
-                              Padding(
-                                padding: EdgeInsets.symmetric(vertical: 8),
-                                child: Container(
-                                  width: 40,
-                                  height: 4,
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey[300],
-                                    borderRadius: BorderRadius.circular(2),
-                                  ),
-                                ),
-                              ),
-                              Padding(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 8,
-                                ),
-                                child: Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      'Available Rides',
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    IconButton(
-                                      icon: Icon(Icons.close),
-                                      onPressed: () => Navigator.pop(context),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Expanded(
-                                child:
-                                    isLoadingRides
-                                        ? Center(
-                                          child: CircularProgressIndicator(),
-                                        )
-                                        : availableRides.isEmpty
-                                        ? Center(
-                                          child: Text(
-                                            'No available rides found',
-                                          ),
-                                        )
-                                        : ListView.builder(
-                                          controller: scrollController,
-                                          padding: EdgeInsets.all(16),
-                                          itemCount: availableRides.length,
-                                          itemBuilder: (context, index) {
-                                            final ride = availableRides[index];
-                                            try {
-                                              return _buildRideCard(ride);
-                                            } catch (e) {
-                                              return _buildErrorCard(
-                                                e.toString(),
-                                              );
-                                            }
-                                          },
-                                        ),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ),
-        ),
-      );
-    } catch (e) {
+    // Ensure we have valid route information
+    if (routeInfo.isEmpty || routeInfo['distance'] == null || routeInfo['duration'] == null) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error showing rides: ${e.toString()}'),
-          duration: Duration(seconds: 2),
-        ),
+        const SnackBar(content: Text('Could not calculate route information')),
       );
-      print('Error in _showFullScreenMapWithRides: $e');
+      return;
     }
+
+    final distance = routeInfo['distance']?.toStringAsFixed(1) ?? '0.0';
+    final duration = routeInfo['duration']?.toStringAsFixed(0) ?? '0';
+    final routePoints = routeInfo['points'] as List<LatLng>? ?? [];
+
+    // Ensure we have valid coordinates
+    if (_pickupLatLng == null && _pickupController.text.isNotEmpty) {
+      _pickupLatLng = await _getCoordinatesFromAddress(_pickupController.text);
+      if (!mounted) return;
+    }
+    if (_dropoffLatLng == null && _dropoffController.text.isNotEmpty) {
+      _dropoffLatLng = await _getCoordinatesFromAddress(_dropoffController.text);
+      if (!mounted) return;
+    }
+
+    if (!mounted) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) {
+          // Create a new MapController for the new route
+          final mapController = MapController();
+          
+          // Fit bounds to the route if we have points
+          if (routePoints.isNotEmpty) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              mapController.fitBounds(
+                LatLngBounds.fromPoints(routePoints),
+                options: const FitBoundsOptions(padding: EdgeInsets.all(50)),
+              );
+            });
+          }
+
+          return Scaffold(
+            appBar: AppBar(
+              title: const Text('Available Rides'),
+              backgroundColor: const Color(0xFF8B5E3B),
+            ),
+            body: Stack(
+              children: [
+                FlutterMap(
+                  mapController: mapController,
+                  options: MapOptions(
+                    center: _pickupLatLng ?? LatLng(-15.7861, 35.0058),
+                    zoom: 13.0,
+                  ),
+                  children: [
+                    TileLayer(
+                      urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      subdomains: const ['a', 'b', 'c'],
+                    ),
+                    if (_pickupLatLng != null)
+                      MarkerLayer(
+                        markers: [
+                          Marker(
+                            width: 80,
+                            height: 80,
+                            point: _pickupLatLng!,
+                            builder: (ctx) => const Tooltip(
+                              message: 'Pickup',
+                              child: Icon(
+                                Icons.location_pin,
+                                color: Colors.green,
+                                size: 40,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    if (_dropoffLatLng != null)
+                      MarkerLayer(
+                        markers: [
+                          Marker(
+                            width: 80,
+                            height: 80,
+                            point: _dropoffLatLng!,
+                            builder: (ctx) => const Tooltip(
+                              message: 'Dropoff',
+                              child: Icon(
+                                Icons.location_pin,
+                                color: Colors.red,
+                                size: 40,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    if (routePoints.isNotEmpty)
+                      PolylineLayer(
+                        polylines: [
+                          Polyline(
+                            points: routePoints,
+                            color: Colors.blue,
+                            strokeWidth: 4.0,
+                          ),
+                        ],
+                      ),
+                  ],
+                ),
+                Positioned(
+                  top: 16,
+                  left: 16,
+                  right: 16,
+                  child: Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Route Information',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text('Distance:'),
+                              Text('$distance km'),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text('Approximate Time:'),
+                              Text('$duration mins'),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                DraggableScrollableSheet(
+                  initialChildSize: 0.3,
+                  minChildSize: 0.2,
+                  maxChildSize: 0.7,
+                  builder: (BuildContext context, ScrollController scrollController) {
+                    return Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(20),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black12,
+                            blurRadius: 10,
+                            spreadRadius: 2,
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: Container(
+                              width: 40,
+                              height: 4,
+                              decoration: BoxDecoration(
+                                color: Colors.grey[300],
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  'Available Rides',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.close),
+                                  onPressed: () => Navigator.pop(context),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Expanded(
+                            child: isLoadingRides
+                                ? const Center(
+                                    child: CircularProgressIndicator(),
+                                  )
+                                : availableRides.isEmpty
+                                    ? const Center(
+                                        child: Text('No available rides found'),
+                                      )
+                                    : ListView.builder(
+                                        controller: scrollController,
+                                        padding: const EdgeInsets.all(16),
+                                        itemCount: availableRides.length,
+                                        itemBuilder: (context, index) {
+                                          final ride = availableRides[index];
+                                          try {
+                                            return _buildRideCard(ride);
+                                          } catch (e) {
+                                            return _buildErrorCard(
+                                              e.toString(),
+                                            );
+                                          }
+                                        },
+                                      ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  } catch (e) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Error showing rides: ${e.toString()}'),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+    print('Error in _showFullScreenMapWithRides: $e');
   }
+}
 
   Future<LatLng?> _getCoordinatesFromAddress(String address) async {
     try {
