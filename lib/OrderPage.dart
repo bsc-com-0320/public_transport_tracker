@@ -411,228 +411,366 @@ class _OrderPageState extends State<OrderPage> {
       );
     }
   }
-Widget _buildPickupField() {
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(
-        "Pickup point",
-        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-      ),
-      SizedBox(height: 8),
-      Row(
-        children: [
-          Expanded(
-            child: TypeAheadField<String>(
-              controller: _pickupController,
-              builder: (context, controller, focusNode) {
-                return TextField(
-                  controller: controller,
-                  focusNode: focusNode,
-                  decoration: InputDecoration(
-                    prefixIcon: Icon(
-                      Icons.location_on,
-                      color: Color(0xFF8B5E3B),
+
+  Widget _buildPickupField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Pickup point",
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF5A3D1F),
+          ),
+        ),
+        SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black26,
+                      blurRadius: 10,
+                      offset: Offset(0, 5),
                     ),
-                    filled: true,
-                    fillColor: Colors.white,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide.none,
-                    ),
-                    contentPadding: EdgeInsets.symmetric(
-                      vertical: 15,
-                      horizontal: 15,
-                    ),
-                    hintText: 'Search or select location',
-                  ),
-                );
-              },
-              suggestionsCallback: (pattern) async {
-                if (pattern.length < 3) return [];
-                try {
-                  final url = Uri.parse(
-                    "https://nominatim.openstreetmap.org/search?format=json&q=$pattern&limit=5",
-                  );
-                  final response = await http.get(url);
-                  if (response.statusCode == 200) {
-                    final data = json.decode(response.body) as List;
-                    return data
-                        .map<String>((item) => item['display_name'] as String)
-                        .toList();
-                  }
-                  return [];
-                } catch (e) {
-                  return [];
-                }
-              },
-              itemBuilder: (context, suggestion) => ListTile(title: Text(suggestion)),
-              onSelected: (suggestion) async {
-                _pickupController.text = suggestion;
-                final coords = await _getCoordinatesFromAddress(suggestion);
-                if (coords != null) {
-                  setState(() {
-                    _pickupLatLng = coords;
-                    _markers.add(
-                      Marker(
-                        width: 80,
-                        height: 80,
-                        point: coords,
-                        builder: (ctx) => Tooltip(
-                          message: 'Pickup',
-                          child: Icon(
-                            Icons.location_pin,
-                            color: Colors.green,
-                            size: 40,
-                          ),
+                  ],
+                ),
+                child: TypeAheadField<String>(
+                  controller: _pickupController,
+                  builder: (context, controller, focusNode) {
+                    return TextField(
+                      controller: controller,
+                      focusNode: focusNode,
+                      decoration: InputDecoration(
+                        prefixIcon: Icon(
+                          Icons.location_on,
+                          color: Color(0xFF5A3D1F),
                         ),
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: EdgeInsets.symmetric(
+                          vertical: 15,
+                          horizontal: 15,
+                        ),
+                        hintText: 'Search or select location',
+                        hintStyle: TextStyle(color: Colors.grey[500]),
                       ),
                     );
-                  });
-                  _drawRoute();
-                }
-              },
+                  },
+                  suggestionsCallback: (pattern) async {
+                    if (pattern.length < 3) return [];
+                    try {
+                      final url = Uri.parse(
+                        "https://nominatim.openstreetmap.org/search?format=json&q=$pattern&limit=5",
+                      );
+                      final response = await http.get(url);
+                      if (response.statusCode == 200) {
+                        final data = json.decode(response.body) as List;
+                        return data
+                            .map<String>(
+                              (item) => item['display_name'] as String,
+                            )
+                            .toList();
+                      }
+                      return [];
+                    } catch (e) {
+                      return [];
+                    }
+                  },
+                  itemBuilder:
+                      (context, suggestion) =>
+                          ListTile(title: Text(suggestion)),
+                  onSelected: (suggestion) async {
+                    _pickupController.text = suggestion;
+                    final coords = await _getCoordinatesFromAddress(suggestion);
+                    if (coords != null) {
+                      setState(() {
+                        _pickupLatLng = coords;
+                        _markers.add(
+                          Marker(
+                            width: 80,
+                            height: 80,
+                            point: coords,
+                            builder:
+                                (ctx) => Tooltip(
+                                  message: 'Pickup',
+                                  child: Icon(
+                                    Icons.location_pin,
+                                    color: Colors.green,
+                                    size: 40,
+                                  ),
+                                ),
+                          ),
+                        );
+                      });
+                      _drawRoute();
+                    }
+                  },
+                ),
+              ),
             ),
-          ),
-          SizedBox(width: 8),
-          // Changed from PopupMenuButton to a more prominent map icon button
-          Container(
-            decoration: BoxDecoration(
-              color: Color(0xFF8B5E3B), // Matching your theme color
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: IconButton(
-              icon: Icon(Icons.map, color: Colors.white),
-              onPressed: () {
-                showModalBottomSheet(
-                  context: context,
-                  builder: (context) => Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      ListTile(
-                        leading: Icon(Icons.my_location),
-                        title: Text("Use current location"),
-                        onTap: () {
-                          Navigator.pop(context);
-                          _getCurrentLocation();
-                        },
-                      ),
-                      ListTile(
-                        leading: Icon(Icons.map),
-                        title: Text("Select on map"),
-                        onTap: () {
-                          Navigator.pop(context);
-                          _selectPickup();
-                        },
-                      ),
-                    ],
+            SizedBox(width: 8),
+            Container(
+              decoration: BoxDecoration(
+                color: Color(0xFF8B5E3B),
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black26,
+                    blurRadius: 10,
+                    offset: Offset(0, 5),
                   ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    ],
-  );
-}
-Widget _buildDropoffField() {
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(
-        "Dropoff point",
-        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-      ),
-      SizedBox(height: 8),
-      Row(
-        children: [
-          Expanded(
-            child: TypeAheadField<String>(
-              controller: _dropoffController,
-              builder: (context, controller, focusNode) {
-                return TextField(
-                  controller: controller,
-                  focusNode: focusNode,
-                  decoration: InputDecoration(
-                    prefixIcon: Icon(
-                      Icons.location_on,
-                      color: Color(0xFF8B5E3B),
-                    ),
-                    filled: true,
-                    fillColor: Colors.white,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide.none,
-                    ),
-                    contentPadding: EdgeInsets.symmetric(
-                      vertical: 15,
-                      horizontal: 15,
-                    ),
-                    hintText: 'Search or select location',
-                  ),
-                );
-              },
-              suggestionsCallback: (pattern) async {
-                if (pattern.length < 3) return [];
-                try {
-                  final url = Uri.parse(
-                    "https://nominatim.openstreetmap.org/search?format=json&q=$pattern&limit=5",
+                ],
+              ),
+              child: IconButton(
+                icon: Icon(Icons.map, color: Colors.white),
+                onPressed: () {
+                  showModalBottomSheet(
+                    context: context,
+                    builder:
+                        (context) => Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            ListTile(
+                              leading: Icon(Icons.my_location),
+                              title: Text("Use current location"),
+                              onTap: () {
+                                Navigator.pop(context);
+                                _getCurrentLocation();
+                              },
+                            ),
+                            ListTile(
+                              leading: Icon(Icons.map),
+                              title: Text("Select on map"),
+                              onTap: () {
+                                Navigator.pop(context);
+                                _selectPickup();
+                              },
+                            ),
+                          ],
+                        ),
                   );
-                  final response = await http.get(url);
-                  if (response.statusCode == 200) {
-                    final data = json.decode(response.body) as List;
-                    return data
-                        .map<String>((item) => item['display_name'] as String)
-                        .toList();
-                  }
-                  return [];
-                } catch (e) {
-                  return [];
-                }
-              },
-              itemBuilder: (context, suggestion) => ListTile(
-                title: Text(suggestion)),
-              onSelected: (suggestion) async {
-                _dropoffController.text = suggestion;
-                _dropoffLatLng = await _getCoordinatesFromAddress(suggestion);
-              },
+                },
+              ),
             ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDropoffField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Dropoff point",
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF5A3D1F),
           ),
-          SizedBox(width: 8),
-          // Changed to map icon button with consistent styling
-          Container(
-            decoration: BoxDecoration(
-              color: Color(0xFF8B5E3B), // Matching theme color
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: IconButton(
-              icon: Icon(Icons.map, color: Colors.white),
-              onPressed: () {
-                showModalBottomSheet(
-                  context: context,
-                  builder: (context) => Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      ListTile(
-                        leading: Icon(Icons.map),
-                        title: Text("Select on map"),
-                        onTap: () {
-                          Navigator.pop(context);
-                          _selectDropoff();
-                        },
+        ),
+        SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black26,
+                      blurRadius: 10,
+                      offset: Offset(0, 5),
+                    ),
+                  ],
+                ),
+                child: TypeAheadField<String>(
+                  controller: _dropoffController,
+                  builder: (context, controller, focusNode) {
+                    return TextField(
+                      controller: controller,
+                      focusNode: focusNode,
+                      decoration: InputDecoration(
+                        prefixIcon: Icon(
+                          Icons.location_on,
+                          color: Color(0xFF5A3D1F),
+                        ),
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: EdgeInsets.symmetric(
+                          vertical: 15,
+                          horizontal: 15,
+                        ),
+                        hintText: 'Search or select location',
+                        hintStyle: TextStyle(color: Colors.grey[500]),
                       ),
-                    ],
+                    );
+                  },
+                  suggestionsCallback: (pattern) async {
+                    if (pattern.length < 3) return [];
+                    try {
+                      final url = Uri.parse(
+                        "https://nominatim.openstreetmap.org/search?format=json&q=$pattern&limit=5",
+                      );
+                      final response = await http.get(url);
+                      if (response.statusCode == 200) {
+                        final data = json.decode(response.body) as List;
+                        return data
+                            .map<String>(
+                              (item) => item['display_name'] as String,
+                            )
+                            .toList();
+                      }
+                      return [];
+                    } catch (e) {
+                      return [];
+                    }
+                  },
+                  itemBuilder:
+                      (context, suggestion) =>
+                          ListTile(title: Text(suggestion)),
+                  onSelected: (suggestion) async {
+                    _dropoffController.text = suggestion;
+                    final coords = await _getCoordinatesFromAddress(suggestion);
+                    if (coords != null) {
+                      setState(() {
+                        _dropoffLatLng = coords;
+                        _markers.add(
+                          Marker(
+                            width: 80,
+                            height: 80,
+                            point: coords,
+                            builder:
+                                (ctx) => Tooltip(
+                                  message: 'Dropoff',
+                                  child: Icon(
+                                    Icons.location_pin,
+                                    color: Colors.red,
+                                    size: 40,
+                                  ),
+                                ),
+                          ),
+                        );
+                      });
+                      _drawRoute();
+                    }
+                  },
+                ),
+              ),
+            ),
+            SizedBox(width: 8),
+            Container(
+              decoration: BoxDecoration(
+                color: Color(0xFF8B5E3B),
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black26,
+                    blurRadius: 10,
+                    offset: Offset(0, 5),
                   ),
-                );
-              },
+                ],
+              ),
+              child: IconButton(
+                icon: Icon(Icons.map, color: Colors.white),
+                onPressed: () {
+                  showModalBottomSheet(
+                    context: context,
+                    builder:
+                        (context) => Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            ListTile(
+                              leading: Icon(Icons.map),
+                              title: Text("Select on map"),
+                              onTap: () {
+                                Navigator.pop(context);
+                                _selectDropoff();
+                              },
+                            ),
+                          ],
+                        ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDateTimeField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Select date & time",
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF5A3D1F),
+          ),
+        ),
+        SizedBox(height: 8),
+        GestureDetector(
+          onTap: _selectDateTime,
+          child: AbsorbPointer(
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black26,
+                    blurRadius: 10,
+                    offset: Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: TextField(
+                controller: _dateTimeController,
+                decoration: InputDecoration(
+                  prefixIcon: Icon(
+                    Icons.calendar_today,
+                    color: Color(0xFF5A3D1F),
+                  ),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: EdgeInsets.symmetric(
+                    vertical: 15,
+                    horizontal: 15,
+                  ),
+                  hintText: 'Select date and time',
+                  hintStyle: TextStyle(color: Colors.grey[500]),
+                ),
+              ),
             ),
           ),
-        ],
-      ),
-    ],
-  );
-}
+        ),
+      ],
+    );
+  }
 
   void _selectPickup() async {
     try {
@@ -1047,12 +1185,32 @@ Widget _buildDropoffField() {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFFF5F5DC),
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        backgroundColor: Color(0xFF8B5E3B),
         automaticallyImplyLeading: false,
-        title: Text("Order Ride", style: TextStyle(color: Colors.white)),
-        centerTitle: true,
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: Text(
+          "Order Ride",
+          style: TextStyle(
+            color: Color(0xFF5A3D1F),
+            fontWeight: FontWeight.bold,
+            fontSize: 24,
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.notifications_none, color: Color(0xFF5A3D1F)),
+            onPressed: () {},
+          ),
+          Padding(
+            padding: EdgeInsets.only(right: 10),
+            child: CircleAvatar(
+              backgroundColor: Color(0xFF5A3D1F).withOpacity(0.1),
+              child: Icon(Icons.person, color: Color(0xFF5A3D1F)),
+            ),
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -1068,10 +1226,9 @@ Widget _buildDropoffField() {
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.grey.withOpacity(0.2),
-                          spreadRadius: 2,
-                          blurRadius: 6,
-                          offset: Offset(0, 2),
+                          color: Colors.black26,
+                          blurRadius: 10,
+                          offset: Offset(0, 5),
                         ),
                       ],
                     ),
@@ -1085,7 +1242,7 @@ Widget _buildDropoffField() {
                         ),
                       ),
                       activeColor: Color(0xFF8B5E3B),
-                      inactiveThumbColor: Colors.grey,
+                      inactiveThumbColor: Colors.grey[400],
                       inactiveTrackColor: Colors.grey[300],
                       value: !isOrderActive,
                       onChanged: (bool value) {
@@ -1104,6 +1261,7 @@ Widget _buildDropoffField() {
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
+                          color: Color(0xFF5A3D1F),
                         ),
                       ),
                       SizedBox(height: 10),
@@ -1116,7 +1274,15 @@ Widget _buildDropoffField() {
                                 return Padding(
                                   padding: EdgeInsets.only(right: 8),
                                   child: ChoiceChip(
-                                    label: Text(type),
+                                    label: Text(
+                                      type,
+                                      style: TextStyle(
+                                        color:
+                                            isSelected
+                                                ? Colors.white
+                                                : Color(0xFF5A3D1F),
+                                      ),
+                                    ),
                                     selected: isSelected,
                                     onSelected: (selected) {
                                       setState(() {
@@ -1125,15 +1291,14 @@ Widget _buildDropoffField() {
                                       });
                                     },
                                     selectedColor: Color(0xFF8B5E3B),
-                                    labelStyle: TextStyle(
-                                      color:
-                                          isSelected
-                                              ? Colors.white
-                                              : Colors.black,
-                                    ),
-                                    backgroundColor: Colors.grey[200],
+                                    backgroundColor: Colors.white,
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(20),
+                                      side: BorderSide(
+                                        color: Color(
+                                          0xFF5A3D1F,
+                                        ).withOpacity(0.3),
+                                      ),
                                     ),
                                     padding: EdgeInsets.symmetric(
                                       horizontal: 16,
@@ -1159,7 +1324,10 @@ Widget _buildDropoffField() {
                       child: Text(
                         confirmationMessage,
                         style: TextStyle(
-                          color: Colors.green,
+                          color:
+                              confirmationMessage.contains("Error")
+                                  ? Colors.red
+                                  : Colors.green,
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
@@ -1173,22 +1341,34 @@ Widget _buildDropoffField() {
       ),
       bottomNavigationBar: BottomNavigationBar(
         backgroundColor: Colors.white,
-        selectedItemColor: Color(0xFF8B5E3B),
-        unselectedItemColor: Color(0xFF5A3D1F),
+        selectedItemColor: Color(0xFF5A3D1F),
+        unselectedItemColor: Colors.grey[600],
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
         type: BottomNavigationBarType.fixed,
+        elevation: 10,
+        selectedLabelStyle: TextStyle(fontWeight: FontWeight.bold),
         items: [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
           BottomNavigationBarItem(
-            icon: Icon(Icons.directions_bus),
+            icon: Icon(Icons.home_outlined),
+            activeIcon: Icon(Icons.home),
+            label: "Home",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.directions_bus_outlined),
+            activeIcon: Icon(Icons.directions_bus),
             label: "Order",
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.book_online),
+            icon: Icon(Icons.history_outlined),
+            activeIcon: Icon(Icons.history),
             label: "Records",
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.add), label: "Add Ride"),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.add_circle_outline),
+            activeIcon: Icon(Icons.add_circle),
+            label: "Add Ride",
+          ),
         ],
       ),
     );
@@ -1202,7 +1382,9 @@ Widget _buildDropoffField() {
           SizedBox(height: 16),
           _buildDropoffField(),
           SizedBox(height: 16),
-          _buildConfirmButton("View Rides to Request"),
+          _buildConfirmButton(
+            isOrderActive ? "View Rides to Request" : "View Rides to Book",
+          ),
         ],
       ),
     );
@@ -1216,181 +1398,192 @@ Widget _buildDropoffField() {
           SizedBox(height: 16),
           _buildDropoffField(),
           SizedBox(height: 16),
-          _buildTextField(
-            "Select date & time",
-            _dateTimeController,
-            _selectDateTime,
-          ),
+          _buildDateTimeField(),
           SizedBox(height: 24),
-          _buildConfirmButton("View Rides to Book"),
+          _buildConfirmButton(
+            isOrderActive ? "View Rides to Request" : "View Rides to Book",
+          ),
         ],
       ),
     );
   }
 
-Widget _buildRideCard(Map<String, dynamic> ride) {
-  try {
-    DateTime departureTime;
+  Widget _buildRideCard(Map<String, dynamic> ride) {
     try {
-      departureTime = DateTime.tryParse(ride['departure_time']) ?? DateTime.now();
-      if (departureTime == DateTime.now()) {
-        final formatsToTry = [
-          "yyyy-MM-dd HH:mm:ss",
-          "dd/MM/yyyy h:mm a",
-          "MMM dd, yyyy HH:mm",
-          "yyyy-MM-dd HH:mm",
-        ];
+      DateTime departureTime;
+      try {
+        departureTime =
+            DateTime.tryParse(ride['departure_time']) ?? DateTime.now();
+        if (departureTime == DateTime.now()) {
+          final formatsToTry = [
+            "yyyy-MM-dd HH:mm:ss",
+            "dd/MM/yyyy h:mm a",
+            "MMM dd, yyyy HH:mm",
+            "yyyy-MM-dd HH:mm",
+          ];
 
-        for (final format in formatsToTry) {
-          try {
-            departureTime = DateFormat(format).parse(ride['departure_time']);
-            break;
-          } catch (e) {
-            continue;
+          for (final format in formatsToTry) {
+            try {
+              departureTime = DateFormat(format).parse(ride['departure_time']);
+              break;
+            } catch (e) {
+              continue;
+            }
           }
         }
+      } catch (e) {
+        departureTime = DateTime.now();
       }
-    } catch (e) {
-      departureTime = DateTime.now();
-    }
 
-    final formattedDate = DateFormat('EEE, MMM d').format(departureTime);
-    final formattedTime = DateFormat('h:mm a').format(departureTime);
-    final seatsAvailable = ride['capacity'] is int ? ride['capacity'] : 0;
-    final isFull = seatsAvailable <= 0;
-    final totalCost = ride['total_cost'] is num ? (ride['total_cost'] as num).toDouble() : 0.0;
-    final distanceFromUser = ride['distance_from_user'] is double 
-        ? (ride['distance_from_user'] as double).toStringAsFixed(1)
-        : 'N/A';
+      final formattedDate = DateFormat('EEE, MMM d').format(departureTime);
+      final formattedTime = DateFormat('h:mm a').format(departureTime);
+      final seatsAvailable = ride['capacity'] is int ? ride['capacity'] : 0;
+      final isFull = seatsAvailable <= 0;
+      final totalCost =
+          ride['total_cost'] is num
+              ? (ride['total_cost'] as num).toDouble()
+              : 0.0;
+      final distanceFromUser =
+          ride['distance_from_user'] is double
+              ? (ride['distance_from_user'] as double).toStringAsFixed(1)
+              : 'N/A';
 
-    return Card(
-      margin: EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Ride #${ride['ride_number']?.toString() ?? 'N/A'}',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: isFull ? Colors.red[100] : Colors.green[100],
-                    borderRadius: BorderRadius.circular(12),
+      return Card(
+        margin: EdgeInsets.only(bottom: 12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Padding(
+          padding: EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Ride #${ride['ride_number']?.toString() ?? 'N/A'}',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
-                  child: Text(
-                    isFull ? 'FULL' : '$seatsAvailable seats',
-                    style: TextStyle(
-                      color: isFull ? Colors.red[800] : Colors.green[800],
-                      fontWeight: FontWeight.bold,
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isFull ? Colors.red[100] : Colors.green[100],
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 8),
-            Row(
-              children: [
-                Icon(Icons.route, color: Color(0xFF8B5E3B), size: 18),
-                SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    ride['pickup_point']?.toString() ?? 'No pickup specified',
-                    style: TextStyle(fontSize: 14),
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 4),
-            Row(
-              children: [
-                Icon(Icons.flag, color: Color(0xFF8B5E3B), size: 18),
-                SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    ride['dropoff_point']?.toString() ?? 'No dropoff specified',
-                    style: TextStyle(fontSize: 14),
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 8),
-            Row(
-              children: [
-                Icon(Icons.calendar_today, color: Color(0xFF8B5E3B), size: 18),
-                SizedBox(width: 8),
-                Text(formattedDate, style: TextStyle(fontSize: 12)),
-                SizedBox(width: 16),
-                Icon(Icons.access_time, color: Color(0xFF8B5E3B), size: 18),
-                SizedBox(width: 8),
-                Text(formattedTime, style: TextStyle(fontSize: 12)),
-              ],
-            ),
-            SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Distance from you:', style: TextStyle(fontSize: 12)),
-                    Text(
-                      '$distanceFromUser km',
+                    child: Text(
+                      isFull ? 'FULL' : '$seatsAvailable seats',
                       style: TextStyle(
+                        color: isFull ? Colors.red[800] : Colors.green[800],
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF8B5E3B),
                       ),
                     ),
-                  ],
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text('Total Cost:', style: TextStyle(fontSize: 12)),
-                    Text(
-                      '\$${totalCost.toStringAsFixed(2)}',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF8B5E3B),
-                      ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(Icons.route, color: Color(0xFF8B5E3B), size: 18),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      ride['pickup_point']?.toString() ?? 'No pickup specified',
+                      style: TextStyle(fontSize: 14),
                     ),
-                  ],
+                  ),
+                ],
+              ),
+              SizedBox(height: 4),
+              Row(
+                children: [
+                  Icon(Icons.flag, color: Color(0xFF8B5E3B), size: 18),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      ride['dropoff_point']?.toString() ??
+                          'No dropoff specified',
+                      style: TextStyle(fontSize: 14),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(
+                    Icons.calendar_today,
+                    color: Color(0xFF8B5E3B),
+                    size: 18,
+                  ),
+                  SizedBox(width: 8),
+                  Text(formattedDate, style: TextStyle(fontSize: 12)),
+                  SizedBox(width: 16),
+                  Icon(Icons.access_time, color: Color(0xFF8B5E3B), size: 18),
+                  SizedBox(width: 8),
+                  Text(formattedTime, style: TextStyle(fontSize: 12)),
+                ],
+              ),
+              SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Distance from you:',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                      Text(
+                        '$distanceFromUser km',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF8B5E3B),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text('Total Cost:', style: TextStyle(fontSize: 12)),
+                      Text(
+                        '\$${totalCost.toStringAsFixed(2)}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF8B5E3B),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              SizedBox(height: 8),
+              ElevatedButton(
+                onPressed: isFull ? null : () => _bookRide(ride),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: isFull ? Colors.grey : Color(0xFF8B5E3B),
+                  minimumSize: Size(double.infinity, 36),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
-              ],
-            ),
-            SizedBox(height: 8),
-            ElevatedButton(
-              onPressed: isFull ? null : () => _bookRide(ride),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: isFull ? Colors.grey : Color(0xFF8B5E3B),
-                minimumSize: Size(double.infinity, 36),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                child: Text(
+                  isFull ? 'NO SEATS AVAILABLE' : 'BOOK NOW',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
-              child: Text(
-                isFull ? 'NO SEATS AVAILABLE' : 'BOOK NOW',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
-    );
-  } catch (e) {
-    return _buildErrorCard(e.toString());
+      );
+    } catch (e) {
+      return _buildErrorCard(e.toString());
+    }
   }
-}
 
   Widget _buildErrorCard(String error) {
     return Card(
@@ -1441,17 +1634,25 @@ Widget _buildRideCard(Map<String, dynamic> ride) {
     );
   }
 
-  // Update your _buildConfirmButton method to use this new function
   Widget _buildConfirmButton(String text) {
-    return SizedBox(
-      width: double.infinity,
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black26,
+            blurRadius: 10,
+            offset: Offset(0, 5),
+          ),
+        ],
+      ),
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
-          backgroundColor: Color(0xFF8B5E3B),
-          padding: EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+          backgroundColor: Color(0xFF5A3D1F),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(12),
           ),
+          padding: EdgeInsets.symmetric(vertical: 16),
         ),
         onPressed: () {
           if (_selectedVehicleType == null) {
@@ -1460,14 +1661,37 @@ Widget _buildRideCard(Map<String, dynamic> ride) {
             );
             return;
           }
+          if (_pickupController.text.isEmpty ||
+              _dropoffController.text.isEmpty) {
+            setState(
+              () =>
+                  confirmationMessage =
+                      "Please select pickup and dropoff locations",
+            );
+            return;
+          }
+          if (!isOrderActive && _dateTimeController.text.isEmpty) {
+            setState(() => confirmationMessage = "Please select date and time");
+            return;
+          }
+
+          setState(() => confirmationMessage = "");
           _loadAvailableRides().then((_) {
             _showFullScreenMapWithRides();
           });
         },
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(text, style: TextStyle(color: Colors.white, fontSize: 18)),
+            Text(
+              text,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(width: 8),
             Icon(Icons.arrow_forward, color: Colors.white),
           ],
         ),
