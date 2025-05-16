@@ -16,8 +16,7 @@ class RidesPage extends StatefulWidget {
 
 class _RidesPageState extends State<RidesPage> {
   final TextEditingController _numberPlateController = TextEditingController();
-  final TextEditingController _vehicleCapacityController =
-      TextEditingController();
+  final TextEditingController _vehicleCapacityController = TextEditingController();
 
   final _supabase = Supabase.instance.client;
   File? _selectedImage;
@@ -43,8 +42,7 @@ class _RidesPageState extends State<RidesPage> {
   final TextEditingController _rideNumberController = TextEditingController();
   final TextEditingController _capacityController = TextEditingController();
   final TextEditingController _totalCostController = TextEditingController();
-  final TextEditingController _departureTimeController =
-      TextEditingController();
+  final TextEditingController _departureTimeController = TextEditingController();
   final TextEditingController _distanceController = TextEditingController();
   final TextEditingController _contactController = TextEditingController();
   final TextEditingController _pickupController = TextEditingController();
@@ -58,7 +56,7 @@ class _RidesPageState extends State<RidesPage> {
   @override
   void initState() {
     super.initState();
-    _distanceController.text = '0.0'; // Initialize with 0 distance
+    _distanceController.text = '0.0';
   }
 
   @override
@@ -108,9 +106,7 @@ class _RidesPageState extends State<RidesPage> {
   Future<void> _getCurrentLocation(bool isPickup) async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Location services are disabled')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Location services are disabled')));
       return;
     }
 
@@ -238,7 +234,7 @@ class _RidesPageState extends State<RidesPage> {
         0.5 -
         cos((lat2 - lat1) * p) / 2 +
         cos(lat1 * p) * cos(lat2 * p) * (1 - cos((lon2 - lon1) * p)) / 2;
-    return 12742 * asin(sqrt(a)); // Returns distance in km
+    return 12742 * asin(sqrt(a));
   }
 
   Future<void> _uploadRideData() async {
@@ -275,9 +271,7 @@ class _RidesPageState extends State<RidesPage> {
         'created_at': DateTime.now().toIso8601String(),
       });
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Ride added successfully!')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ride added successfully!')));
       _clearForm();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -317,8 +311,7 @@ class _RidesPageState extends State<RidesPage> {
     try {
       String? imageUrl;
       if (_selectedImage != null) {
-        final filePath =
-            'vehicles/${DateTime.now().millisecondsSinceEpoch}.jpg';
+        final filePath = 'vehicles/${DateTime.now().millisecondsSinceEpoch}.jpg';
         await _supabase.storage
             .from('vehicle_images')
             .upload(filePath, _selectedImage!);
@@ -334,9 +327,7 @@ class _RidesPageState extends State<RidesPage> {
         'created_at': DateTime.now().toIso8601String(),
       });
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Vehicle added successfully!')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Vehicle added successfully!')));
       _clearForm();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -360,7 +351,7 @@ class _RidesPageState extends State<RidesPage> {
         Text(
           label,
           style: TextStyle(
-            color: Colors.white,
+            color: Color(0xFF5A3D1F),
             fontSize: 16,
             fontWeight: FontWeight.bold,
           ),
@@ -383,7 +374,7 @@ class _RidesPageState extends State<RidesPage> {
                       filled: true,
                       fillColor: Colors.white,
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide.none,
                       ),
                       contentPadding: EdgeInsets.symmetric(
@@ -391,6 +382,7 @@ class _RidesPageState extends State<RidesPage> {
                         horizontal: 15,
                       ),
                       hintText: 'Search or select location',
+                      hintStyle: TextStyle(color: Colors.grey[500]),
                     ),
                   );
                 },
@@ -430,36 +422,42 @@ class _RidesPageState extends State<RidesPage> {
             Container(
               decoration: BoxDecoration(
                 color: Color(0xFF8B5E3B),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black26,
+                    blurRadius: 10,
+                    offset: Offset(0, 5),
+                  ),
+                ],
               ),
               child: IconButton(
                 icon: Icon(Icons.map, color: Colors.white),
                 onPressed: () {
                   showModalBottomSheet(
                     context: context,
-                    builder:
-                        (context) => Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (isPickup)
-                              ListTile(
-                                leading: Icon(Icons.my_location),
-                                title: Text("Use current location"),
-                                onTap: () {
-                                  Navigator.pop(context);
-                                  _getCurrentLocation(isPickup);
-                                },
-                              ),
-                            ListTile(
-                              leading: Icon(Icons.map),
-                              title: Text("Select on map"),
-                              onTap: () {
-                                Navigator.pop(context);
-                                _selectOnMap(isPickup);
-                              },
-                            ),
-                          ],
+                    builder: (context) => Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (isPickup)
+                          ListTile(
+                            leading: Icon(Icons.my_location),
+                            title: Text("Use current location"),
+                            onTap: () {
+                              Navigator.pop(context);
+                              _getCurrentLocation(isPickup);
+                            },
+                          ),
+                        ListTile(
+                          leading: Icon(Icons.map),
+                          title: Text("Select on map"),
+                          onTap: () {
+                            Navigator.pop(context);
+                            _selectOnMap(isPickup);
+                          },
                         ),
+                      ],
+                    ),
                   );
                 },
               ),
@@ -473,418 +471,401 @@ class _RidesPageState extends State<RidesPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFF5A3D1F),
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        backgroundColor: Color(0xFF5A3D1F),
+        backgroundColor: Colors.white,
+        elevation: 1,
         title: Text(
           _isRideSelected ? "Add Ride" : "Add Vehicle",
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: Color(0xFF5A3D1F),
+            fontWeight: FontWeight.bold,
+            fontSize: 24,
+          ),
         ),
-        centerTitle: true,
         actions: [
+          IconButton(
+            icon: Icon(Icons.notifications_none, color: Color(0xFF5A3D1F)),
+            onPressed: () {},
+          ),
           Padding(
-            padding: const EdgeInsets.all(10.0),
-            child: Icon(Icons.account_circle, color: Colors.white, size: 30),
+            padding: EdgeInsets.only(right: 10),
+            child: CircleAvatar(
+              backgroundColor: Color(0xFF5A3D1F).withOpacity(0.1),
+              child: Icon(Icons.person, color: Color(0xFF5A3D1F)),
+            ),
           ),
         ],
       ),
-      body:
-          _isLoading
-              ? Center(child: CircularProgressIndicator(color: Colors.white))
-              : SingleChildScrollView(
-                child: Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Rides & Vehicles Tabs
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  _isRideSelected = true;
-                                });
-                              },
-                              child: _buildTab("Rides", _isRideSelected),
-                            ),
-                            SizedBox(width: 10),
-                            GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  _isRideSelected = false;
-                                });
-                              },
-                              child: _buildTab("Vehicles", !_isRideSelected),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 15),
-
-                        // Add Photos Button
-                        GestureDetector(
-                          onTap: _pickImage,
-                          child: Container(
-                            width: double.infinity,
-                            padding: EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              color: Color(0xFF8B5E3B),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Column(
-                              children: [
-                                if (_selectedImage != null)
-                                  Container(
-                                    height: 100,
-                                    width: 100,
-                                    decoration: BoxDecoration(
-                                      image: DecorationImage(
-                                        image: FileImage(_selectedImage!),
-                                        fit: BoxFit.cover,
-                                      ),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                  )
-                                else
-                                  Icon(
-                                    Icons.add,
-                                    color: Colors.white,
-                                    size: 40,
-                                  ),
-                                SizedBox(height: 5),
-                                Text(
-                                  _selectedImage != null
-                                      ? "Change Photo"
-                                      : "Add Photos",
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        SizedBox(height: 15),
-
-                        // Show Ride or Vehicle fields based on selection
-                        if (_isRideSelected) ...[
-                          // Ride Number (Numbers only)
-                          _buildInputField(
-                            context,
-                            Icons.directions_bus,
-                            "Ride number",
-                            _rideNumberController,
-                            TextInputType.number,
-                            (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Please enter ride number';
-                              }
-                              if (!RegExp(r'^[0-9]+$').hasMatch(value)) {
-                                return 'Please enter numbers only';
-                              }
-                              return null;
-                            },
-                          ),
-
-                          // Vehicle Type Dropdown
-                          Container(
-                            margin: EdgeInsets.only(bottom: 10),
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 5,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: DropdownButtonFormField<String>(
-                              value: _selectedVehicleType,
-                              icon: Icon(
-                                Icons.arrow_drop_down,
-                                color: Color(0xFF5A3D1F),
-                              ),
-                              decoration: InputDecoration(
-                                icon: Icon(
-                                  Icons.category,
-                                  color: Color(0xFF5A3D1F),
-                                ),
-                                labelText: "Vehicle Type",
-                                border: InputBorder.none,
-                              ),
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Please select vehicle type';
-                                }
-                                return null;
-                              },
-                              items:
-                                  _vehicleTypes.map((String type) {
-                                    return DropdownMenuItem<String>(
-                                      value: type,
-                                      child: Text(type),
-                                    );
-                                  }).toList(),
-                              onChanged: (String? newValue) {
-                                setState(() {
-                                  _selectedVehicleType = newValue;
-                                });
-                              },
-                            ),
-                          ),
-
-                          // Pickup Point
-                          _buildLocationField(
-                            "Pickup Point",
-                            _pickupController,
-                            true,
-                          ),
-                          SizedBox(height: 15),
-
-                          // Dropoff Point
-                          _buildLocationField(
-                            "Dropoff Point",
-                            _dropoffController,
-                            false,
-                          ),
-                          SizedBox(height: 15),
-
-                          // Distance (auto-calculated)
-                          _buildInputField(
-                            context,
-                            Icons.directions,
-                            "Distance (km)",
-                            _distanceController,
-                            TextInputType.numberWithOptions(decimal: true),
-                            (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Please select both locations to calculate distance';
-                              }
-                              return null;
-                            },
-                            readOnly: true,
-                          ),
-
-                          // Departure Time (Time picker)
-                          GestureDetector(
-                            onTap: () => _selectTime(context),
-                            child: AbsorbPointer(
-                              child: _buildInputField(
-                                context,
-                                Icons.access_time,
-                                "Departure Time",
-                                _departureTimeController,
-                                TextInputType.datetime,
-                                (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Please select departure time';
-                                  }
-                                  return null;
-                                },
-                              ),
-                            ),
-                          ),
-
-                          // Capacity (Numbers only)
-                          _buildInputField(
-                            context,
-                            Icons.people,
-                            "Capacity",
-                            _capacityController,
-                            TextInputType.number,
-                            (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Please enter capacity';
-                              }
-                              if (!RegExp(r'^[0-9]+$').hasMatch(value)) {
-                                return 'Please enter numbers only';
-                              }
-                              return null;
-                            },
-                          ),
-
-                          // Total Cost (Numbers with decimal)
-                          _buildInputField(
-                            context,
-                            Icons.monetization_on,
-                            "Total Cost",
-                            _totalCostController,
-                            TextInputType.numberWithOptions(decimal: true),
-                            (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Please enter total cost';
-                              }
-                              if (!RegExp(
-                                r'^[0-9]+(\.[0-9]{1,2})?$',
-                              ).hasMatch(value)) {
-                                return 'Please enter valid amount';
-                              }
-                              return null;
-                            },
-                          ),
-
-                          // Contact Information
-                          _buildInputField(
-                            context,
-                            Icons.phone,
-                            "Contact",
-                            _contactController,
-                            TextInputType.phone,
-                            (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Please enter contact information';
-                              }
-                              return null;
-                            },
-                          ),
-                        ] else ...[
-                          // Number Plate
-                          _buildInputField(
-                            context,
-                            Icons.directions_car,
-                            "Number Plate",
-                            _numberPlateController,
-                            TextInputType.text,
-                            (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Please enter number plate';
-                              }
-                              if (!RegExp(
-                                r'^[A-Z0-9\s]{3,15}$',
-                              ).hasMatch(value)) {
-                                return 'Enter valid plate (e.g., ABC 1234)';
-                              }
-                              return null;
-                            },
-                          ),
-
-                          // Vehicle Type Dropdown
-                          Container(
-                            margin: EdgeInsets.only(bottom: 10),
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 5,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: DropdownButtonFormField<String>(
-                              value: _selectedVehicleType,
-                              icon: Icon(
-                                Icons.arrow_drop_down,
-                                color: Color(0xFF5A3D1F),
-                              ),
-                              decoration: InputDecoration(
-                                icon: Icon(
-                                  Icons.category,
-                                  color: Color(0xFF5A3D1F),
-                                ),
-                                labelText: "Vehicle Type",
-                                border: InputBorder.none,
-                              ),
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Please select vehicle type';
-                                }
-                                return null;
-                              },
-                              items:
-                                  _vehicleTypes.map((String type) {
-                                    return DropdownMenuItem<String>(
-                                      value: type,
-                                      child: Text(type),
-                                    );
-                                  }).toList(),
-                              onChanged: (String? newValue) {
-                                setState(() {
-                                  _selectedVehicleType = newValue;
-                                });
-                              },
-                            ),
-                          ),
-
-                          // Vehicle Capacity
-                          _buildInputField(
-                            context,
-                            Icons.people,
-                            "Seating Capacity",
-                            _vehicleCapacityController,
-                            TextInputType.number,
-                            (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Please enter seating capacity';
-                              }
-                              if (!RegExp(r'^[0-9]+$').hasMatch(value)) {
-                                return 'Please enter numbers only';
-                              }
-                              return null;
-                            },
+      body: _isLoading
+          ? Center(child: CircularProgressIndicator(color: Color(0xFF5A3D1F)))
+          : SingleChildScrollView(
+              padding: EdgeInsets.all(16),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Rides & Vehicles Tabs
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black26,
+                            blurRadius: 10,
+                            offset: Offset(0, 5),
                           ),
                         ],
-
-                        SizedBox(height: 20),
-
-                        // Buttons Row
-                        //
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            // Cancel Button - now with more contrast
-                            _buildActionButton(
-                              Icons.close,
-                              "Cancel",
-                              Colors
-                                  .red, // Changed to red for better visibility and standard cancel indication
-                              () {
-                                Navigator.pop(context);
-                              },
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: InkWell(
+                              onTap: () => setState(() => _isRideSelected = true),
+                              child: Container(
+                                padding: EdgeInsets.symmetric(vertical: 15),
+                                decoration: BoxDecoration(
+                                  color: _isRideSelected ? Color(0xFF8B5E3B).withOpacity(0.2) : Colors.transparent,
+                                  borderRadius: BorderRadius.only(
+                                    topLeft: Radius.circular(12),
+                                    bottomLeft: Radius.circular(12),
+                                  ),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    "Rides",
+                                    style: TextStyle(
+                                      color: _isRideSelected ? Color(0xFF5A3D1F) : Colors.grey[600],
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
                             ),
-                            // Add Ride/Vehicle Button
-                            _buildActionButton(
-                              Icons.check_circle,
-                              _isRideSelected ? "Add Ride" : "Add Vehicle",
-                              Colors
-                                  .green, // Changed to green for positive action
-                              () {
-                                if (_formKey.currentState!.validate()) {
-                                  _isRideSelected
-                                      ? _uploadRideData()
-                                      : _uploadVehicleData();
-                                }
-                              },
+                          ),
+                          Expanded(
+                            child: InkWell(
+                              onTap: () => setState(() => _isRideSelected = false),
+                              child: Container(
+                                padding: EdgeInsets.symmetric(vertical: 15),
+                                decoration: BoxDecoration(
+                                  color: !_isRideSelected ? Color(0xFF8B5E3B).withOpacity(0.2) : Colors.transparent,
+                                  borderRadius: BorderRadius.only(
+                                    topRight: Radius.circular(12),
+                                    bottomRight: Radius.circular(12),
+                                  ),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    "Vehicles",
+                                    style: TextStyle(
+                                      color: !_isRideSelected ? Color(0xFF5A3D1F) : Colors.grey[600],
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: 20),
+
+                    // Add Photos Button
+                    GestureDetector(
+                      onTap: _pickImage,
+                      child: Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black26,
+                              blurRadius: 10,
+                              offset: Offset(0, 5),
                             ),
                           ],
+                        ),
+                        child: Column(
+                          children: [
+                            if (_selectedImage != null)
+                              Container(
+                                height: 120,
+                                width: 120,
+                                decoration: BoxDecoration(
+                                  image: DecorationImage(
+                                    image: FileImage(_selectedImage!),
+                                    fit: BoxFit.cover,
+                                  ),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              )
+                            else
+                              Container(
+                                height: 80,
+                                width: 80,
+                                decoration: BoxDecoration(
+                                  color: Color(0xFF8B5E3B).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(40),
+                                ),
+                                child: Icon(
+                                  Icons.add_a_photo,
+                                  color: Color(0xFF5A3D1F),
+                                  size: 40,
+                                ),
+                              ),
+                            SizedBox(height: 10),
+                            Text(
+                              _selectedImage != null ? "Change Photo" : "Add Photos",
+                              style: TextStyle(
+                                color: Color(0xFF5A3D1F),
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 20),
+
+                    // Show Ride or Vehicle fields based on selection
+                    if (_isRideSelected) ...[
+                      // Ride Number (Numbers only)
+                      _buildInputField(
+                        context,
+                        Icons.confirmation_number,
+                        "Ride number",
+                        _rideNumberController,
+                        TextInputType.number,
+                        (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter ride number';
+                          }
+                          if (!RegExp(r'^[0-9]+$').hasMatch(value)) {
+                            return 'Please enter numbers only';
+                          }
+                          return null;
+                        },
+                      ),
+
+                      // Vehicle Type Dropdown
+                      _buildDropdownField(
+                        "Vehicle Type",
+                        _selectedVehicleType,
+                        (String? newValue) {
+                          setState(() {
+                            _selectedVehicleType = newValue;
+                          });
+                        },
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please select vehicle type';
+                          }
+                          return null;
+                        },
+                      ),
+
+                      // Pickup Point
+                      _buildLocationField(
+                        "Pickup Point",
+                        _pickupController,
+                        true,
+                      ),
+                      SizedBox(height: 15),
+
+                      // Dropoff Point
+                      _buildLocationField(
+                        "Dropoff Point",
+                        _dropoffController,
+                        false,
+                      ),
+                      SizedBox(height: 15),
+
+                      // Distance (auto-calculated)
+                      _buildInputField(
+                        context,
+                        Icons.directions,
+                        "Distance (km)",
+                        _distanceController,
+                        TextInputType.numberWithOptions(decimal: true),
+                        (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please select both locations to calculate distance';
+                          }
+                          return null;
+                        },
+                        readOnly: true,
+                      ),
+
+                      // Departure Time (Time picker)
+                      GestureDetector(
+                        onTap: () => _selectTime(context),
+                        child: AbsorbPointer(
+                          child: _buildInputField(
+                            context,
+                            Icons.access_time,
+                            "Departure Time",
+                            _departureTimeController,
+                            TextInputType.datetime,
+                            (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please select departure time';
+                              }
+                              return null;
+                            },
+                          ),
+                        ),
+                      ),
+
+                      // Capacity (Numbers only)
+                      _buildInputField(
+                        context,
+                        Icons.people,
+                        "Capacity",
+                        _capacityController,
+                        TextInputType.number,
+                        (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter capacity';
+                          }
+                          if (!RegExp(r'^[0-9]+$').hasMatch(value)) {
+                            return 'Please enter numbers only';
+                          }
+                          return null;
+                        },
+                      ),
+
+                      // Total Cost (Numbers with decimal)
+                      _buildInputField(
+                        context,
+                        Icons.monetization_on,
+                        "Total Cost",
+                        _totalCostController,
+                        TextInputType.numberWithOptions(decimal: true),
+                        (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter total cost';
+                          }
+                          if (!RegExp(r'^[0-9]+(\.[0-9]{1,2})?$').hasMatch(value)) {
+                            return 'Please enter valid amount';
+                          }
+                          return null;
+                        },
+                      ),
+
+                      // Contact Information
+                      _buildInputField(
+                        context,
+                        Icons.phone,
+                        "Contact",
+                        _contactController,
+                        TextInputType.phone,
+                        (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter contact information';
+                          }
+                          return null;
+                        },
+                      ),
+                    ] else ...[
+                      // Number Plate
+                      _buildInputField(
+                        context,
+                        Icons.directions_car,
+                        "Number Plate",
+                        _numberPlateController,
+                        TextInputType.text,
+                        (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter number plate';
+                          }
+                          if (!RegExp(r'^[A-Z0-9\s]{3,15}$').hasMatch(value)) {
+                            return 'Enter valid plate (e.g., ABC 1234)';
+                          }
+                          return null;
+                        },
+                      ),
+
+                      // Vehicle Type Dropdown
+                      _buildDropdownField(
+                        "Vehicle Type",
+                        _selectedVehicleType,
+                        (String? newValue) {
+                          setState(() {
+                            _selectedVehicleType = newValue;
+                          });
+                        },
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please select vehicle type';
+                          }
+                          return null;
+                        },
+                      ),
+
+                      // Vehicle Capacity
+                      _buildInputField(
+                        context,
+                        Icons.people,
+                        "Seating Capacity",
+                        _vehicleCapacityController,
+                        TextInputType.number,
+                        (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter seating capacity';
+                          }
+                          if (!RegExp(r'^[0-9]+$').hasMatch(value)) {
+                            return 'Please enter numbers only';
+                          }
+                          return null;
+                        },
+                      ),
+                    ],
+
+                    SizedBox(height: 25),
+
+                    // Buttons Row
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // Cancel Button
+                        _buildActionButton(
+                          "Cancel",
+                          Colors.white,
+                          Color(0xFF5A3D1F),
+                          Icons.close,
+                          () {
+                            Navigator.pop(context);
+                          },
+                        ),
+                        
+                        // Add Ride/Vehicle Button
+                        _buildActionButton(
+                          _isRideSelected ? "Add Ride" : "Add Vehicle",
+                          Color(0xFF5A3D1F),
+                          Colors.white,
+                          Icons.check,
+                          () {
+                            if (_formKey.currentState!.validate()) {
+                              _isRideSelected
+                                  ? _uploadRideData()
+                                  : _uploadVehicleData();
+                            }
+                          },
                         ),
                       ],
                     ),
-                  ),
+                  ],
                 ),
               ),
-      bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: Colors.white,
-        selectedItemColor: Color(0xFF8B5E3B),
-        unselectedItemColor: Color(0xFF5A3D1F),
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        type: BottomNavigationBarType.fixed,
-        items: [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.directions_bus),
-            label: "Order",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.book_online),
-            label: "Records",
-          ),
-          BottomNavigationBarItem(icon: Icon(Icons.add), label: "Add Ride"),
-        ],
-      ),
+            ),
+      bottomNavigationBar: _buildBottomNavBar(),
     );
   }
 
@@ -898,78 +879,169 @@ class _RidesPageState extends State<RidesPage> {
     bool readOnly = false,
   }) {
     return Container(
-      margin: EdgeInsets.only(bottom: 10),
-      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      margin: EdgeInsets.only(bottom: 15),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black26,
+            blurRadius: 10,
+            offset: Offset(0, 5),
+          ),
+        ],
       ),
       child: TextFormField(
         controller: controller,
         keyboardType: keyboardType,
         readOnly: readOnly,
         decoration: InputDecoration(
-          icon: Icon(icon, color: Color(0xFF5A3D1F)),
           labelText: label,
-          border: InputBorder.none,
+          labelStyle: TextStyle(color: Colors.grey[600]),
+          prefixIcon: Icon(icon, color: Color(0xFF5A3D1F)),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: EdgeInsets.symmetric(vertical: 15, horizontal: 20),
         ),
         validator: validator,
       ),
     );
   }
 
-  Widget _buildTab(String label, bool isActive) {
+  Widget _buildDropdownField(
+    String label,
+    String? value,
+    void Function(String?) onChanged, {
+    String? Function(String?)? validator,
+  }) {
     return Container(
-      padding: EdgeInsets.symmetric(vertical: 10, horizontal: 25),
+      margin: EdgeInsets.only(bottom: 15),
       decoration: BoxDecoration(
-        color: isActive ? Colors.white : Color(0xFF8B5E3B),
-        borderRadius: BorderRadius.circular(10),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black26,
+            blurRadius: 10,
+            offset: Offset(0, 5),
+          ),
+        ],
       ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: isActive ? Color(0xFF5A3D1F) : Colors.white,
-          fontWeight: FontWeight.bold,
+      child: DropdownButtonFormField<String>(
+        value: value,
+        icon: Icon(Icons.arrow_drop_down, color: Color(0xFF5A3D1F)),
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: TextStyle(color: Colors.grey[600]),
+          prefixIcon: Icon(Icons.directions_car, color: Color(0xFF5A3D1F)),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: EdgeInsets.symmetric(vertical: 0, horizontal: 20),
         ),
+        validator: validator,
+        items: _vehicleTypes.map((String type) {
+          return DropdownMenuItem<String>(
+            value: type,
+            child: Text(type),
+          );
+        }).toList(),
+        onChanged: onChanged,
       ),
     );
   }
 
   Widget _buildActionButton(
+    String text,
+    Color backgroundColor,
+    Color textColor,
     IconData icon,
-    String label,
-    Color color,
     VoidCallback onPressed,
   ) {
-    return Column(
-      children: [
-        Container(
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(30),
-            border: Border.all(color: color, width: 2),
-          ),
-          child: IconButton(
-            icon: Icon(
-              icon,
-              color:
-                  Colors
-                      .white, // Changed from color to white for better visibility
-              size: 30,
+    return Expanded(
+      child: Container(
+        margin: EdgeInsets.symmetric(horizontal: 8),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black26,
+              blurRadius: 10,
+              offset: Offset(0, 5),
             ),
-            onPressed: onPressed,
+          ],
+        ),
+        child: ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: backgroundColor,
+            foregroundColor: textColor,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(
+                color: Color(0xFF5A3D1F),
+                width: backgroundColor == Colors.white ? 1 : 0,
+              ),
+            ),
+            padding: EdgeInsets.symmetric(vertical: 15),
+            elevation: 5,
+          ),
+          onPressed: onPressed,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 20),
+              SizedBox(width: 8),
+              Text(
+                text,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+            ],
           ),
         ),
-        SizedBox(height: 5),
-        Text(
-          label,
-          style: TextStyle(
-            color:
-                Colors
-                    .white, // Changed from color to white for better visibility
-            fontWeight: FontWeight.bold,
-            fontSize: 14,
-          ),
+      ),
+    );
+  }
+
+  BottomNavigationBar _buildBottomNavBar() {
+    return BottomNavigationBar(
+      backgroundColor: Colors.white,
+      selectedItemColor: Color(0xFF5A3D1F),
+      unselectedItemColor: Colors.grey[600],
+      currentIndex: _selectedIndex,
+      onTap: _onItemTapped,
+      type: BottomNavigationBarType.fixed,
+      elevation: 10,
+      selectedLabelStyle: TextStyle(fontWeight: FontWeight.bold),
+      items: [
+        BottomNavigationBarItem(
+          icon: Icon(Icons.home_outlined),
+          activeIcon: Icon(Icons.home),
+          label: "Home",
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.directions_bus_outlined),
+          activeIcon: Icon(Icons.directions_bus),
+          label: "Order",
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.history_outlined),
+          activeIcon: Icon(Icons.history),
+          label: "Records",
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.add_circle_outline),
+          activeIcon: Icon(Icons.add_circle),
+          label: "Add Ride",
         ),
       ],
     );

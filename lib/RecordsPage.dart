@@ -23,7 +23,7 @@ class MyApp extends StatelessWidget {
       title: 'Booking Records',
       theme: ThemeData(
         primarySwatch: Colors.brown,
-        scaffoldBackgroundColor: const Color(0xFFF8F4E9),
+        scaffoldBackgroundColor: Colors.grey[50],
       ),
       home: const RecordsPage(),
     );
@@ -55,7 +55,7 @@ class _RecordsPageState extends State<RecordsPage> {
 
     try {
       final response = await supabase
-          .from('request_ride') // Changed from 'booking' to 'request_ride'
+          .from('request_ride')
           .select('''
             id,
             ride_id,
@@ -75,9 +75,9 @@ class _RecordsPageState extends State<RecordsPage> {
       });
     } catch (e) {
       setState(() => isLoading = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error loading bookings: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error loading bookings: $e')),
+      );
     }
   }
 
@@ -85,7 +85,7 @@ class _RecordsPageState extends State<RecordsPage> {
     try {
       setState(() => isLoading = true);
       await supabase
-          .from('request_ride') // Changed from 'booking' to 'request_ride'
+          .from('request_ride')
           .delete()
           .eq('id', bookingId);
 
@@ -95,36 +95,39 @@ class _RecordsPageState extends State<RecordsPage> {
       await _loadBookings();
     } catch (e) {
       setState(() => isLoading = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to cancel booking: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to cancel booking: $e')),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F4E9),
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        backgroundColor: const Color(0xFF5D4037),
+        backgroundColor: Colors.white,
+        elevation: 0,
         title: const Text(
           'All Bookings',
           style: TextStyle(
-            color: Colors.white,
+            color: Color(0xFF5A3D1F),
             fontWeight: FontWeight.bold,
-            fontSize: 20,
+            fontSize: 24,
           ),
-        ),
-        centerTitle: true,
-        elevation: 4,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(bottom: Radius.circular(15)),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.white),
-            onPressed: _loadBookings,
+            icon: Icon(Icons.notifications_none, color: Color(0xFF5A3D1F)),
+            onPressed: () {},
+          ),
+          Padding(
+            padding: EdgeInsets.only(right: 10),
+            child: CircleAvatar(
+              backgroundColor: Color(0xFF5A3D1F).withOpacity(0.1),
+              child: Icon(Icons.person, color: Color(0xFF5A3D1F)),
+            ),
           ),
         ],
       ),
@@ -137,7 +140,7 @@ class _RecordsPageState extends State<RecordsPage> {
     if (isLoading) {
       return Center(
         child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(const Color(0xFF5D4037)),
+          color: Color(0xFF5A3D1F),
         ),
       );
     }
@@ -147,16 +150,35 @@ class _RecordsPageState extends State<RecordsPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.calendar_today, size: 60, color: Colors.grey),
+            Icon(Icons.calendar_today, size: 60, color: Colors.grey[400]),
             const SizedBox(height: 16),
             Text(
               'No bookings found',
-              style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+              style: TextStyle(
+                fontSize: 18,
+                color: Colors.grey[600],
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
               'Check back later for new bookings',
               style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: _loadBookings,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Color(0xFF5A3D1F),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
+              child: Text(
+                'Refresh',
+                style: TextStyle(color: Colors.white),
+              ),
             ),
           ],
         ),
@@ -165,7 +187,7 @@ class _RecordsPageState extends State<RecordsPage> {
 
     return RefreshIndicator(
       onRefresh: _loadBookings,
-      color: const Color(0xFF5D4037),
+      color: Color(0xFF5A3D1F),
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: bookings.length,
@@ -182,58 +204,57 @@ class _RecordsPageState extends State<RecordsPage> {
   }
 
   Widget _buildBottomNavBar() {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
-        boxShadow: const [
-          BoxShadow(color: Colors.black12, blurRadius: 10, spreadRadius: 2),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
-        child: BottomNavigationBar(
-          backgroundColor: Colors.white,
-          selectedItemColor: const Color(0xFF5D4037),
-          unselectedItemColor: Colors.grey[600],
-          currentIndex: _selectedIndex,
-          onTap: (index) {
-            setState(() => _selectedIndex = index);
-            Navigator.pushNamed(context, _pages[index]);
-          },
-          type: BottomNavigationBarType.fixed,
-          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home_outlined),
-              activeIcon: Icon(Icons.home),
-              label: "Home",
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.directions_car_outlined),
-              activeIcon: Icon(Icons.directions_car),
-              label: "Order",
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.history_outlined),
-              activeIcon: Icon(Icons.history),
-              label: "Records",
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.add_circle_outline),
-              activeIcon: Icon(Icons.add_circle),
-              label: "Add Ride",
-            ),
-          ],
+    return BottomNavigationBar(
+      backgroundColor: Colors.white,
+      selectedItemColor: Color(0xFF5A3D1F),
+      unselectedItemColor: Colors.grey[600],
+      currentIndex: _selectedIndex,
+      onTap: (index) {
+        setState(() => _selectedIndex = index);
+        Navigator.pushNamed(context, _pages[index]);
+      },
+      type: BottomNavigationBarType.fixed,
+      elevation: 10,
+      selectedLabelStyle: TextStyle(fontWeight: FontWeight.bold),
+      items: const [
+        BottomNavigationBarItem(
+          icon: Icon(Icons.home_outlined),
+          activeIcon: Icon(Icons.home),
+          label: "Home",
         ),
-      ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.directions_bus_outlined),
+          activeIcon: Icon(Icons.directions_bus),
+          label: "Order",
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.history_outlined),
+          activeIcon: Icon(Icons.history),
+          label: "Records",
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.add_circle_outline),
+          activeIcon: Icon(Icons.add_circle),
+          label: "Add Ride",
+        ),
+      ],
     );
   }
 
   Widget _buildErrorCard(String error) {
-    return Card(
+    return Container(
       margin: const EdgeInsets.only(bottom: 16),
-      color: Colors.red[50],
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black26,
+            blurRadius: 10,
+            offset: Offset(0, 5),
+          ),
+        ],
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -241,20 +262,20 @@ class _RecordsPageState extends State<RecordsPage> {
           children: [
             Row(
               children: [
-                const Icon(Icons.error_outline, color: Colors.red),
+                Icon(Icons.error_outline, color: Colors.red[400]),
                 const SizedBox(width: 8),
                 Text(
                   'Error loading booking',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: Colors.red,
+                    color: Colors.red[400],
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 8),
-            Text(error, style: const TextStyle(color: Colors.red)),
+            Text(error, style: TextStyle(color: Colors.red[400])),
           ],
         ),
       ),
@@ -264,157 +285,147 @@ class _RecordsPageState extends State<RecordsPage> {
   Widget _buildBookingCard(Map<String, dynamic> booking) {
     try {
       // Parse dates
-      final bookingTime =
-          booking['booking_time'] != null
-              ? DateTime.parse(booking['booking_time'])
-              : DateTime.now();
-      final departureTime =
-          booking['departure_time'] != null
-              ? DateTime.parse(booking['departure_time'])
-              : null;
+      final bookingTime = booking['booking_time'] != null
+          ? DateTime.parse(booking['booking_time'])
+          : DateTime.now();
+      final departureTime = booking['departure_time'] != null
+          ? DateTime.parse(booking['departure_time'])
+          : null;
 
       // Format dates
       final formattedBookingDate = DateFormat('MMM d, y').format(bookingTime);
       final formattedBookingTime = DateFormat('h:mm a').format(bookingTime);
-      final formattedDeparture =
-          departureTime != null
-              ? DateFormat('MMM d, h:mm a').format(departureTime)
-              : 'Not specified';
+      final formattedDeparture = departureTime != null
+          ? DateFormat('MMM d, h:mm a').format(departureTime)
+          : 'Not specified';
 
-      return Card(
-        elevation: 3,
+      return Container(
         margin: const EdgeInsets.only(bottom: 16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(15),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Booking #${booking['id']?.toString().substring(0, 8) ?? 'N/A'}',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey[700],
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _getStatusColor(booking['type'] ?? 'book'),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        (booking['type'] ?? 'book').toUpperCase(),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                _buildInfoRow(
-                  'Vehicle Type:',
-                  booking['vehicle_type'] ?? 'Unknown',
-                ),
-                const SizedBox(height: 8),
-                _buildInfoRow(
-                  'Pickup:',
-                  booking['pickup'] ?? 'Unknown location',
-                ),
-                const SizedBox(height: 8),
-                _buildInfoRow(
-                  'Dropoff:',
-                  booking['dropoff'] ?? 'Unknown location',
-                ),
-                const SizedBox(height: 8),
-                _buildInfoRow('Departure:', formattedDeparture),
-                const SizedBox(height: 8),
-                _buildInfoRow(
-                  'Total Cost:',
-                  '\$${booking['total_cost']?.toStringAsFixed(2) ?? '0.00'}',
-                ),
-                const SizedBox(height: 16),
-                Divider(height: 1, color: Colors.grey[300]),
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Booked on',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          formattedBookingDate,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'at',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          formattedBookingTime,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                    ElevatedButton(
-                      onPressed: () => _showCancelDialog(booking['id']),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red[50],
-                        foregroundColor: Colors.red,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          side: const BorderSide(color: Colors.red),
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                      ),
-                      child: const Text(
-                        'Cancel',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black26,
+              blurRadius: 10,
+              offset: Offset(0, 5),
             ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Booking #${booking['id']?.toString().substring(0, 8) ?? 'N/A'}',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey[700],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _getStatusColor(booking['type'] ?? 'book'),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      (booking['type'] ?? 'book').toUpperCase(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              _buildInfoRow(
+                Icons.directions_car,
+                'Vehicle Type:',
+                booking['vehicle_type'] ?? 'Unknown',
+              ),
+              const SizedBox(height: 12),
+              _buildInfoRow(
+                Icons.location_on,
+                'Pickup:',
+                booking['pickup'] ?? 'Unknown location',
+              ),
+              const SizedBox(height: 12),
+              _buildInfoRow(
+                Icons.location_on,
+                'Dropoff:',
+                booking['dropoff'] ?? 'Unknown location',
+              ),
+              const SizedBox(height: 12),
+              _buildInfoRow(
+                Icons.access_time,
+                'Departure:',
+                formattedDeparture,
+              ),
+              const SizedBox(height: 12),
+              _buildInfoRow(
+                Icons.monetization_on,
+                'Total Cost:',
+                '\$${booking['total_cost']?.toStringAsFixed(2) ?? '0.00'}',
+              ),
+              const SizedBox(height: 16),
+              Divider(height: 1, color: Colors.grey[300]),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Booked on $formattedBookingDate',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                      Text(
+                        'at $formattedBookingTime',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                  ElevatedButton(
+                    onPressed: () => _showCancelDialog(booking['id']),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.red,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: BorderSide(color: Colors.red),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                    ),
+                    child: const Text(
+                      'Cancel',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       );
@@ -423,48 +434,31 @@ class _RecordsPageState extends State<RecordsPage> {
     }
   }
 
-  Widget _buildInfoRow(String label, String value) {
+  Widget _buildInfoRow(IconData icon, String label, String value) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(
-          width: 100,
-          child: Text(
-            label,
-            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            value,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildLocationRow(IconData icon, String label, String location) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, color: const Color(0xFF5D4037), size: 20),
-        const SizedBox(width: 8),
+        Icon(icon, color: Color(0xFF5A3D1F), size: 20),
+        const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 label,
-                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 4),
               Text(
-                location,
-                style: const TextStyle(
+                value,
+                style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
+                  color: Color(0xFF5A3D1F),
                 ),
               ),
             ],
@@ -472,14 +466,14 @@ class _RecordsPageState extends State<RecordsPage> {
         ),
       ],
     );
-  }//
+  }
 
   Color _getStatusColor(String type) {
     switch (type.toLowerCase()) {
       case 'order':
-        return Colors.green;
+        return Color(0xFF8B5E3B);
       case 'book':
-        return Colors.blue;
+        return Color(0xFF5A3D1F);
       default:
         return Colors.orange;
     }
@@ -490,31 +484,84 @@ class _RecordsPageState extends State<RecordsPage> {
       context: context,
       barrierDismissible: true,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Cancel Booking'),
-          content: const Text('Are you sure you want to cancel this booking?'),
+        return Dialog(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15),
+            borderRadius: BorderRadius.circular(12),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text(
-                'No',
-                style: TextStyle(color: Color(0xFF5D4037)),
-              ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Cancel Booking',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF5A3D1F),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Are you sure you want to cancel this booking?',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey[700],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: BorderSide(color: Color(0xFF5A3D1F)),
+                        ),
+                      ),
+                      child: Text(
+                        'No',
+                        style: TextStyle(
+                          color: Color(0xFF5A3D1F),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        _cancelBooking(bookingId);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
+                      ),
+                      child: const Text(
+                        'Yes, Cancel',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                _cancelBooking(bookingId);
-              },
-              child: const Text(
-                'Yes, Cancel',
-                style: TextStyle(color: Colors.red),
-              ),
-            ),
-          ],
+          ),
         );
       },
     );
