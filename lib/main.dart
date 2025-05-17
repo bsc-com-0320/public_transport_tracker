@@ -7,6 +7,7 @@ import 'package:public_transport_tracker/GPSPage.dart';
 import 'package:public_transport_tracker/OrderPage.dart';
 import 'package:public_transport_tracker/RidesPage.dart';
 import 'package:public_transport_tracker/map_screen.dart';
+import 'package:public_transport_tracker/paychangu_payment_page.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'Homepage.dart';
 import 'LoginPage.dart';
@@ -50,6 +51,8 @@ class MyApp extends StatelessWidget {
          '/editprofile': (context) => EditProfilePage(),
          '/gps': (context) => GPSPage(),
          '/map': (context) => MapScreen(),
+          '/paychangu': (context) => PayChanguPaymentPage(),
+         
          
          
 
