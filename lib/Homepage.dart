@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:public_transport_tracker/RecordsPage.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class HomePage extends StatefulWidget {
   @override
@@ -35,6 +36,133 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
+  Future<void> _showLogoutDialog() async {
+    return showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Text(
+            "Logout",
+            style: TextStyle(
+              color: Color(0xFF5A3D1F),
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: Text(
+            "Are you sure you want to logout?",
+            style: TextStyle(color: Colors.grey[700]),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text("Cancel", style: TextStyle(color: Color(0xFF5A3D1F))),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Color(0xFF5A3D1F),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              onPressed: () async {
+                Navigator.of(context).pop();
+                await _logout();
+              },
+              child: Text("Logout", style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _logout() async {
+    try {
+      await Supabase.instance.client.auth.signOut();
+      Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Logout failed: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _showProfileMenu() {
+    showModalBottomSheet(
+      context: context,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 60,
+                height: 5,
+                margin: EdgeInsets.only(bottom: 15),
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(5),
+                ),
+              ),
+              _buildMenuOption(
+                icon: Icons.settings,
+                title: "Settings",
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.pushNamed(context, '/settings');
+                },
+              ),
+              Divider(height: 20, color: Colors.grey[200]),
+              _buildMenuOption(
+                icon: Icons.logout,
+                title: "Logout",
+                onTap: () {
+                  Navigator.pop(context);
+                  _showLogoutDialog();
+                },
+                isLogout: true,
+              ),
+              SizedBox(height: 10),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildMenuOption({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+    bool isLogout = false,
+  }) {
+    return ListTile(
+      leading: Icon(icon, color: isLogout ? Colors.red : Color(0xFF5A3D1F)),
+      title: Text(
+        title,
+        style: TextStyle(
+          color: isLogout ? Colors.red : Color(0xFF5A3D1F),
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      onTap: onTap,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -58,9 +186,16 @@ class _HomePageState extends State<HomePage> {
           ),
           Padding(
             padding: EdgeInsets.only(right: 10),
-            child: CircleAvatar(
-              backgroundColor: Color(0xFF5A3D1F).withOpacity(0.1),
-              child: Icon(Icons.person, color: Color(0xFF5A3D1F)),
+            child: // After (wrapped in GestureDetector)
+                GestureDetector(
+              onTap: _showProfileMenu, // Added this
+              child: Padding(
+                padding: EdgeInsets.only(right: 10),
+                child: CircleAvatar(
+                  backgroundColor: Color(0xFF5A3D1F).withOpacity(0.1),
+                  child: Icon(Icons.person, color: Color(0xFF5A3D1F)),
+                ),
+              ),
             ),
           ),
         ],
@@ -72,23 +207,22 @@ class _HomePageState extends State<HomePage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Fast Alert Banner
-              if (_showAlert)
-                _buildAlertBanner(),
-              
+              if (_showAlert) _buildAlertBanner(),
+
               SizedBox(height: 20),
-              
+
               // User Summary
               _buildUserSummary(),
               SizedBox(height: 25),
-              
+
               // Action Cards
               _buildDashboardCards(),
               SizedBox(height: 25),
-              
+
               // Quick Stats
               _buildQuickStats(),
               SizedBox(height: 25),
-              
+
               // Recent Activity
               _buildRecentActivity(),
             ],
@@ -134,10 +268,7 @@ class _HomePageState extends State<HomePage> {
       children: [
         Text(
           "Welcome back!",
-          style: TextStyle(
-            fontSize: 18,
-            color: Colors.grey[600],
-          ),
+          style: TextStyle(fontSize: 18, color: Colors.grey[600]),
         ),
         SizedBox(height: 10),
         Row(
@@ -194,10 +325,7 @@ class _HomePageState extends State<HomePage> {
               ),
               Text(
                 label,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[600],
-                ),
+                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
               ),
             ],
           ),
@@ -205,154 +333,161 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
-Widget _buildDashboardCards() {
-  return Column(
-    children: [
-      SizedBox(
-        height: 200, // Reduced from 220 to prevent overflow
-        child: PageView(
-          controller: _pageController,
-          padEnds: false,
-          children: [
-            _buildDashboardCard(
-              iconUrl: 'https://cdn-icons-png.flaticon.com/512/3663/3663360.png',
-              title: "Instant Ride",
-              subtitle: "Book now with 1 tap",
-              buttonText: "Book Now",
-              gradientColors: [Color(0xFF8B5E3B), Color(0xFF5A3D1F)],
-              onTap: () => Navigator.pushNamed(context, '/order'),
-            ),
-            _buildDashboardCard(
-              iconUrl: 'https://cdn-icons-png.flaticon.com/512/3132/3132693.png',
-              title: "Your Journeys",
-              subtitle: "Past trips & receipts",
-              buttonText: "View History",
-              gradientColors: [Color(0xFF5A3D1F), Color(0xFF3A2A15)],
-              onTap: () => Navigator.pushNamed(context, '/records'),
-            ),
-            _buildDashboardCard(
-              iconUrl: 'https://cdn-icons-png.flaticon.com/512/1570/1570887.png',
-              title: "Driver Portal",
-              subtitle: "Manage vehicles",
-              buttonText: "Dashboard",
-              gradientColors: [Color(0xFF3A2A15), Color(0xFF1A120B)],
-              onTap: () => Navigator.pushNamed(context, '/driver-records'),
-            ),
-          ],
-        ),
-      ),
-      _buildPageIndicator(),
-    ],
-  );
-}
 
-Widget _buildDashboardCard({
-  required String iconUrl,
-  required String title,
-  required String subtitle,
-  required String buttonText,
-  required List<Color> gradientColors,
-  required VoidCallback onTap,
-}) {
-  return Container(
-    margin: EdgeInsets.symmetric(horizontal: 8),
-    decoration: BoxDecoration(
-      gradient: LinearGradient(
-        colors: gradientColors,
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      ),
-      borderRadius: BorderRadius.circular(20),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black26,
-          blurRadius: 15,
-          offset: Offset(0, 10),
-        )
-      ],
-    ),
-    child: Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: onTap,
-        child: Padding(
-          padding: EdgeInsets.all(15), // Reduced padding from 20
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween, // Better space distribution
-            crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildDashboardCards() {
+    return Column(
+      children: [
+        SizedBox(
+          height: 200, // Reduced from 220 to prevent overflow
+          child: PageView(
+            controller: _pageController,
+            padEnds: false,
             children: [
-              Container(
-                width: 50, // Reduced from 60
-                height: 50, // Reduced from 60
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                child: Center(
-                  child: Image.network(
-                    iconUrl,
-                    width: 30, // Reduced from 40
-                    height: 30, // Reduced from 40
-                    errorBuilder: (_, __, ___) => Icon(
-                      Icons.directions_car,
-                      color: Colors.white,
-                      size: 24, // Reduced from 30
-                    ),
-                  ),
-                ),
+              _buildDashboardCard(
+                iconUrl:
+                    'https://cdn-icons-png.flaticon.com/512/3663/3663360.png',
+                title: "Instant Ride",
+                subtitle: "Book now with 1 tap",
+                buttonText: "Book Now",
+                gradientColors: [Color(0xFF8B5E3B), Color(0xFF5A3D1F)],
+                onTap: () => Navigator.pushNamed(context, '/order'),
               ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18, // Reduced from 20
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  SizedBox(height: 4), // Reduced from 5
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.9),
-                      fontSize: 13, // Reduced from 14
-                    ),
-                  ),
-                ],
+              _buildDashboardCard(
+                iconUrl:
+                    'https://cdn-icons-png.flaticon.com/512/3132/3132693.png',
+                title: "Your Journeys",
+                subtitle: "Past trips & receipts",
+                buttonText: "View History",
+                gradientColors: [Color(0xFF5A3D1F), Color(0xFF3A2A15)],
+                onTap: () => Navigator.pushNamed(context, '/records'),
               ),
-              SizedBox(height: 10), // Reduced from 15
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8), // Reduced from 10
-                  ),
-                  padding: EdgeInsets.symmetric(
-                    horizontal: 16, // Reduced from 20
-                    vertical: 8,  // Reduced from 10
-                  ),
-                ),
-                onPressed: onTap,
-                child: Text(
-                  buttonText,
-                  style: TextStyle(
-                    color: gradientColors.first,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14, // Added font size for consistency
-                  ),
-                ),
+              _buildDashboardCard(
+                iconUrl:
+                    'https://cdn-icons-png.flaticon.com/512/1570/1570887.png',
+                title: "Driver Portal",
+                subtitle: "Manage vehicles",
+                buttonText: "Dashboard",
+                gradientColors: [Color(0xFF3A2A15), Color(0xFF1A120B)],
+                onTap: () => Navigator.pushNamed(context, '/driver-records'),
               ),
             ],
           ),
         ),
+        _buildPageIndicator(),
+      ],
+    );
+  }
+
+  Widget _buildDashboardCard({
+    required String iconUrl,
+    required String title,
+    required String subtitle,
+    required String buttonText,
+    required List<Color> gradientColors,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: 8),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: gradientColors,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black26,
+            blurRadius: 15,
+            offset: Offset(0, 10),
+          ),
+        ],
       ),
-    ),
-  );
-}
-//
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: onTap,
+          child: Padding(
+            padding: EdgeInsets.all(15), // Reduced padding from 20
+            child: Column(
+              mainAxisAlignment:
+                  MainAxisAlignment.spaceBetween, // Better space distribution
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 50, // Reduced from 60
+                  height: 50, // Reduced from 60
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  child: Center(
+                    child: Image.network(
+                      iconUrl,
+                      width: 30, // Reduced from 40
+                      height: 30, // Reduced from 40
+                      errorBuilder:
+                          (_, __, ___) => Icon(
+                            Icons.directions_car,
+                            color: Colors.white,
+                            size: 24, // Reduced from 30
+                          ),
+                    ),
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18, // Reduced from 20
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 4), // Reduced from 5
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.9),
+                        fontSize: 13, // Reduced from 14
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 10), // Reduced from 15
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8), // Reduced from 10
+                    ),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 16, // Reduced from 20
+                      vertical: 8, // Reduced from 10
+                    ),
+                  ),
+                  onPressed: onTap,
+                  child: Text(
+                    buttonText,
+                    style: TextStyle(
+                      color: gradientColors.first,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14, // Added font size for consistency
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  //
   Widget _buildPageIndicator() {
     return Padding(
       padding: EdgeInsets.only(top: 10),
@@ -365,7 +500,8 @@ Widget _buildDashboardCard({
             margin: EdgeInsets.symmetric(horizontal: 4),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: index == _currentPage ? Color(0xFF5A3D1F) : Colors.grey[300],
+              color:
+                  index == _currentPage ? Color(0xFF5A3D1F) : Colors.grey[300],
             ),
           );
         }),
@@ -428,11 +564,7 @@ Widget _buildDashboardCard({
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 6,
-            offset: Offset(0, 3),
-          ),
+          BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 3)),
         ],
       ),
       child: Column(
@@ -447,13 +579,7 @@ Widget _buildDashboardCard({
               color: Color(0xFF5A3D1F),
             ),
           ),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[600],
-            ),
-          ),
+          Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
         ],
       ),
     );
@@ -521,11 +647,7 @@ Widget _buildDashboardCard({
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 6,
-            offset: Offset(0, 3),
-          ),
+          BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 3)),
         ],
       ),
       child: Row(
@@ -556,20 +678,14 @@ Widget _buildDashboardCard({
                 ),
                 Text(
                   activities[index]["subtitle"] as String,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                  ),
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                 ),
               ],
             ),
           ),
           Text(
             activities[index]["time"] as String,
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[500],
-            ),
+            style: TextStyle(fontSize: 12, color: Colors.grey[500]),
           ),
         ],
       ),

@@ -38,7 +38,7 @@ class _SignInPageState extends State<SignInPage> {
             );
           }
         } else {
-          Navigator.pushReplacementNamed(context, '/home');
+          Navigator.pushReplacementNamed(context, '/');
         }
       }
     } on AuthException catch (error) {
