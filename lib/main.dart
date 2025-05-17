@@ -3,6 +3,7 @@ import 'package:public_transport_tracker/AccountsPage.dart';
 import 'package:public_transport_tracker/LoginPage.dart';
 import 'package:public_transport_tracker/SignUpPage.dart';
 import 'package:public_transport_tracker/forgot_password_page.dart';
+import 'package:public_transport_tracker/profile_page.dart';
 import 'package:public_transport_tracker/verify_email_page.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -46,6 +47,7 @@ class MyApp extends StatelessWidget {
         '/map': (context) => MapScreen(),
         '/account': (context) => AccountsPage(),
         '/forgot-password': (context) => const ForgotPasswordPage(),
+        '/profile': (context) => const ProfilePage(),
       },
       // Add error handling for unknown routes
       onUnknownRoute: (settings) {

@@ -119,11 +119,11 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
               _buildMenuOption(
-                icon: Icons.settings,
-                title: "Settings",
+                icon: Icons.person,
+                title: "Profile",
                 onTap: () {
                   Navigator.pop(context);
-                  Navigator.pushNamed(context, '/settings');
+                  Navigator.pushNamed(context, '/profile');
                 },
               ),
               Divider(height: 20, color: Colors.grey[200]),
@@ -634,7 +634,7 @@ class _HomePageState extends State<HomePage> {
       {
         "icon": Icons.payment,
         "title": "Payment Received",
-        "subtitle": "Ksh 1,200 for ride #4582",
+        "subtitle": "K 1,200 for ride #4582",
         "time": "2 days ago",
         "color": Color(0xFF3A2A15),
       },
