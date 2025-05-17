@@ -18,6 +18,9 @@ class _SignUpPageState extends State<SignUpPage> {
   final _addressController = TextEditingController();
   final _businessNameController = TextEditingController();
 
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
+
   bool _isLoading = false;
   bool _isDriver = false;
   final _supabase = Supabase.instance.client;
@@ -102,7 +105,9 @@ class _SignUpPageState extends State<SignUpPage> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  validator: (value) => !_isDriver && value!.isEmpty ? 'Required' : null,
+                  validator:
+                      (value) =>
+                          !_isDriver && value!.isEmpty ? 'Required' : null,
                 ),
               if (_isDriver)
                 TextFormField(
@@ -114,7 +119,9 @@ class _SignUpPageState extends State<SignUpPage> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  validator: (value) => _isDriver && value!.isEmpty ? 'Required' : null,
+                  validator:
+                      (value) =>
+                          _isDriver && value!.isEmpty ? 'Required' : null,
                 ),
               const SizedBox(height: 20),
 
@@ -131,7 +138,9 @@ class _SignUpPageState extends State<SignUpPage> {
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) return 'Required';
-                  if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                  if (!RegExp(
+                    r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                  ).hasMatch(value)) {
                     return 'Enter a valid email';
                   }
                   return null;
@@ -170,10 +179,23 @@ class _SignUpPageState extends State<SignUpPage> {
               // Password Field
               TextFormField(
                 controller: _passwordController,
-                obscureText: true,
+                obscureText: _obscurePassword,
                 decoration: InputDecoration(
                   labelText: 'Create Password',
                   prefixIcon: Icon(Icons.lock, color: Color(0xFF5A3D1F)),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscurePassword
+                          ? Icons.visibility
+                          : Icons.visibility_off,
+                      color: Color(0xFF5A3D1F),
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _obscurePassword = !_obscurePassword;
+                      });
+                    },
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -189,17 +211,31 @@ class _SignUpPageState extends State<SignUpPage> {
               // Confirm Password Field
               TextFormField(
                 controller: _confirmPasswordController,
-                obscureText: true,
+                obscureText: _obscureConfirmPassword,
                 decoration: InputDecoration(
                   labelText: 'Confirm Password',
                   prefixIcon: Icon(Icons.lock, color: Color(0xFF5A3D1F)),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscureConfirmPassword
+                          ? Icons.visibility
+                          : Icons.visibility_off,
+                      color: Color(0xFF5A3D1F),
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _obscureConfirmPassword = !_obscureConfirmPassword;
+                      });
+                    },
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) return 'Required';
-                  if (value != _passwordController.text) return 'Passwords do not match';
+                  if (value != _passwordController.text)
+                    return 'Passwords do not match';
                   return null;
                 },
               ),
@@ -217,15 +253,13 @@ class _SignUpPageState extends State<SignUpPage> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: _isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text(
-                          'Sign Up',
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: Colors.white,
+                  child:
+                      _isLoading
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : const Text(
+                            'Sign Up',
+                            style: TextStyle(fontSize: 18, color: Colors.white),
                           ),
-                        ),
                 ),
               ),
               const SizedBox(height: 24),
@@ -234,7 +268,8 @@ class _SignUpPageState extends State<SignUpPage> {
                 children: [
                   const Text("Already have an account? "),
                   TextButton(
-                    onPressed: () => Navigator.pushReplacementNamed(context, '/login'),
+                    onPressed:
+                        () => Navigator.pushReplacementNamed(context, '/login'),
                     child: Text(
                       'Sign In',
                       style: TextStyle(
@@ -289,7 +324,9 @@ class _SignUpPageState extends State<SignUpPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Verification email sent! Please check your email.'),
+              content: Text(
+                'Verification email sent! Please check your email.',
+              ),
               duration: Duration(seconds: 5),
             ),
           );
@@ -298,7 +335,7 @@ class _SignUpPageState extends State<SignUpPage> {
       }
     } on AuthException catch (error) {
       String errorMessage = error.message;
-      
+
       if (error.message.contains('already registered')) {
         errorMessage = 'This email is already registered. Please sign in.';
       } else if (error.message.contains('User already registered')) {

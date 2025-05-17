@@ -14,24 +14,27 @@ class _SignInPageState extends State<SignInPage> {
   final _passwordController = TextEditingController();
   bool _isLoading = false;
   final _supabase = Supabase.instance.client;
+  bool _obscurePassword = true;
 
   Future<void> _signIn() async {
     if (!_formKey.currentState!.validate()) return;
-    
+
     setState(() => _isLoading = true);
     try {
       final response = await _supabase.auth.signInWithPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
-      
+
       if (response.user != null && mounted) {
         if (response.user?.emailConfirmedAt == null) {
           await _supabase.auth.signOut();
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('Please verify your email first. Check your inbox.'),
+                content: Text(
+                  'Please verify your email first. Check your inbox.',
+                ),
                 backgroundColor: Colors.orange,
                 duration: Duration(seconds: 5),
               ),
@@ -43,7 +46,7 @@ class _SignInPageState extends State<SignInPage> {
       }
     } on AuthException catch (error) {
       String errorMessage = error.message;
-      
+
       if (error.message.contains('Invalid login credentials')) {
         errorMessage = 'Incorrect email or password';
       } else if (error.message.contains('Email not confirmed')) {
@@ -103,10 +106,7 @@ class _SignInPageState extends State<SignInPage> {
               const SizedBox(height: 8),
               Text(
                 'Enter your email and password',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey[600],
-                ),
+                style: TextStyle(fontSize: 16, color: Colors.grey[600]),
               ),
               const SizedBox(height: 32),
               TextFormField(
@@ -121,7 +121,9 @@ class _SignInPageState extends State<SignInPage> {
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) return 'Required';
-                  if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                  if (!RegExp(
+                    r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                  ).hasMatch(value)) {
                     return 'Enter a valid email';
                   }
                   return null;
@@ -130,10 +132,23 @@ class _SignInPageState extends State<SignInPage> {
               const SizedBox(height: 20),
               TextFormField(
                 controller: _passwordController,
-                obscureText: true,
+                obscureText: _obscurePassword, // Use the variable here
                 decoration: InputDecoration(
                   labelText: 'Password',
                   prefixIcon: Icon(Icons.lock, color: Color(0xFF5A3D1F)),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscurePassword
+                          ? Icons.visibility
+                          : Icons.visibility_off,
+                      color: Color(0xFF5A3D1F),
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _obscurePassword = !_obscurePassword;
+                      });
+                    },
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -156,15 +171,13 @@ class _SignInPageState extends State<SignInPage> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: _isLoading
-                      ? CircularProgressIndicator(color: Colors.white)
-                      : Text(
-                          'Sign In',
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: Colors.white,
+                  child:
+                      _isLoading
+                          ? CircularProgressIndicator(color: Colors.white)
+                          : Text(
+                            'Sign In',
+                            style: TextStyle(fontSize: 18, color: Colors.white),
                           ),
-                        ),
                 ),
               ),
               const SizedBox(height: 16),
@@ -183,7 +196,9 @@ class _SignInPageState extends State<SignInPage> {
                 children: [
                   Text("Don't have an account? "),
                   TextButton(
-                    onPressed: () => Navigator.pushReplacementNamed(context, '/signup'),
+                    onPressed:
+                        () =>
+                            Navigator.pushReplacementNamed(context, '/signup'),
                     child: Text(
                       'Sign Up',
                       style: TextStyle(
