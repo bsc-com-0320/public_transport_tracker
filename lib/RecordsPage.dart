@@ -377,7 +377,7 @@ class _RecordsPageState extends State<RecordsPage> {
               _buildInfoRow(
                 Icons.monetization_on,
                 'Total Cost:',
-                '\$${booking['total_cost']?.toStringAsFixed(2) ?? '0.00'}',
+                '\K${booking['total_cost']?.toStringAsFixed(2) ?? '0.00'}',
               ),
               const SizedBox(height: 16),
               Divider(height: 1, color: Colors.grey[300]),

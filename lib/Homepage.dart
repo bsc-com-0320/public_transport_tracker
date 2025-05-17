@@ -246,7 +246,7 @@ class _HomePageState extends State<HomePage> {
           SizedBox(width: 10),
           Expanded(
             child: Text(
-              "Express ride available! 15% off your next booking",
+              "Express rides available! (Will add some Instant notification here)",
               style: TextStyle(
                 color: Color(0xFF5A3D1F),
                 fontWeight: FontWeight.w500,
@@ -527,7 +527,7 @@ class _HomePageState extends State<HomePage> {
             Expanded(
               child: _buildStatItem(
                 icon: Icons.attach_money,
-                value: "Ksh 4,250",
+                value: "K 4,250",
                 label: "Total Spent",
               ),
             ),

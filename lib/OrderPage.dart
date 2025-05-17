@@ -1547,7 +1547,7 @@ class _OrderPageState extends State<OrderPage> {
                     children: [
                       Text('Total Cost:', style: TextStyle(fontSize: 12)),
                       Text(
-                        '\$${totalCost.toStringAsFixed(2)}',
+                        '\K${totalCost.toStringAsFixed(2)}',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF8B5E3B),

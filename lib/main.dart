@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:public_transport_tracker/AccountsPage.dart';
 import 'package:public_transport_tracker/LoginPage.dart';
 import 'package:public_transport_tracker/SignUpPage.dart';
+import 'package:public_transport_tracker/forgot_password_page.dart';
 import 'package:public_transport_tracker/verify_email_page.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -37,13 +38,14 @@ class MyApp extends StatelessWidget {
       routes: {
         '/login': (context) => SignInPage(),
         '/signup': (context) => SignUpPage(),
-        '/verify-email': (context) => VerifyEmailPage(), // Add this route
+        '/verify-email': (context) => VerifyEmailPage(),
         '/': (context) => HomePage(),
         '/records': (context) => RecordsPage(),
         '/rides': (context) => RidesPage(),
         '/order': (context) => OrderPage(),
         '/map': (context) => MapScreen(),
         '/account': (context) => AccountsPage(),
+        '/forgot-password': (context) => const ForgotPasswordPage(),
       },
       // Add error handling for unknown routes
       onUnknownRoute: (settings) {

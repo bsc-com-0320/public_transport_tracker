@@ -182,9 +182,8 @@ class _SignInPageState extends State<SignInPage> {
               ),
               const SizedBox(height: 16),
               TextButton(
-                onPressed: () {
-                  Navigator.pushNamed(context, '/forgot-password');
-                },
+                onPressed:
+                    () => Navigator.pushNamed(context, '/forgot-password'),
                 child: Text(
                   'Forgot Password?',
                   style: TextStyle(color: Color(0xFF5A3D1F)),
