@@ -13,11 +13,13 @@ class _ProfilePageState extends State<ProfilePage> {
   final _supabase = Supabase.instance.client;
   bool _isLoading = false;
   Map<String, dynamic>? _userProfile;
+  bool _isDriver = false;
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _addressController = TextEditingController();
+  final _businessNameController = TextEditingController();
 
   @override
   void initState() {
@@ -31,6 +33,7 @@ class _ProfilePageState extends State<ProfilePage> {
     _emailController.dispose();
     _phoneController.dispose();
     _addressController.dispose();
+    _businessNameController.dispose();
     super.dispose();
   }
 
@@ -39,15 +42,29 @@ class _ProfilePageState extends State<ProfilePage> {
     try {
       final user = _supabase.auth.currentUser;
       if (user != null) {
-        final response = await _supabase
+        // Check user type first
+        final userData = await _supabase
             .from('profiles')
+            .select('user_type')
+            .eq('user_id', user.id)
+            .single();
+            
+        _isDriver = userData['user_type'] == 'driver';
+        
+        final tableName = _isDriver ? 'driver_profiles' : 'passenger_profiles';
+        final response = await _supabase
+            .from(tableName)
             .select()
             .eq('user_id', user.id)
             .single();
 
         setState(() {
           _userProfile = response;
-          _nameController.text = response['full_name'] ?? '';
+          if (_isDriver) {
+            _businessNameController.text = response['business_name'] ?? '';
+          } else {
+            _nameController.text = response['full_name'] ?? '';
+          }
           _emailController.text = user.email ?? '';
           _phoneController.text = response['phone'] ?? '';
           _addressController.text = response['address'] ?? '';
@@ -69,13 +86,21 @@ class _ProfilePageState extends State<ProfilePage> {
     try {
       final user = _supabase.auth.currentUser;
       if (user != null) {
-        await _supabase.from('profiles').upsert({
+        final tableName = _isDriver ? 'driver_profiles' : 'passenger_profiles';
+        final profileData = {
           'user_id': user.id,
-          'full_name': _nameController.text.trim(),
           'phone': _phoneController.text.trim(),
           'address': _addressController.text.trim(),
           'updated_at': DateTime.now().toIso8601String(),
-        });
+        };
+
+        if (_isDriver) {
+          profileData['business_name'] = _businessNameController.text.trim();
+        } else {
+          profileData['full_name'] = _nameController.text.trim();
+        }
+
+        await _supabase.from(tableName).upsert(profileData);
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Profile updated successfully!')),
@@ -135,7 +160,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           radius: 40,
                           backgroundColor: Color(0xFF5A3D1F).withOpacity(0.1),
                           child: Icon(
-                            Icons.person,
+                            _isDriver ? Icons.directions_car : Icons.person,
                             size: 40,
                             color: Color(0xFF5A3D1F),
                           ),
@@ -146,9 +171,13 @@ class _ProfilePageState extends State<ProfilePage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                _nameController.text.isNotEmpty
-                                    ? _nameController.text
-                                    : 'No Name',
+                                _isDriver
+                                    ? _businessNameController.text.isNotEmpty
+                                        ? _businessNameController.text
+                                        : 'No Business Name'
+                                    : _nameController.text.isNotEmpty
+                                        ? _nameController.text
+                                        : 'No Name',
                                 style: TextStyle(
                                   fontSize: 20,
                                   fontWeight: FontWeight.bold,
@@ -164,7 +193,7 @@ class _ProfilePageState extends State<ProfilePage> {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                'Member since ${DateFormat('MMM yyyy').format(DateTime.parse(_supabase.auth.currentUser?.createdAt ?? DateTime.now().toString()))}',
+                                '${_isDriver ? 'Driver' : 'Passenger'} since ${DateFormat('MMM yyyy').format(DateTime.parse(_supabase.auth.currentUser?.createdAt ?? DateTime.now().toString()))}',
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: Colors.grey[500],
@@ -184,17 +213,30 @@ class _ProfilePageState extends State<ProfilePage> {
                     child: Column(
                       children: [
                         _buildFormSection('Personal Information', [
-                          _buildTextFormField(
-                            controller: _nameController,
-                            label: 'Full Name',
-                            icon: Icons.person,
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Please enter your name';
-                              }
-                              return null;
-                            },
-                          ),
+                          if (!_isDriver)
+                            _buildTextFormField(
+                              controller: _nameController,
+                              label: 'Full Name',
+                              icon: Icons.person,
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Please enter your name';
+                                }
+                                return null;
+                              },
+                            ),
+                          if (_isDriver)
+                            _buildTextFormField(
+                              controller: _businessNameController,
+                              label: 'Business Name',
+                              icon: Icons.business,
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Please enter business name';
+                                }
+                                return null;
+                              },
+                            ),
                           _buildTextFormField(
                             controller: _emailController,
                             label: 'Email',
@@ -206,11 +248,23 @@ class _ProfilePageState extends State<ProfilePage> {
                             label: 'Phone Number',
                             icon: Icons.phone,
                             keyboardType: TextInputType.phone,
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please enter phone number';
+                              }
+                              return null;
+                            },
                           ),
                           _buildTextFormField(
                             controller: _addressController,
-                            label: 'Address',
+                            label: _isDriver ? 'Business Address' : 'Home Address',
                             icon: Icons.location_on,
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please enter address';
+                              }
+                              return null;
+                            },
                           ),
                         ]),
                         const SizedBox(height: 24),
@@ -230,11 +284,12 @@ class _ProfilePageState extends State<ProfilePage> {
                                   context, '/forgot-password');
                             },
                           ),
-                          _buildSettingOption(
-                            icon: Icons.payment,
-                            title: 'Payment Methods',
-                            onTap: () {},
-                          ),
+                          if (_isDriver)
+                            _buildSettingOption(
+                              icon: Icons.payment,
+                              title: 'Payment Methods',
+                              onTap: () {},
+                            ),
                           _buildSettingOption(
                             icon: Icons.help,
                             title: 'Help & Support',
