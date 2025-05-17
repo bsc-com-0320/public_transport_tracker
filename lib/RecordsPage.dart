@@ -43,6 +43,7 @@ class _RecordsPageState extends State<RecordsPage> {
   bool isLoading = true;
   int _selectedIndex = 2;
   final List<String> _pages = ['/', '/order', '/records', '/rides'];
+  
 
   @override
   void initState() {
