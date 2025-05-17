@@ -7,22 +7,22 @@ class AccountsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFF5A3D1F), // Brown background color
+      backgroundColor: const Color(0xFF5A3D1F), // Brown background color
       body: Padding(
-        padding: EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(height: 30),
+            const SizedBox(height: 30),
 
             // Back Button & Title
             Row(
               children: [
                 IconButton(
-                  icon: Icon(Icons.arrow_back, color: Colors.white, size: 30),
+                  icon: const Icon(Icons.arrow_back, color: Colors.white, size: 30),
                   onPressed: () => Navigator.pop(context),
                 ),
-                Text(
+                const Text(
                   "Account",
                   style: TextStyle(
                       color: Colors.white,
@@ -31,29 +31,29 @@ class AccountsPage extends StatelessWidget {
                 ),
               ],
             ),
-            SizedBox(height: 10),
+            const SizedBox(height: 10),
 
             // Balance Display
             Row(
               children: [
-                Text("Balance",
+                const Text("Balance",
                     style: TextStyle(color: Colors.white, fontSize: 18)),
-                SizedBox(width: 10),
+                const SizedBox(width: 10),
                 Container(
-                  padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(5),
                   ),
                   child: Row(
                     children: [
-                      Text("\MWK",
+                      const Text("MWK",
                           style: TextStyle(
                               color: Colors.green,
                               fontWeight: FontWeight.bold)),
-                      SizedBox(width: 5),
-                      Text("20.5",
-                          style: TextStyle(
+                      const SizedBox(width: 5),
+                      Text(balance.toStringAsFixed(2),
+                          style: const TextStyle(
                               color: Colors.green,
                               fontWeight: FontWeight.bold)),
                     ],
@@ -61,11 +61,11 @@ class AccountsPage extends StatelessWidget {
                 ),
               ],
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
 
             // Fund Account Section
             Container(
-              padding: EdgeInsets.all(16.0),
+              padding: const EdgeInsets.all(16.0),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(10),
@@ -73,14 +73,14 @@ class AccountsPage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Text(
+                  const Text(
                     "Fund account",
                     style: TextStyle(
                         color: Colors.green,
                         fontSize: 18,
                         fontWeight: FontWeight.bold),
                   ),
-                  SizedBox(height: 10),
+                  const SizedBox(height: 10),
                   _buildPaymentOption(
                     "PayChangu",
                     "https://media.licdn.com/dms/image/v2/D4D0BAQF2Ld1BM13bJw/company-logo_200_200/company-logo_200_200/0/1701797651143?e=2147483647&v=beta&t=q73UegsYU7-KzXOg6UOOW3LKpb6La6RPtRDfFO01G4w",
@@ -107,7 +107,7 @@ class AccountsPage extends StatelessWidget {
                 ],
               ),
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
 
             // Buttons
             Row(
@@ -122,7 +122,7 @@ class AccountsPage extends StatelessWidget {
                 _buildConfirmButton(
                   onPressed: () {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text("Deposit confirmed!"))
+                      const SnackBar(content: Text("Deposit confirmed!"))
                     );
                     Navigator.pop(context);
                   },
@@ -136,6 +136,9 @@ class AccountsPage extends StatelessWidget {
   }
 
   void _showPaymentDialog(BuildContext context, String paymentMethod) {
+    final amountController = TextEditingController();
+    final contactController = TextEditingController();
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -144,15 +147,17 @@ class AccountsPage extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
-              decoration: InputDecoration(
+              controller: amountController,
+              decoration: const InputDecoration(
                 labelText: "Amount",
-                prefixText: "\$",
+                prefixText: "MWK ",
               ),
               keyboardType: TextInputType.numberWithOptions(decimal: true),
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             TextField(
-              decoration: InputDecoration(
+              controller: contactController,
+              decoration: const InputDecoration(
                 labelText: "Phone Number/Email",
               ),
               keyboardType: TextInputType.text,
@@ -162,16 +167,22 @@ class AccountsPage extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text("Cancel"),
+            child: const Text("Cancel"),
           ),
           ElevatedButton(
             onPressed: () {
+              if (amountController.text.isEmpty || contactController.text.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Please fill all fields"))
+                );
+                return;
+              }
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text("Processing $paymentMethod payment..."))
               );
             },
-            child: Text("Proceed"),
+            child: const Text("Proceed"),
           ),
         ],
       ),
@@ -185,16 +196,23 @@ class AccountsPage extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 10.0),
         child: Row(
           children: [
-            Image.network(imageUrl, width: 30, height: 30,
-                errorBuilder: (context, error, stackTrace) {
-              return Icon(Icons.broken_image, color: Colors.grey, size: 30);
-            }),
-            SizedBox(width: 10),
-            Text(title,
-                style: TextStyle(
-                    color: Colors.black,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold)),
+            Image.network(
+              imageUrl, 
+              width: 30, 
+              height: 30,
+              errorBuilder: (context, error, stackTrace) {
+                return const Icon(Icons.broken_image, color: Colors.grey, size: 30);
+              },
+            ),
+            const SizedBox(width: 10),
+            Text(
+              title,
+              style: const TextStyle(
+                color: Colors.black,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ],
         ),
       ),
@@ -203,7 +221,7 @@ class AccountsPage extends StatelessWidget {
 
   Widget _buildDivider() {
     return Container(
-      margin: EdgeInsets.symmetric(vertical: 5),
+      margin: const EdgeInsets.symmetric(vertical: 5),
       height: 2,
       color: Colors.yellow,
     );
@@ -214,11 +232,13 @@ class AccountsPage extends StatelessWidget {
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       ),
       icon: Icon(icon, color: color),
-      label: Text(label,
-          style: TextStyle(color: color, fontWeight: FontWeight.bold)),
+      label: Text(
+        label,
+        style: TextStyle(color: color, fontWeight: FontWeight.bold),
+      ),
       onPressed: onPressed,
     );
   }
@@ -228,11 +248,13 @@ class AccountsPage extends StatelessWidget {
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.green,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       ),
       onPressed: onPressed,
-      child: Text("Confirm Deposit",
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+      child: const Text(
+        "Confirm Deposit",
+        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+      ),
     );
   }
 }
