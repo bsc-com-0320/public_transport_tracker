@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class MalawiSignInPage extends StatefulWidget {
-  const MalawiSignInPage({Key? key}) : super(key: key);
+class SignInPage extends StatefulWidget {
+  const SignInPage({Key? key}) : super(key: key);
 
   @override
-  _MalawiSignInPageState createState() => _MalawiSignInPageState();
+  _SignInPageState createState() => _SignInPageState();
 }
 
-class _MalawiSignInPageState extends State<MalawiSignInPage> {
+class _SignInPageState extends State<SignInPage> {
   final _formKey = GlobalKey<FormState>();
-  final _phoneController = TextEditingController(text: '+265 ');
+  final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
   final _supabase = Supabase.instance.client;
@@ -21,16 +21,49 @@ class _MalawiSignInPageState extends State<MalawiSignInPage> {
     setState(() => _isLoading = true);
     try {
       final response = await _supabase.auth.signInWithPassword(
-        phone: _phoneController.text.trim(),
+        email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
       
       if (response.user != null && mounted) {
-        Navigator.pushReplacementNamed(context, '/home');
+        if (response.user?.emailConfirmedAt == null) {
+          await _supabase.auth.signOut();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Please verify your email first. Check your inbox.'),
+                backgroundColor: Colors.orange,
+                duration: Duration(seconds: 5),
+              ),
+            );
+          }
+        } else {
+          Navigator.pushReplacementNamed(context, '/home');
+        }
       }
     } on AuthException catch (error) {
+      String errorMessage = error.message;
+      
+      if (error.message.contains('Invalid login credentials')) {
+        errorMessage = 'Incorrect email or password';
+      } else if (error.message.contains('Email not confirmed')) {
+        errorMessage = 'Please verify your email first';
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
+        SnackBar(
+          content: Text(errorMessage),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 5),
+        ),
+      );
+    } catch (error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Sign in failed: ${error.toString()}'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 5),
+        ),
       );
     } finally {
       if (mounted) {
@@ -69,7 +102,7 @@ class _MalawiSignInPageState extends State<MalawiSignInPage> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Enter your Malawi phone number and password',
+                'Enter your email and password',
                 style: TextStyle(
                   fontSize: 16,
                   color: Colors.grey[600],
@@ -77,20 +110,20 @@ class _MalawiSignInPageState extends State<MalawiSignInPage> {
               ),
               const SizedBox(height: 32),
               TextFormField(
-                controller: _phoneController,
-                keyboardType: TextInputType.phone,
+                controller: _emailController,
+                keyboardType: TextInputType.emailAddress,
                 decoration: InputDecoration(
-                  labelText: 'Malawi Phone Number',
-                  prefixIcon: Icon(Icons.phone, color: Color(0xFF5A3D1F)),
+                  labelText: 'Email Address',
+                  prefixIcon: Icon(Icons.email, color: Color(0xFF5A3D1F)),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
                 validator: (value) {
-                  if (value == null || !value.startsWith('+265')) {
-                    return 'Must start with +265';
+                  if (value == null || value.isEmpty) return 'Required';
+                  if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                    return 'Enter a valid email';
                   }
-                  if (value.length != 13) return 'Enter full number (+265XXXXXXXXX)';
                   return null;
                 },
               ),
@@ -132,6 +165,16 @@ class _MalawiSignInPageState extends State<MalawiSignInPage> {
                             color: Colors.white,
                           ),
                         ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: () {
+                  Navigator.pushNamed(context, '/forgot-password');
+                },
+                child: Text(
+                  'Forgot Password?',
+                  style: TextStyle(color: Color(0xFF5A3D1F)),
                 ),
               ),
               const SizedBox(height: 24),

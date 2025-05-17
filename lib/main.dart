@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:public_transport_tracker/AccountsPage.dart';
 import 'package:public_transport_tracker/LoginPage.dart';
 import 'package:public_transport_tracker/SignUpPage.dart';
+import 'package:public_transport_tracker/verify_email_page.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'homepage.dart';
@@ -17,6 +18,8 @@ void main() async {
     url: 'https://oilotmwaixynjaupkucd.supabase.co',
     anonKey:
         'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9pbG90bXdhaXh5bmphdXBrdWNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI4MzMyMzcsImV4cCI6MjA1ODQwOTIzN30.iQcQ1FxZz5jollXQgkAflSuIUFoPHgfbc6_L8c66QwM',
+    
+        
   );
 
   runApp(MyApp());
@@ -32,14 +35,25 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       initialRoute: _supabase.auth.currentUser != null ? '/' : '/login',
       routes: {
-        '/login': (context) => MalawiSignInPage(),
-        '/signup': (context) => MalawiSignUpPage(),
+        '/login': (context) => SignInPage(),
+        '/signup': (context) => SignUpPage(),
+        '/verify-email': (context) => VerifyEmailPage(), // Add this route
         '/': (context) => HomePage(),
         '/records': (context) => RecordsPage(),
         '/rides': (context) => RidesPage(),
         '/order': (context) => OrderPage(),
         '/map': (context) => MapScreen(),
         '/account': (context) => AccountsPage(),
+      },
+      // Add error handling for unknown routes
+      onUnknownRoute: (settings) {
+        return MaterialPageRoute(
+          builder: (context) => Scaffold(
+            body: Center(
+              child: Text('Route ${settings.name} not found'),
+            ),
+          ),
+        );
       },
     );
   }
