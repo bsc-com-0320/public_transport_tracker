@@ -90,10 +90,6 @@ class _FundAccountPageState extends State<FundAccountPage> {
             fontSize: 24,
           ),
         ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF5A3D1F)),
-          onPressed: () => Navigator.pop(context),
-        ),
       ),
       body: SingleChildScrollView(
         child: Padding(
