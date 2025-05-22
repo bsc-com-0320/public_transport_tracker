@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:public_transport_tracker/AccountsPage.dart';
+import 'package:public_transport_tracker/AuthChecker.dart';
+import 'package:public_transport_tracker/DriverAddRide.dart';
+import 'package:public_transport_tracker/DriverHomePage.dart';
+import 'package:public_transport_tracker/DriverRecords.dart';
 import 'package:public_transport_tracker/LoginPage.dart';
 import 'package:public_transport_tracker/SignUpPage.dart';
 import 'package:public_transport_tracker/forgot_password_page.dart';
@@ -7,11 +11,14 @@ import 'package:public_transport_tracker/profile_page.dart';
 import 'package:public_transport_tracker/verify_email_page.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'homepage.dart';
+// Use prefixes for ambiguous imports
+import 'package:public_transport_tracker/homepage.dart' as app_home; // For your general user home page
+import 'package:public_transport_tracker/FundAccountPage.dart' as app_fund; // For your general user fund account page
+
 import 'RecordsPage.dart';
 import 'OrderPage.dart';
 import 'RidesPage.dart';
-import 'map_screen.dart';
+import 'map_screen.dart'; // Make sure this file exists
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,8 +27,6 @@ void main() async {
     url: 'https://oilotmwaixynjaupkucd.supabase.co',
     anonKey:
         'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9pbG90bXdhaXh5bmphdXBrdWNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI4MzMyMzcsImV4cCI6MjA1ODQwOTIzN30.iQcQ1FxZz5jollXQgkAflSuIUFoPHgfbc6_L8c66QwM',
-    
-        
   );
 
   runApp(MyApp());
@@ -35,12 +40,13 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Public Transport Tracker',
       debugShowCheckedModeBanner: false,
-      initialRoute: _supabase.auth.currentUser != null ? '/' : '/login',
+      initialRoute: '/auth-check',
       routes: {
         '/login': (context) => SignInPage(),
         '/signup': (context) => SignUpPage(),
         '/verify-email': (context) => VerifyEmailPage(),
-        '/': (context) => HomePage(),
+        // Use the prefixed names here
+        '/home': (context) => app_home.HomePage(), // This is your general user home page
         '/records': (context) => RecordsPage(),
         '/rides': (context) => RidesPage(),
         '/order': (context) => OrderPage(),
@@ -48,8 +54,13 @@ class MyApp extends StatelessWidget {
         '/account': (context) => AccountsPage(),
         '/forgot-password': (context) => const ForgotPasswordPage(),
         '/profile': (context) => const ProfilePage(),
+        '/auth-check': (context) => const AuthChecker(),
+        '/driver-home': (context) => DriverHomePage(),
+        '/driver-records': (context) => DriverRecordsPage(),
+        '/driver-ride': (context) => DriverAddRide(),
+        // Use the prefixed name here
+        '/fund-account': (context) => app_fund.FundAccountPage(),
       },
-      // Add error handling for unknown routes
       onUnknownRoute: (settings) {
         return MaterialPageRoute(
           builder: (context) => Scaffold(

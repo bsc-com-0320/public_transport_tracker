@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class HomePage extends StatefulWidget {
+class DriverHomePage extends StatefulWidget {
   @override
-  _HomePageState createState() => _HomePageState();
+  _DriverHomePageState createState() => _DriverHomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _DriverHomePageState extends State<DriverHomePage> {
   int _selectedIndex = 0;
-  // Make sure these match the routes defined in main.dart
-  final List<String> _pages = ['/home', '/order', '/records', '/rides'];
+  // Make sure these routes correspond to your actual defined routes in main.dart
+  final List<String> _pages = ['/driver-home', '/driver-ride', '/driver-records', '/fund-account'];
   final PageController _pageController = PageController(viewportFraction: 0.85);
   int _currentPage = 0;
   bool _showAlert = true;
@@ -17,7 +17,7 @@ class _HomePageState extends State<HomePage> {
   void _onItemTapped(int index) {
     if (_selectedIndex == index) return;
     setState(() => _selectedIndex = index);
-    // Use pushReplacementNamed to prevent accumulating a stack of the same page
+    // Use pushReplacementNamed for proper bottom navigation behavior
     Navigator.pushReplacementNamed(context, _pages[index]);
   }
 
@@ -83,7 +83,6 @@ class _HomePageState extends State<HomePage> {
   Future<void> _logout() async {
     try {
       await Supabase.instance.client.auth.signOut();
-      // Navigate back to the login page and clear all previous routes
       Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -174,7 +173,7 @@ class _HomePageState extends State<HomePage> {
         backgroundColor: Colors.white,
         elevation: 0,
         title: Text(
-          "Transport",
+          "Transport Driver",
           style: TextStyle(
             color: Color(0xFF5A3D1F),
             fontWeight: FontWeight.bold,
@@ -184,9 +183,7 @@ class _HomePageState extends State<HomePage> {
         actions: [
           IconButton(
             icon: Icon(Icons.notifications_none, color: Color(0xFF5A3D1F)),
-            onPressed: () {
-              // Handle notifications
-            },
+            onPressed: () {},
           ),
           Padding(
             padding: EdgeInsets.only(right: 10),
@@ -206,14 +203,24 @@ class _HomePageState extends State<HomePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Fast Alert Banner
               if (_showAlert) _buildAlertBanner(),
+
               SizedBox(height: 20),
+
+              // User Summary
               _buildUserSummary(),
               SizedBox(height: 25),
+
+              // Action Cards
               _buildDashboardCards(),
               SizedBox(height: 25),
+
+              // Quick Stats
               _buildQuickStats(),
               SizedBox(height: 25),
+
+              // Recent Activity
               _buildRecentActivity(),
             ],
           ),
@@ -328,7 +335,7 @@ class _HomePageState extends State<HomePage> {
     return Column(
       children: [
         SizedBox(
-          height: 200,
+          height: 200, // Reduced from 220 to prevent overflow
           child: PageView(
             controller: _pageController,
             padEnds: false,
@@ -399,14 +406,15 @@ class _HomePageState extends State<HomePage> {
           borderRadius: BorderRadius.circular(20),
           onTap: onTap,
           child: Padding(
-            padding: EdgeInsets.all(15),
+            padding: EdgeInsets.all(15), // Reduced padding from 20
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              mainAxisAlignment:
+                  MainAxisAlignment.spaceBetween, // Better space distribution
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  width: 50,
-                  height: 50,
+                  width: 50, // Reduced from 60
+                  height: 50, // Reduced from 60
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(15),
@@ -414,13 +422,14 @@ class _HomePageState extends State<HomePage> {
                   child: Center(
                     child: Image.network(
                       iconUrl,
-                      width: 30,
-                      height: 30,
-                      errorBuilder: (_, __, ___) => Icon(
-                        Icons.directions_car,
-                        color: Colors.white,
-                        size: 24,
-                      ),
+                      width: 30, // Reduced from 40
+                      height: 30, // Reduced from 40
+                      errorBuilder:
+                          (_, __, ___) => Icon(
+                            Icons.directions_car,
+                            color: Colors.white,
+                            size: 24, // Reduced from 30
+                          ),
                     ),
                   ),
                 ),
@@ -431,30 +440,30 @@ class _HomePageState extends State<HomePage> {
                       title,
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 18,
+                        fontSize: 18, // Reduced from 20
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    SizedBox(height: 4),
+                    SizedBox(height: 4), // Reduced from 5
                     Text(
                       subtitle,
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.9),
-                        fontSize: 13,
+                        fontSize: 13, // Reduced from 14
                       ),
                     ),
                   ],
                 ),
-                SizedBox(height: 10),
+                SizedBox(height: 10), // Reduced from 15
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(8), // Reduced from 10
                     ),
                     padding: EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
+                      horizontal: 16, // Reduced from 20
+                      vertical: 8, // Reduced from 10
                     ),
                   ),
                   onPressed: onTap,
@@ -463,7 +472,7 @@ class _HomePageState extends State<HomePage> {
                     style: TextStyle(
                       color: gradientColors.first,
                       fontWeight: FontWeight.bold,
-                      fontSize: 14,
+                      fontSize: 14, // Added font size for consistency
                     ),
                   ),
                 ),
@@ -475,6 +484,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  //
   Widget _buildPageIndicator() {
     return Padding(
       padding: EdgeInsets.only(top: 10),
@@ -487,7 +497,8 @@ class _HomePageState extends State<HomePage> {
             margin: EdgeInsets.symmetric(horizontal: 4),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: index == _currentPage ? Color(0xFF5A3D1F) : Colors.grey[300],
+              color:
+                  index == _currentPage ? Color(0xFF5A3D1F) : Colors.grey[300],
             ),
           );
         }),
@@ -587,9 +598,7 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
             TextButton(
-              onPressed: () {
-                // Navigate to a dedicated "All Activity" page if needed
-              },
+              onPressed: () {},
               child: Text(
                 "See all",
                 style: TextStyle(color: Color(0xFF8B5E3B)),
@@ -697,9 +706,9 @@ class _HomePageState extends State<HomePage> {
           label: "Home",
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.directions_bus_outlined),
-          activeIcon: Icon(Icons.directions_bus),
-          label: "Order",
+          icon: Icon(Icons.add_circle_outline),
+          activeIcon: Icon(Icons.add_circle),
+          label: "Add Ride",
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.history_outlined),
@@ -707,9 +716,9 @@ class _HomePageState extends State<HomePage> {
           label: "Records",
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.add_circle_outline),
-          activeIcon: Icon(Icons.add_circle),
-          label: "Add Ride", // This seems to be a placeholder for 'Rides' in your _pages list
+          icon: Icon(Icons.account_balance_wallet_outlined),
+          activeIcon: Icon(Icons.account_balance_wallet),
+          label: "Fund Account",
         ),
       ],
     );

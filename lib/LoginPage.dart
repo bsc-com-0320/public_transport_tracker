@@ -15,59 +15,85 @@ class _SignInPageState extends State<SignInPage> {
   bool _isLoading = false;
   final _supabase = Supabase.instance.client;
   bool _obscurePassword = true;
+  // In your SignInPage (_signIn method)
 
   Future<void> _signIn() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
     try {
+      print('Attempting sign in with: ${_emailController.text}');
+
       final response = await _supabase.auth.signInWithPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
 
-      if (response.user != null && mounted) {
-        if (response.user?.emailConfirmedAt == null) {
-          await _supabase.auth.signOut();
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text(
-                  'Please verify your email first. Check your inbox.',
-                ),
-                backgroundColor: Colors.orange,
-                duration: Duration(seconds: 5),
+      print('Sign in response: ${response.user?.email}');
+      print('Email verified: ${response.user?.emailConfirmedAt != null}');
+      print('User metadata: ${response.user?.userMetadata}');
+
+      if (response.user == null) {
+        throw AuthException('User not found');
+      }
+
+      if (response.user?.emailConfirmedAt == null) {
+        await _supabase.auth.signOut();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Please verify your email first. Check your inbox.',
               ),
-            );
-          }
-        } else {
-          Navigator.pushReplacementNamed(context, '/');
+              backgroundColor: Colors.orange,
+            ),
+          );
+          Navigator.pushReplacementNamed(context, '/verify-email');
         }
+        return;
+      }
+
+      final userType = response.user!.userMetadata?['user_type'] ?? 'passenger';
+      print('User type: $userType');
+
+      if (mounted) {
+        Navigator.pushReplacementNamed(
+          context,
+          userType == 'driver' ? '/driver-home' : '/home',
+        );
       }
     } on AuthException catch (error) {
-      String errorMessage = error.message;
+      String errorMessage = 'Sign in failed';
 
       if (error.message.contains('Invalid login credentials')) {
-        errorMessage = 'Incorrect email or password';
+        errorMessage = 'Wrong email or password';
       } else if (error.message.contains('Email not confirmed')) {
         errorMessage = 'Please verify your email first';
+      } else {
+        errorMessage = 'Authentication error: ${error.message}';
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(errorMessage),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 5),
-        ),
-      );
+      print('Auth error: $errorMessage');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
     } catch (error) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Sign in failed: ${error.toString()}'),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 5),
-        ),
-      );
+      print('Unexpected error: $error');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Unexpected error occurred. Please try again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
