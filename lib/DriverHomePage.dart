@@ -173,7 +173,7 @@ class _DriverHomePageState extends State<DriverHomePage> {
         backgroundColor: Colors.white,
         elevation: 0,
         title: Text(
-          "Transport Driver",
+          "Driver",
           style: TextStyle(
             color: Color(0xFF5A3D1F),
             fontWeight: FontWeight.bold,

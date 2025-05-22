@@ -22,11 +22,26 @@ class _SignUpPageState extends State<SignUpPage> {
   bool _obscureConfirmPassword = true;
 
   bool _isLoading = false;
-  bool _isDriver = false;
   final _supabase = Supabase.instance.client;
+
+  String _selectedAccountType = 'Passenger'; // Default value
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    _nameController.dispose();
+    _phoneController.dispose();
+    _addressController.dispose();
+    _businessNameController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    bool _isDriver = _selectedAccountType == 'Driver';
+
     return Scaffold(
       backgroundColor: Colors.grey[50],
       body: SingleChildScrollView(
@@ -37,7 +52,7 @@ class _SignUpPageState extends State<SignUpPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 40),
-              Center(
+              const Center(
                 child: Icon(
                   Icons.directions_car,
                   size: 80,
@@ -45,7 +60,7 @@ class _SignUpPageState extends State<SignUpPage> {
                 ),
               ),
               const SizedBox(height: 30),
-              Text(
+              const Text(
                 'Create Account',
                 style: TextStyle(
                   fontSize: 28,
@@ -60,38 +75,58 @@ class _SignUpPageState extends State<SignUpPage> {
               ),
               const SizedBox(height: 32),
 
-              // Account Type Selection
-              Row(
-                children: [
-                  Expanded(
-                    child: ChoiceChip(
-                      label: const Text('Passenger'),
-                      selected: !_isDriver,
-                      onSelected: (selected) {
-                        setState(() => _isDriver = !selected);
-                      },
-                      selectedColor: const Color(0xFF5A3D1F),
-                      labelStyle: TextStyle(
-                        color: !_isDriver ? Colors.white : Colors.black,
-                      ),
-                    ),
+              // --- Account Type Selection (Decorated Dropdown) ---
+              DropdownButtonFormField<String>(
+                value: _selectedAccountType,
+                decoration: InputDecoration(
+                  labelText: 'Account Type',
+                  labelStyle: const TextStyle(color: Color(0xFF5A3D1F)), // Label color
+                  prefixIcon: const Icon(Icons.person_outline, color: Color(0xFF5A3D1F)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFF5A3D1F)), // Default border
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: ChoiceChip(
-                      label: const Text('Driver'),
-                      selected: _isDriver,
-                      onSelected: (selected) {
-                        setState(() => _isDriver = selected);
-                      },
-                      selectedColor: const Color(0xFF5A3D1F),
-                      labelStyle: TextStyle(
-                        color: _isDriver ? Colors.white : Colors.black,
-                      ),
-                    ),
+                  enabledBorder: OutlineInputBorder( // Border when enabled
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey[400]!, width: 1),
                   ),
-                ],
+                  focusedBorder: OutlineInputBorder( // Border when focused
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFF8B5E3B), width: 2),
+                  ),
+                  filled: true,
+                  fillColor: Colors.white,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8), // Adjust padding
+                ),
+                icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF5A3D1F), size: 30), // Larger icon
+                iconEnabledColor: const Color(0xFF5A3D1F), // Icon color when enabled
+                style: const TextStyle(color: Color(0xFF5A3D1F), fontSize: 16), // Text style for selected value
+                dropdownColor: Colors.white, // Background color of the dropdown menu
+                items: <String>['Passenger', 'Driver']
+                    .map<DropdownMenuItem<String>>((String value) {
+                  return DropdownMenuItem<String>(
+                    value: value,
+                    child: Text(
+                      value,
+                      style: const TextStyle(color: Color(0xFF5A3D1F)), // Text color in dropdown items
+                    ),
+                  );
+                }).toList(),
+                onChanged: (String? newValue) {
+                  setState(() {
+                    _selectedAccountType = newValue!;
+                    _nameController.clear();
+                    _businessNameController.clear();
+                  });
+                },
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please select an account type';
+                  }
+                  return null;
+                },
               ),
+              // --- End Account Type Selection ---
               const SizedBox(height: 20),
 
               // Name Field (for passengers) or Business Name (for drivers)
@@ -100,28 +135,34 @@ class _SignUpPageState extends State<SignUpPage> {
                   controller: _nameController,
                   decoration: InputDecoration(
                     labelText: 'Full Name',
-                    prefixIcon: Icon(Icons.person, color: Color(0xFF5A3D1F)),
+                    prefixIcon: const Icon(Icons.person, color: Color(0xFF5A3D1F)),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
+                    focusedBorder: OutlineInputBorder( // Consistent focused border
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Color(0xFF8B5E3B), width: 2),
+                    ),
                   ),
-                  validator:
-                      (value) =>
-                          !_isDriver && value!.isEmpty ? 'Required' : null,
+                  validator: (value) =>
+                      !_isDriver && value!.isEmpty ? 'Required' : null,
                 ),
               if (_isDriver)
                 TextFormField(
                   controller: _businessNameController,
                   decoration: InputDecoration(
                     labelText: 'Business Name',
-                    prefixIcon: Icon(Icons.business, color: Color(0xFF5A3D1F)),
+                    prefixIcon: const Icon(Icons.business, color: Color(0xFF5A3D1F)),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
+                    focusedBorder: OutlineInputBorder( // Consistent focused border
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Color(0xFF8B5E3B), width: 2),
+                    ),
                   ),
-                  validator:
-                      (value) =>
-                          _isDriver && value!.isEmpty ? 'Required' : null,
+                  validator: (value) =>
+                      _isDriver && value!.isEmpty ? 'Required' : null,
                 ),
               const SizedBox(height: 20),
 
@@ -131,9 +172,13 @@ class _SignUpPageState extends State<SignUpPage> {
                 keyboardType: TextInputType.emailAddress,
                 decoration: InputDecoration(
                   labelText: 'Email Address',
-                  prefixIcon: Icon(Icons.email, color: Color(0xFF5A3D1F)),
+                  prefixIcon: const Icon(Icons.email, color: Color(0xFF5A3D1F)),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
+                  ),
+                  focusedBorder: OutlineInputBorder( // Consistent focused border
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFF8B5E3B), width: 2),
                   ),
                 ),
                 validator: (value) {
@@ -154,11 +199,19 @@ class _SignUpPageState extends State<SignUpPage> {
                 keyboardType: TextInputType.phone,
                 decoration: InputDecoration(
                   labelText: 'Phone Number',
-                  prefixIcon: Icon(Icons.phone, color: Color(0xFF5A3D1F)),
+                  prefixIcon: const Icon(Icons.phone, color: Color(0xFF5A3D1F)),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
+                  focusedBorder: OutlineInputBorder( // Consistent focused border
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFF8B5E3B), width: 2),
+                  ),
                 ),
+                 validator: (value) {
+                  if (value == null || value.isEmpty) return 'Required';
+                  return null;
+                },
               ),
               const SizedBox(height: 20),
 
@@ -167,9 +220,13 @@ class _SignUpPageState extends State<SignUpPage> {
                 controller: _addressController,
                 decoration: InputDecoration(
                   labelText: _isDriver ? 'Business Address' : 'Home Address',
-                  prefixIcon: Icon(Icons.location_on, color: Color(0xFF5A3D1F)),
+                  prefixIcon: const Icon(Icons.location_on, color: Color(0xFF5A3D1F)),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
+                  ),
+                  focusedBorder: OutlineInputBorder( // Consistent focused border
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFF8B5E3B), width: 2),
                   ),
                 ),
                 validator: (value) => value!.isEmpty ? 'Required' : null,
@@ -182,13 +239,13 @@ class _SignUpPageState extends State<SignUpPage> {
                 obscureText: _obscurePassword,
                 decoration: InputDecoration(
                   labelText: 'Create Password',
-                  prefixIcon: Icon(Icons.lock, color: Color(0xFF5A3D1F)),
+                  prefixIcon: const Icon(Icons.lock, color: Color(0xFF5A3D1F)),
                   suffixIcon: IconButton(
                     icon: Icon(
                       _obscurePassword
                           ? Icons.visibility
                           : Icons.visibility_off,
-                      color: Color(0xFF5A3D1F),
+                      color: const Color(0xFF5A3D1F),
                     ),
                     onPressed: () {
                       setState(() {
@@ -198,6 +255,10 @@ class _SignUpPageState extends State<SignUpPage> {
                   ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
+                  ),
+                  focusedBorder: OutlineInputBorder( // Consistent focused border
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFF8B5E3B), width: 2),
                   ),
                 ),
                 validator: (value) {
@@ -214,13 +275,13 @@ class _SignUpPageState extends State<SignUpPage> {
                 obscureText: _obscureConfirmPassword,
                 decoration: InputDecoration(
                   labelText: 'Confirm Password',
-                  prefixIcon: Icon(Icons.lock, color: Color(0xFF5A3D1F)),
+                  prefixIcon: const Icon(Icons.lock, color: Color(0xFF5A3D1F)),
                   suffixIcon: IconButton(
                     icon: Icon(
                       _obscureConfirmPassword
                           ? Icons.visibility
                           : Icons.visibility_off,
-                      color: Color(0xFF5A3D1F),
+                      color: const Color(0xFF5A3D1F),
                     ),
                     onPressed: () {
                       setState(() {
@@ -230,6 +291,10 @@ class _SignUpPageState extends State<SignUpPage> {
                   ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
+                  ),
+                  focusedBorder: OutlineInputBorder( // Consistent focused border
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFF8B5E3B), width: 2),
                   ),
                 ),
                 validator: (value) {
@@ -253,13 +318,12 @@ class _SignUpPageState extends State<SignUpPage> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child:
-                      _isLoading
-                          ? const CircularProgressIndicator(color: Colors.white)
-                          : const Text(
-                            'Sign Up',
-                            style: TextStyle(fontSize: 18, color: Colors.white),
-                          ),
+                  child: _isLoading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text(
+                          'Sign Up',
+                          style: TextStyle(fontSize: 18, color: Colors.white),
+                        ),
                 ),
               ),
               const SizedBox(height: 24),
@@ -268,9 +332,9 @@ class _SignUpPageState extends State<SignUpPage> {
                 children: [
                   const Text("Already have an account? "),
                   TextButton(
-                    onPressed:
-                        () => Navigator.pushReplacementNamed(context, '/login'),
-                    child: Text(
+                    onPressed: () =>
+                        Navigator.pushReplacementNamed(context, '/login'),
+                    child: const Text(
                       'Sign In',
                       style: TextStyle(
                         color: Color(0xFF5A3D1F),
@@ -296,15 +360,19 @@ class _SignUpPageState extends State<SignUpPage> {
         throw AuthException('Passwords do not match');
       }
 
+      final String userType = _selectedAccountType.toLowerCase();
+      final bool isDriver = userType == 'driver';
+
+
       final authResponse = await _supabase.auth.signUp(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
         data: {
-          'user_type': _isDriver ? 'driver' : 'passenger',
+          'user_type': userType,
           'full_name': _nameController.text.trim(),
           'phone': _phoneController.text.trim(),
           'address': _addressController.text.trim(),
-          if (_isDriver) 'business_name': _businessNameController.text.trim(),
+          if (isDriver) 'business_name': _businessNameController.text.trim(),
         },
       );
 
@@ -314,11 +382,11 @@ class _SignUpPageState extends State<SignUpPage> {
           'email': _emailController.text.trim(),
           'phone': _phoneController.text.trim(),
           'address': _addressController.text.trim(),
-          if (!_isDriver) 'full_name': _nameController.text.trim(),
-          if (_isDriver) 'business_name': _businessNameController.text.trim(),
+          if (!isDriver) 'full_name': _nameController.text.trim(),
+          if (isDriver) 'business_name': _businessNameController.text.trim(),
         };
 
-        final tableName = _isDriver ? 'driver_profiles' : 'passenger_profiles';
+        final tableName = isDriver ? 'driver_profiles' : 'passenger_profiles';
         await _supabase.from(tableName).upsert(profileData);
 
         if (mounted) {
@@ -342,21 +410,25 @@ class _SignUpPageState extends State<SignUpPage> {
         errorMessage = 'Email already in use. Try signing in instead.';
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(errorMessage),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 5),
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
     } catch (error) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Sign up failed: ${error.toString()}'),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 5),
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Sign up failed: ${error.toString()}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);

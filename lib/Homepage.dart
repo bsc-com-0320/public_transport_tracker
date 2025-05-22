@@ -174,7 +174,7 @@ class _HomePageState extends State<HomePage> {
         backgroundColor: Colors.white,
         elevation: 0,
         title: Text(
-          "Transport",
+          "Passenger",
           style: TextStyle(
             color: Color(0xFF5A3D1F),
             fontWeight: FontWeight.bold,

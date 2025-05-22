@@ -47,7 +47,12 @@ class _OrderPageState extends State<OrderPage> {
 
   final SupabaseClient supabase = Supabase.instance.client;
   int _selectedIndex = 1;
-  final List<String> _pages = ['/home', '/order', '/records', '/rides'];
+  final List<String> _pages = [
+    '/home',
+    '/order',
+    '/records',
+    '/s-fund-account',
+  ];
 
   @override
   void initState() {
@@ -1182,16 +1187,143 @@ class _OrderPageState extends State<OrderPage> {
     }
   }
 
+  Future<void> _showLogoutDialog() async {
+    return showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text(
+            "Logout",
+            style: TextStyle(
+              color: Color(0xFF5A3D1F),
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: const Text(
+            "Are you sure you want to logout?",
+            style: TextStyle(color: Colors.grey),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text(
+                "Cancel",
+                style: TextStyle(color: Color(0xFF5A3D1F)),
+              ),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF5A3D1F),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              onPressed: () async {
+                Navigator.of(context).pop();
+                await _logout();
+              },
+              child: const Text(
+                "Logout",
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _logout() async {
+    try {
+      await Supabase.instance.client.auth.signOut();
+      Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Logout failed: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _showProfileMenu() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(20),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 60,
+                height: 5,
+                margin: const EdgeInsets.only(bottom: 15),
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(5),
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.person, color: Color(0xFF5A3D1F)),
+                title: const Text(
+                  "Profile",
+                  style: TextStyle(
+                    color: Color(0xFF5A3D1F),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  // Assuming you have a '/profile' route, otherwise update this
+                  Navigator.pushNamed(context, '/profile');
+                },
+              ),
+              const Divider(height: 20, color: Colors.grey),
+              ListTile(
+                leading: const Icon(Icons.logout, color: Colors.red),
+                title: const Text(
+                  "Logout",
+                  style: TextStyle(
+                    color: Colors.red,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.pop(context); // Close the bottom sheet
+                  _showLogoutDialog(); // Show the confirmation dialog
+                },
+              ),
+              const SizedBox(height: 10),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        automaticallyImplyLeading: false,
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: Text(
-          "Order Ride",
+        automaticallyImplyLeading:
+            false, // Prevents a back button if you don't want one
+        backgroundColor: Colors.white, // Set AppBar background to white
+        elevation: 0, // Remove shadow
+        title: const Text(
+          "Order Ride", // Changed title for OrderPage
           style: TextStyle(
             color: Color(0xFF5A3D1F),
             fontWeight: FontWeight.bold,
@@ -1200,14 +1332,23 @@ class _OrderPageState extends State<OrderPage> {
         ),
         actions: [
           IconButton(
-            icon: Icon(Icons.notifications_none, color: Color(0xFF5A3D1F)),
-            onPressed: () {},
+            icon: const Icon(
+              Icons.notifications_none,
+              color: Color(0xFF5A3D1F),
+            ),
+            onPressed: () {
+              // Handle notifications tap
+            },
           ),
           Padding(
-            padding: EdgeInsets.only(right: 10),
-            child: CircleAvatar(
-              backgroundColor: Color(0xFF5A3D1F).withOpacity(0.1),
-              child: Icon(Icons.person, color: Color(0xFF5A3D1F)),
+            padding: const EdgeInsets.only(right: 10),
+            child: GestureDetector(
+              onTap:
+                  _showProfileMenu, // This calls the function to show the bottom sheet
+              child: CircleAvatar(
+                backgroundColor: const Color(0xFF5A3D1F).withOpacity(0.1),
+                child: const Icon(Icons.person, color: Color(0xFF5A3D1F)),
+              ),
             ),
           ),
         ],
