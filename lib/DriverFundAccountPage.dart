@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class FundAccountPage extends StatefulWidget {
   const FundAccountPage({Key? key}) : super(key: key);
@@ -9,60 +10,162 @@ class FundAccountPage extends StatefulWidget {
 
 class _FundAccountPageState extends State<FundAccountPage> {
   final TextEditingController _amountController = TextEditingController();
-  String? _selectedPaymentMethod;
-
-  // --- Navigation related state and methods ---
-  int _selectedIndex = 3; // Set initial index to 3 for 'Fund Account' tab
-  // Make sure these routes correspond to your actual defined routes in main.dart
+  String? _selectedPaymentMethod = 'PayChangu';
+  int _selectedIndex = 3;
   final List<String> _pages = [
-    '/driver-home', // Index 0: Home
-    '/driver-ride', // Index 1: Add Ride
-    '/driver-records', // Index 2: Records
-    '/fund-account' // Index 3: Fund Account (this page)
+    '/driver-home',
+    '/driver-ride',
+    '/driver-records',
+    '/fund-account'
   ];
 
-  void _onItemTapped(int index) {
-    if (_selectedIndex == index) {
-      // If the same tab is tapped, do nothing or scroll to top if applicable
-      return;
+  Future<void> _showLogoutDialog() async {
+    return showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text(
+            "Logout",
+            style: TextStyle(
+              color: Color(0xFF5A3D1F),
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: const Text(
+            "Are you sure you want to logout?",
+            style: TextStyle(color: Colors.grey),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text(
+                "Cancel",
+                style: TextStyle(color: Color(0xFF5A3D1F)),
+              ),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF5A3D1F),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              onPressed: () async {
+                Navigator.of(context).pop();
+                await _logout();
+              },
+              child: const Text(
+                "Logout",
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _logout() async {
+    try {
+      await Supabase.instance.client.auth.signOut();
+      Navigator.pushNamedAndRemoveUntil(
+        context, 
+        '/login', 
+        (route) => false
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Logout failed: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
-    setState(() {
-      _selectedIndex = index;
-    });
-    // Navigate to the corresponding page using named routes.
-    // pushReplacementNamed is good for bottom navigation to avoid deep stacks.
+  }
+
+  void _showProfileMenu() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(20),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 60,
+                height: 5,
+                margin: const EdgeInsets.only(bottom: 15),
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(5),
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.person, color: Color(0xFF5A3D1F)),
+                title: const Text(
+                  "Profile",
+                  style: TextStyle(
+                    color: Color(0xFF5A3D1F),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.pushNamed(context, '/profile');
+                },
+              ),
+              const Divider(height: 20, color: Colors.grey),
+              ListTile(
+                leading: const Icon(Icons.logout, color: Colors.red),
+                title: const Text(
+                  "Logout",
+                  style: TextStyle(
+                    color: Colors.red,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showLogoutDialog();
+                },
+              ),
+              const SizedBox(height: 10),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _onItemTapped(int index) {
+    if (_selectedIndex == index) return;
+    setState(() => _selectedIndex = index);
     Navigator.pushReplacementNamed(context, _pages[index]);
   }
-  // --- End Navigation related ---
 
-  @override
-  void dispose() {
-    _amountController.dispose();
-    super.dispose();
-  }
-
-  // Placeholder for when funding functionality is added back
   void _onFundAccountPressed() {
     final amount = double.tryParse(_amountController.text);
-
+    
     if (amount == null || amount <= 0) {
       _showSnackBar('Please enter a valid amount to fund.', Colors.red);
       return;
     }
-    if (_selectedPaymentMethod == null) {
-      _showSnackBar('Please select a payment method.', Colors.red);
-      return;
-    }
-
-    // --- No actual payment processing here ---
-    // This is where your PayChangu integration logic would go in the future.
-    // For now, we'll just show a success-like message.
+    
     _showSnackBar(
-      'Attempting to fund K${amount.toStringAsFixed(2)} via $_selectedPaymentMethod. (Functionality removed)',
+      'Attempting to fund K${amount.toStringAsFixed(2)} via PayChangu.',
       Colors.blueAccent,
     );
-    // You might clear the text field here as well:
-    // _amountController.clear();
   }
 
   void _showSnackBar(String message, Color color) {
@@ -78,18 +181,35 @@ class _FundAccountPageState extends State<FundAccountPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50], // Consistent with the theme
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         backgroundColor: Colors.white,
         elevation: 0,
         title: const Text(
           "Fund Account",
           style: TextStyle(
-            color: Color(0xFF5A3D1F), // Your theme color
+            color: Color(0xFF5A3D1F),
             fontWeight: FontWeight.bold,
             fontSize: 24,
           ),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.notifications_none, color: Color(0xFF5A3D1F)),
+            onPressed: () {},
+          ),
+          Padding(
+            padding: const EdgeInsets.only(right: 10),
+            child: GestureDetector(
+              onTap: _showProfileMenu,
+              child: CircleAvatar(
+                backgroundColor: const Color(0xFF5A3D1F).withOpacity(0.1),
+                child: const Icon(Icons.person, color: Color(0xFF5A3D1F)),
+              ),
+            ),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -99,7 +219,7 @@ class _FundAccountPageState extends State<FundAccountPage> {
             children: [
               _buildBalanceCard(),
               const SizedBox(height: 25),
-              Text(
+              const Text(
                 "Add Funds",
                 style: TextStyle(
                   fontSize: 20,
@@ -110,7 +230,7 @@ class _FundAccountPageState extends State<FundAccountPage> {
               const SizedBox(height: 15),
               _buildAmountInputField(),
               const SizedBox(height: 20),
-              Text(
+              const Text(
                 "Select Payment Method",
                 style: TextStyle(
                   fontSize: 18,
@@ -126,7 +246,7 @@ class _FundAccountPageState extends State<FundAccountPage> {
           ),
         ),
       ),
-      bottomNavigationBar: _buildBottomNavBar(), // Added bottom navigation bar
+      bottomNavigationBar: _buildBottomNavBar(),
     );
   }
 
@@ -135,7 +255,7 @@ class _FundAccountPageState extends State<FundAccountPage> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF8B5E3B), Color(0xFF5A3D1F)], // Theme gradient
+          colors: [Color(0xFF8B5E3B), Color(0xFF5A3D1F)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -160,7 +280,7 @@ class _FundAccountPageState extends State<FundAccountPage> {
           ),
           const SizedBox(height: 10),
           const Text(
-            "K 5,500.00", // Static for UI purposes
+            "K 5,500.00",
             style: TextStyle(
               color: Colors.white,
               fontSize: 32,
@@ -169,7 +289,7 @@ class _FundAccountPageState extends State<FundAccountPage> {
           ),
           const SizedBox(height: 10),
           Text(
-            "Last updated: 10:30 AM", // Static for UI purposes
+            "Last updated: 10:32 AM",
             style: TextStyle(
               color: Colors.white.withOpacity(0.7),
               fontSize: 12,
@@ -186,7 +306,7 @@ class _FundAccountPageState extends State<FundAccountPage> {
       keyboardType: TextInputType.number,
       decoration: InputDecoration(
         labelText: 'Amount to Fund (MWK)',
-        hintText: 'e.g., 5000.00',
+        hintText: 'e.g., 55000.00',
         labelStyle: const TextStyle(color: Color(0xFF5A3D1F)),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -205,20 +325,10 @@ class _FundAccountPageState extends State<FundAccountPage> {
   }
 
   Widget _buildPaymentMethodSelection() {
-    return Column(
-      children: [
-        _buildPaymentMethodOption(
-          title: 'Mobile Money (Airtel Money, TNM Mpamba)',
-          value: 'Mobile Money',
-          icon: Icons.phone_android,
-        ),
-        const SizedBox(height: 10),
-        _buildPaymentMethodOption(
-          title: 'Credit/Debit Card',
-          value: 'Card',
-          icon: Icons.credit_card,
-        ),
-      ],
+    return _buildPaymentMethodOption(
+      title: 'PayChangu',
+      value: 'PayChangu',
+      icon: Icons.payments,
     );
   }
 
@@ -232,7 +342,9 @@ class _FundAccountPageState extends State<FundAccountPage> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(
-          color: _selectedPaymentMethod == value ? const Color(0xFF8B5E3B) : Colors.grey[300]!,
+          color: _selectedPaymentMethod == value 
+              ? const Color(0xFF8B5E3B) 
+              : Colors.grey[300]!,
           width: _selectedPaymentMethod == value ? 2 : 1,
         ),
       ),
@@ -249,7 +361,9 @@ class _FundAccountPageState extends State<FundAccountPage> {
             children: [
               Icon(
                 icon,
-                color: _selectedPaymentMethod == value ? const Color(0xFF5A3D1F) : Colors.grey[600],
+                color: _selectedPaymentMethod == value 
+                    ? const Color(0xFF5A3D1F) 
+                    : Colors.grey[600],
                 size: 30,
               ),
               const SizedBox(width: 15),
@@ -259,7 +373,9 @@ class _FundAccountPageState extends State<FundAccountPage> {
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
-                    color: _selectedPaymentMethod == value ? const Color(0xFF5A3D1F) : Colors.grey[700],
+                    color: _selectedPaymentMethod == value 
+                        ? const Color(0xFF5A3D1F) 
+                        : Colors.grey[700],
                   ),
                 ),
               ),
@@ -285,13 +401,13 @@ class _FundAccountPageState extends State<FundAccountPage> {
       width: double.infinity,
       child: ElevatedButton.icon(
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF5A3D1F), // Your theme color
+          backgroundColor: const Color(0xFF5A3D1F),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
           padding: const EdgeInsets.symmetric(vertical: 15),
         ),
-        onPressed: _onFundAccountPressed, // Now calls the local placeholder
+        onPressed: _onFundAccountPressed,
         icon: const Icon(Icons.account_balance_wallet, color: Colors.white),
         label: const Text(
           'Fund Account',
@@ -305,14 +421,13 @@ class _FundAccountPageState extends State<FundAccountPage> {
     );
   }
 
-  // --- New Bottom Navigation Bar Widget ---
   BottomNavigationBar _buildBottomNavBar() {
     return BottomNavigationBar(
       backgroundColor: Colors.white,
       selectedItemColor: const Color(0xFF5A3D1F),
       unselectedItemColor: Colors.grey[600],
-      currentIndex: _selectedIndex, // Use the state variable for current index
-      onTap: _onItemTapped, // Call the navigation method
+      currentIndex: _selectedIndex,
+      onTap: _onItemTapped,
       type: BottomNavigationBarType.fixed,
       elevation: 10,
       selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
@@ -339,5 +454,11 @@ class _FundAccountPageState extends State<FundAccountPage> {
         ),
       ],
     );
+  }
+
+  @override
+  void dispose() {
+    _amountController.dispose();
+    super.dispose();
   }
 }

@@ -486,6 +486,133 @@ class _DriverAddRide extends State<DriverAddRide> {
     );
   }
 
+  Future<void> _showLogoutDialog() async {
+    return showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Text(
+            "Logout",
+            style: TextStyle(
+              color: Color(0xFF5A3D1F),
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: Text(
+            "Are you sure you want to logout?",
+            style: TextStyle(color: Colors.grey[700]),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text("Cancel", style: TextStyle(color: Color(0xFF5A3D1F))),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Color(0xFF5A3D1F),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              onPressed: () async {
+                Navigator.of(context).pop();
+                await _logout();
+              },
+              child: Text("Logout", style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _logout() async {
+    try {
+      await Supabase.instance.client.auth.signOut();
+      Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Logout failed: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _showProfileMenu() {
+    showModalBottomSheet(
+      context: context,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 60,
+                height: 5,
+                margin: EdgeInsets.only(bottom: 15),
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(5),
+                ),
+              ),
+              _buildMenuOption(
+                icon: Icons.person,
+                title: "Profile",
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.pushNamed(context, '/profile');
+                },
+              ),
+              Divider(height: 20, color: Colors.grey[200]),
+              _buildMenuOption(
+                icon: Icons.logout,
+                title: "Logout",
+                onTap: () {
+                  Navigator.pop(context);
+                  _showLogoutDialog();
+                },
+                isLogout: true,
+              ),
+              SizedBox(height: 10),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildMenuOption({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+    bool isLogout = false,
+  }) {
+    return ListTile(
+      leading: Icon(icon, color: isLogout ? Colors.red : Color(0xFF5A3D1F)),
+      title: Text(
+        title,
+        style: TextStyle(
+          color: isLogout ? Colors.red : Color(0xFF5A3D1F),
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      onTap: onTap,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -493,9 +620,9 @@ class _DriverAddRide extends State<DriverAddRide> {
       appBar: AppBar(
         automaticallyImplyLeading: false,
         backgroundColor: Colors.white,
-        elevation: 1,
+        elevation: 0,
         title: Text(
-          _isRideSelected ? "Add Ride" : "Add Vehicle",
+          "Add Ride",
           style: TextStyle(
             color: Color(0xFF5A3D1F),
             fontWeight: FontWeight.bold,
@@ -509,9 +636,12 @@ class _DriverAddRide extends State<DriverAddRide> {
           ),
           Padding(
             padding: EdgeInsets.only(right: 10),
-            child: CircleAvatar(
-              backgroundColor: Color(0xFF5A3D1F).withOpacity(0.1),
-              child: Icon(Icons.person, color: Color(0xFF5A3D1F)),
+            child: GestureDetector(
+              onTap: _showProfileMenu,
+              child: CircleAvatar(
+                backgroundColor: Color(0xFF5A3D1F).withOpacity(0.1),
+                child: Icon(Icons.person, color: Color(0xFF5A3D1F)),
+              ),
             ),
           ),
         ],

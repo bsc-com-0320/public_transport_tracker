@@ -13,7 +13,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 // Use prefixes for ambiguous imports
 import 'package:public_transport_tracker/homepage.dart' as app_home; // For your general user home page
-import 'package:public_transport_tracker/FundAccountPage.dart' as app_fund; // For your general user fund account page
+import 'package:public_transport_tracker/DriverFundAccountPage.dart' as app_fund; // For your general user fund account page
 
 import 'RecordsPage.dart';
 import 'OrderPage.dart';

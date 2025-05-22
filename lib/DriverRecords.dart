@@ -29,13 +29,15 @@ class MyApp extends StatelessWidget {
       initialRoute: '/driver-records', // Set the initial route
       routes: {
         '/': (context) => const HomePage(), // Placeholder for Home
-        '/driver-home': (context) => const HomePage(), // Explicit route for home
+        '/driver-home':
+            (context) => const HomePage(), // Explicit route for home
         '/driver-ride':
             (context) => const DriverRidePage(), // Placeholder for Add Ride
         '/driver-records':
             (context) => const DriverRecordsPage(), // Your existing page
         '/fund-account':
-            (context) => const FundAccountPage(), // Placeholder for Fund Account (renamed for clarity)
+            (context) =>
+                const FundAccountPage(), // Placeholder for Fund Account (renamed for clarity)
       },
     );
   }
@@ -110,6 +112,125 @@ class _RecordsPageState extends State<DriverRecordsPage> {
     }
   }
 
+  Future<void> _showLogoutDialog() async {
+    return showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Text(
+            "Logout",
+            style: TextStyle(
+              color: Color(0xFF5A3D1F),
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: Text(
+            "Are you sure you want to logout?",
+            style: TextStyle(color: Colors.grey[700]),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text("Cancel", style: TextStyle(color: Color(0xFF5A3D1F))),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Color(0xFF5A3D1F),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              onPressed: () async {
+                Navigator.of(context).pop();
+                await _logout();
+              },
+              child: Text("Logout", style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _logout() async {
+    try {
+      await Supabase.instance.client.auth.signOut();
+      Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Logout failed: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _showProfileMenu() {
+    showModalBottomSheet(
+      context: context,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 60,
+                height: 5,
+                margin: EdgeInsets.only(bottom: 15),
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(5),
+                ),
+              ),
+              ListTile(
+                leading: Icon(Icons.person, color: Color(0xFF5A3D1F)),
+                title: Text(
+                  "Profile",
+                  style: TextStyle(
+                    color: Color(0xFF5A3D1F),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.pushNamed(context, '/profile');
+                },
+              ),
+              Divider(height: 20, color: Colors.grey[200]),
+              ListTile(
+                leading: Icon(Icons.logout, color: Colors.red),
+                title: Text(
+                  "Logout",
+                  style: TextStyle(
+                    color: Colors.red,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showLogoutDialog();
+                },
+              ),
+              SizedBox(height: 10),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -119,7 +240,7 @@ class _RecordsPageState extends State<DriverRecordsPage> {
         backgroundColor: Colors.white,
         elevation: 0,
         title: const Text(
-          'Driver Bookings',
+          'Driver Records',
           style: TextStyle(
             color: Color(0xFF5A3D1F),
             fontWeight: FontWeight.bold,
@@ -133,15 +254,20 @@ class _RecordsPageState extends State<DriverRecordsPage> {
           ),
           Padding(
             padding: EdgeInsets.only(right: 10),
-            child: CircleAvatar(
-              backgroundColor: Color(0xFF5A3D1F).withOpacity(0.1),
-              child: Icon(Icons.person, color: Color(0xFF5A3D1F)),
+            child: GestureDetector(
+              onTap: _showProfileMenu,
+              child: CircleAvatar(
+                backgroundColor: Color(0xFF5A3D1F).withOpacity(0.1),
+                child: Icon(Icons.person, color: Color(0xFF5A3D1F)),
+              ),
             ),
           ),
         ],
       ),
       body: _buildBody(),
-      bottomNavigationBar: _BottomNavBar(selectedIndex: _selectedIndex), // Use the reusable widget
+      bottomNavigationBar: _BottomNavBar(
+        selectedIndex: _selectedIndex,
+      ), // Use the reusable widget
     );
   }
 
