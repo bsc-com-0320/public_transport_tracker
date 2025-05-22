@@ -47,7 +47,7 @@ class _OrderPageState extends State<OrderPage> {
 
   final SupabaseClient supabase = Supabase.instance.client;
   int _selectedIndex = 1;
-  final List<String> _pages = ['/', '/order', '/records', '/rides'];
+  final List<String> _pages = ['/home', '/order', '/records', '/rides'];
 
   @override
   void initState() {

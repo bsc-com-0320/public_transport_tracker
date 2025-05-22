@@ -9,7 +9,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
   // Make sure these match the routes defined in main.dart
-  final List<String> _pages = ['/home', '/order', '/records', '/rides'];
+  final List<String> _pages = ['/home', '/order', '/records', '/s-fund-account'];
   final PageController _pageController = PageController(viewportFraction: 0.85);
   int _currentPage = 0;
   bool _showAlert = true;
@@ -707,9 +707,9 @@ class _HomePageState extends State<HomePage> {
           label: "Records",
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.add_circle_outline),
-          activeIcon: Icon(Icons.add_circle),
-          label: "Add Ride", // This seems to be a placeholder for 'Rides' in your _pages list
+          icon: Icon(Icons.account_balance_wallet_outlined),
+          activeIcon: Icon(Icons.account_balance_wallet),
+          label: "Fund Account",
         ),
       ],
     );

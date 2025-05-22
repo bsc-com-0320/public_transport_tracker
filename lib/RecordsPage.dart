@@ -42,8 +42,7 @@ class _RecordsPageState extends State<RecordsPage> {
   List<Map<String, dynamic>> bookings = [];
   bool isLoading = true;
   int _selectedIndex = 2;
-  final List<String> _pages = ['/', '/order', '/records', '/rides'];
-  
+  final List<String> _pages = ['/home', '/order', '/records', '/s-fund-account'];
 
   @override
   void initState() {
@@ -76,19 +75,16 @@ class _RecordsPageState extends State<RecordsPage> {
       });
     } catch (e) {
       setState(() => isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading bookings: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error loading bookings: $e')));
     }
   }
 
   Future<void> _cancelBooking(String bookingId) async {
     try {
       setState(() => isLoading = true);
-      await supabase
-          .from('request_ride')
-          .delete()
-          .eq('id', bookingId);
+      await supabase.from('request_ride').delete().eq('id', bookingId);
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Booking cancelled successfully')),
@@ -96,9 +92,9 @@ class _RecordsPageState extends State<RecordsPage> {
       await _loadBookings();
     } catch (e) {
       setState(() => isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to cancel booking: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to cancel booking: $e')));
     }
   }
 
@@ -139,11 +135,7 @@ class _RecordsPageState extends State<RecordsPage> {
 
   Widget _buildBody() {
     if (isLoading) {
-      return Center(
-        child: CircularProgressIndicator(
-          color: Color(0xFF5A3D1F),
-        ),
-      );
+      return Center(child: CircularProgressIndicator(color: Color(0xFF5A3D1F)));
     }
 
     if (bookings.isEmpty) {
@@ -176,10 +168,7 @@ class _RecordsPageState extends State<RecordsPage> {
                 ),
                 padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               ),
-              child: Text(
-                'Refresh',
-                style: TextStyle(color: Colors.white),
-              ),
+              child: Text('Refresh', style: TextStyle(color: Colors.white)),
             ),
           ],
         ),
@@ -234,9 +223,9 @@ class _RecordsPageState extends State<RecordsPage> {
           label: "Records",
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.add_circle_outline),
-          activeIcon: Icon(Icons.add_circle),
-          label: "Add Ride",
+          icon: Icon(Icons.account_balance_wallet_outlined),
+          activeIcon: Icon(Icons.account_balance_wallet),
+          label: "Fund Account",
         ),
       ],
     );
@@ -286,19 +275,22 @@ class _RecordsPageState extends State<RecordsPage> {
   Widget _buildBookingCard(Map<String, dynamic> booking) {
     try {
       // Parse dates
-      final bookingTime = booking['booking_time'] != null
-          ? DateTime.parse(booking['booking_time'])
-          : DateTime.now();
-      final departureTime = booking['departure_time'] != null
-          ? DateTime.parse(booking['departure_time'])
-          : null;
+      final bookingTime =
+          booking['booking_time'] != null
+              ? DateTime.parse(booking['booking_time'])
+              : DateTime.now();
+      final departureTime =
+          booking['departure_time'] != null
+              ? DateTime.parse(booking['departure_time'])
+              : null;
 
       // Format dates
       final formattedBookingDate = DateFormat('MMM d, y').format(bookingTime);
       final formattedBookingTime = DateFormat('h:mm a').format(bookingTime);
-      final formattedDeparture = departureTime != null
-          ? DateFormat('MMM d, h:mm a').format(departureTime)
-          : 'Not specified';
+      final formattedDeparture =
+          departureTime != null
+              ? DateFormat('MMM d, h:mm a').format(departureTime)
+              : 'Not specified';
 
       return Container(
         margin: const EdgeInsets.only(bottom: 16),
@@ -390,17 +382,11 @@ class _RecordsPageState extends State<RecordsPage> {
                     children: [
                       Text(
                         'Booked on $formattedBookingDate',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                        ),
+                        style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                       ),
                       Text(
                         'at $formattedBookingTime',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                        ),
+                        style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                       ),
                     ],
                   ),
@@ -506,10 +492,7 @@ class _RecordsPageState extends State<RecordsPage> {
                 Text(
                   'Are you sure you want to cancel this booking?',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey[700],
-                  ),
+                  style: TextStyle(fontSize: 16, color: Colors.grey[700]),
                 ),
                 const SizedBox(height: 24),
                 Row(

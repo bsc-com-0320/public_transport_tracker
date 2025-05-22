@@ -17,7 +17,7 @@ import 'package:public_transport_tracker/DriverFundAccountPage.dart' as app_fund
 
 import 'RecordsPage.dart';
 import 'OrderPage.dart';
-import 'RidesPage.dart';
+import 'SFundAccountPage.dart';
 import 'map_screen.dart'; // Make sure this file exists
 
 void main() async {
@@ -48,7 +48,6 @@ class MyApp extends StatelessWidget {
         // Use the prefixed names here
         '/home': (context) => app_home.HomePage(), // This is your general user home page
         '/records': (context) => RecordsPage(),
-        '/rides': (context) => RidesPage(),
         '/order': (context) => OrderPage(),
         '/map': (context) => MapScreen(),
         '/account': (context) => AccountsPage(),
@@ -60,6 +59,7 @@ class MyApp extends StatelessWidget {
         '/driver-ride': (context) => DriverAddRide(),
         // Use the prefixed name here
         '/fund-account': (context) => app_fund.FundAccountPage(),
+         '/s-fund-account': (context) => SFundAccountPage(),
       },
       onUnknownRoute: (settings) {
         return MaterialPageRoute(
