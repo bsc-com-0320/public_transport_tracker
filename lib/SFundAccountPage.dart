@@ -16,7 +16,7 @@ class _FundAccountPageState extends State<SFundAccountPage> {
     '/home',
     '/order',
     '/records',
-    '/s-fund-account'
+    '/s-fund-account',
   ];
 
   Future<void> _showLogoutDialog() async {
@@ -71,11 +71,7 @@ class _FundAccountPageState extends State<SFundAccountPage> {
   Future<void> _logout() async {
     try {
       await Supabase.instance.client.auth.signOut();
-      Navigator.pushNamedAndRemoveUntil(
-        context,
-        '/login',
-        (route) => false
-      );
+      Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -196,7 +192,10 @@ class _FundAccountPageState extends State<SFundAccountPage> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.notifications_none, color: Color(0xFF5A3D1F)),
+            icon: const Icon(
+              Icons.notifications_none,
+              color: Color(0xFF5A3D1F),
+            ),
             onPressed: () {},
           ),
           Padding(
@@ -342,9 +341,10 @@ class _FundAccountPageState extends State<SFundAccountPage> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(
-          color: _selectedPaymentMethod == value
-              ? const Color(0xFF8B5E3B)
-              : Colors.grey[300]!,
+          color:
+              _selectedPaymentMethod == value
+                  ? const Color(0xFF8B5E3B)
+                  : Colors.grey[300]!,
           width: _selectedPaymentMethod == value ? 2 : 1,
         ),
       ),
@@ -361,9 +361,10 @@ class _FundAccountPageState extends State<SFundAccountPage> {
             children: [
               Icon(
                 icon,
-                color: _selectedPaymentMethod == value
-                    ? const Color(0xFF5A3D1F)
-                    : Colors.grey[600],
+                color:
+                    _selectedPaymentMethod == value
+                        ? const Color(0xFF5A3D1F)
+                        : Colors.grey[600],
                 size: 30,
               ),
               const SizedBox(width: 15),
@@ -373,9 +374,10 @@ class _FundAccountPageState extends State<SFundAccountPage> {
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
-                    color: _selectedPaymentMethod == value
-                        ? const Color(0xFF5A3D1F)
-                        : Colors.grey[700],
+                    color:
+                        _selectedPaymentMethod == value
+                            ? const Color(0xFF5A3D1F)
+                            : Colors.grey[700],
                   ),
                 ),
               ),
@@ -438,9 +440,9 @@ class _FundAccountPageState extends State<SFundAccountPage> {
           label: "Home",
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.add_circle_outline),
-          activeIcon: Icon(Icons.add_circle),
-          label: "Add Ride", // This label should be changed to "Add Ride" or similar based on its actual function
+          icon: Icon(Icons.directions_bus_outlined),
+          activeIcon: Icon(Icons.directions_bus),
+          label: "Order",
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.history_outlined),
