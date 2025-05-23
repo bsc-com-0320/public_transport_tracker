@@ -229,12 +229,13 @@ class _HomePageState extends State<HomePage> {
         automaticallyImplyLeading: false,
         backgroundColor: Colors.white,
         elevation: 0,
-        title: Text(
-          _isLoadingUserData ? 'Loading...' : _userType,
+        title: const Text(
+          // <--- CHANGE THIS LINE
+          "EasyRide", // <--- Directly set it to "EasyRide"
           style: TextStyle(
             color: Color(0xFF5A3D1F),
             fontWeight: FontWeight.bold,
-            fontSize: 24,
+            fontSize: 28,
           ),
         ),
         actions: [
