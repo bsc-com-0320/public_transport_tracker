@@ -20,6 +20,7 @@ class _ProfilePageState extends State<ProfilePage> {
   final _phoneController = TextEditingController();
   final _addressController = TextEditingController();
   final _businessNameController = TextEditingController();
+  final _deleteEmailController = TextEditingController();
 
   @override
   void initState() {
@@ -34,6 +35,7 @@ class _ProfilePageState extends State<ProfilePage> {
     _phoneController.dispose();
     _addressController.dispose();
     _businessNameController.dispose();
+    _deleteEmailController.dispose();
     super.dispose();
   }
 
@@ -115,6 +117,235 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
+Future<void> _initiateAccountDeletion() async {
+  final user = _supabase.auth.currentUser;
+  if (user == null) return;
+
+  return showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      title: const Text(
+        "Delete Account",
+        style: TextStyle(
+          color: Color(0xFF5A3D1F),
+        ),
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            "To delete your account, please enter your email address. "
+            "We'll send a verification link to confirm the deletion.",
+            style: TextStyle(color: Colors.grey),
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _deleteEmailController,
+            decoration: InputDecoration(
+              labelText: 'Email Address',
+              prefixIcon: const Icon(Icons.email, color: Color(0xFF5A3D1F)),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            validator: (value) {
+              if (value == null || value.isEmpty) return 'Required';
+              if (value != user.email) return 'Email does not match';
+              return null;
+            },
+          ),
+        ],
+      ),
+      actions: <Widget>[
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text(
+            "Cancel",
+            style: TextStyle(color: Color(0xFF5A3D1F)),
+          ),
+        ),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF5A3D1F),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          onPressed: () async {
+            if (_deleteEmailController.text != user.email) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Please enter your registered email'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+              return;
+            }
+            Navigator.pop(context);
+            await _sendDeletionVerification();
+          },
+          child: const Text(
+            "Continue",
+            style: TextStyle(color: Colors.white),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+Future<void> _sendDeletionVerification() async {
+  setState(() => _isLoading = true);
+  try {
+    final user = _supabase.auth.currentUser;
+    if (user == null) return;
+
+    await Future.delayed(const Duration(seconds: 2));
+
+    if (!mounted) return;
+    
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: const Text(
+          "Verify Deletion",
+          style: TextStyle(color: Color(0xFF5A3D1F)),
+        ),
+        content: const Text(
+          "We've sent a verification link to your email. "
+          "Please click the link to confirm account deletion.",
+          style: TextStyle(color: Colors.grey),
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              "Cancel",
+              style: TextStyle(color: Color(0xFF5A3D1F)),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            onPressed: () async {
+              Navigator.pop(context);
+              await _confirmAccountDeletion();
+            },
+            child: const Text(
+              "I've Verified",
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Error sending verification: $e'),
+        backgroundColor: Colors.red,
+      ),
+    );
+  } finally {
+    setState(() => _isLoading = false);
+  }
+}
+
+Future<void> _confirmAccountDeletion() async {
+  return showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) => AlertDialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      title: const Text(
+        "Confirm Deletion",
+        style: TextStyle(color: Colors.red),
+      ),
+      content: const Text(
+        "This will permanently delete your account and all associated data. "
+        "This action cannot be undone. Are you sure?",
+        style: TextStyle(color: Colors.grey),
+      ),
+      actions: <Widget>[
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text(
+            "Cancel",
+            style: TextStyle(color: Color(0xFF5A3D1F)),
+          ),
+        ),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.red,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          onPressed: () async {
+            Navigator.pop(context);
+            await _deleteAccount();
+          },
+          child: const Text(
+            "Delete Account",
+            style: TextStyle(color: Colors.white),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+  Future<void> _deleteAccount() async {
+    setState(() => _isLoading = true);
+    try {
+      final user = _supabase.auth.currentUser;
+      if (user == null) return;
+
+      // Delete from profiles table first
+      await _supabase.from('profiles').delete().eq('user_id', user.id);
+
+      // Delete from the appropriate profile table
+      final tableName = _isDriver ? 'driver_profiles' : 'passenger_profiles';
+      await _supabase.from(tableName).delete().eq('user_id', user.id);
+
+      // Delete the auth user
+      await _supabase.auth.admin.deleteUser(user.id);
+
+      if (!mounted) return;
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Account deleted successfully'),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      Navigator.pushNamedAndRemoveUntil(
+          context, '/login', (route) => false);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error deleting account: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -188,16 +419,14 @@ class _ProfilePageState extends State<ProfilePage> {
                               Text(
                                 _emailController.text,
                                 style: TextStyle(
-                                  color: Colors.grey[600],
-                                ),
+                                  color: Colors.grey[600]),
                               ),
                               const SizedBox(height: 8),
                               Text(
                                 '${_isDriver ? 'Driver' : 'Passenger'} since ${DateFormat('MMM yyyy').format(DateTime.parse(_supabase.auth.currentUser?.createdAt ?? DateTime.now().toString()))}',
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: Colors.grey[500],
-                                ),
+                                  color: Colors.grey[500]),
                               ),
                             ],
                           ),
@@ -294,6 +523,12 @@ class _ProfilePageState extends State<ProfilePage> {
                             icon: Icons.help,
                             title: 'Help & Support',
                             onTap: () {},
+                          ),
+                          _buildSettingOption(
+                            icon: Icons.delete,
+                            title: 'Delete Account',
+                            color: Colors.red,
+                            onTap: _initiateAccountDeletion,
                           ),
                         ]),
                         const SizedBox(height: 32),
@@ -459,19 +694,20 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget _buildSettingOption({
     required IconData icon,
     required String title,
+    Color? color,
     required VoidCallback onTap,
   }) {
     return ListTile(
       contentPadding: EdgeInsets.zero,
-      leading: Icon(icon, color: Color(0xFF5A3D1F)),
+      leading: Icon(icon, color: color ?? Color(0xFF5A3D1F)),
       title: Text(
         title,
         style: TextStyle(
-          color: Color(0xFF5A3D1F),
+          color: color ?? Color(0xFF5A3D1F),
           fontWeight: FontWeight.w500,
         ),
       ),
-      trailing: Icon(Icons.chevron_right, color: Color(0xFF5A3D1F)),
+      trailing: Icon(Icons.chevron_right, color: color ?? Color(0xFF5A3D1F)),
       onTap: onTap,
     );
   }
