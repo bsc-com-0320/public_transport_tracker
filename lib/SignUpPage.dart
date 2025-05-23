@@ -20,11 +20,9 @@ class _SignUpPageState extends State<SignUpPage> {
 
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
-
   bool _isLoading = false;
   final _supabase = Supabase.instance.client;
-
-  String _selectedAccountType = 'Passenger'; // Default value
+  String _selectedAccountType = 'Passenger';
 
   @override
   void dispose() {
@@ -36,6 +34,29 @@ class _SignUpPageState extends State<SignUpPage> {
     _addressController.dispose();
     _businessNameController.dispose();
     super.dispose();
+  }
+
+  Widget _buildAppLogo() {
+    try {
+      return Image.asset(
+        'assets/EasyRideIcon.png',
+        height: 120,
+        width: 120,
+        errorBuilder: (context, error, stackTrace) {
+          return const Icon(
+            Icons.directions_car,
+            size: 120,
+            color: Color(0xFF5A3D1F),
+          );
+        },
+      );
+    } catch (e) {
+      return const Icon(
+        Icons.directions_car,
+        size: 120,
+        color: Color(0xFF5A3D1F),
+      );
+    }
   }
 
   @override
@@ -52,12 +73,8 @@ class _SignUpPageState extends State<SignUpPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 40),
-              const Center(
-                child: Icon(
-                  Icons.directions_car,
-                  size: 80,
-                  color: Color(0xFF5A3D1F),
-                ),
+              Center(
+                child: _buildAppLogo(),
               ),
               const SizedBox(height: 30),
               const Text(
@@ -75,40 +92,39 @@ class _SignUpPageState extends State<SignUpPage> {
               ),
               const SizedBox(height: 32),
 
-              // --- Account Type Selection (Decorated Dropdown) ---
               DropdownButtonFormField<String>(
                 value: _selectedAccountType,
                 decoration: InputDecoration(
                   labelText: 'Account Type',
-                  labelStyle: const TextStyle(color: Color(0xFF5A3D1F)), // Label color
+                  labelStyle: const TextStyle(color: Color(0xFF5A3D1F)),
                   prefixIcon: const Icon(Icons.person_outline, color: Color(0xFF5A3D1F)),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFF5A3D1F)), // Default border
+                    borderSide: const BorderSide(color: Color(0xFF5A3D1F)),
                   ),
-                  enabledBorder: OutlineInputBorder( // Border when enabled
+                  enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(color: Colors.grey[400]!, width: 1),
                   ),
-                  focusedBorder: OutlineInputBorder( // Border when focused
+                  focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: const BorderSide(color: Color(0xFF8B5E3B), width: 2),
                   ),
                   filled: true,
                   fillColor: Colors.white,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8), // Adjust padding
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 ),
-                icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF5A3D1F), size: 30), // Larger icon
-                iconEnabledColor: const Color(0xFF5A3D1F), // Icon color when enabled
-                style: const TextStyle(color: Color(0xFF5A3D1F), fontSize: 16), // Text style for selected value
-                dropdownColor: Colors.white, // Background color of the dropdown menu
+                icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF5A3D1F), size: 30),
+                iconEnabledColor: const Color(0xFF5A3D1F),
+                style: const TextStyle(color: Color(0xFF5A3D1F), fontSize: 16),
+                dropdownColor: Colors.white,
                 items: <String>['Passenger', 'Driver']
                     .map<DropdownMenuItem<String>>((String value) {
                   return DropdownMenuItem<String>(
                     value: value,
                     child: Text(
                       value,
-                      style: const TextStyle(color: Color(0xFF5A3D1F)), // Text color in dropdown items
+                      style: const TextStyle(color: Color(0xFF5A3D1F)),
                     ),
                   );
                 }).toList(),
@@ -126,10 +142,8 @@ class _SignUpPageState extends State<SignUpPage> {
                   return null;
                 },
               ),
-              // --- End Account Type Selection ---
               const SizedBox(height: 20),
 
-              // Name Field (for passengers) or Business Name (for drivers)
               if (!_isDriver)
                 TextFormField(
                   controller: _nameController,
@@ -139,7 +153,7 @@ class _SignUpPageState extends State<SignUpPage> {
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    focusedBorder: OutlineInputBorder( // Consistent focused border
+                    focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: const BorderSide(color: Color(0xFF8B5E3B), width: 2),
                     ),
@@ -156,7 +170,7 @@ class _SignUpPageState extends State<SignUpPage> {
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    focusedBorder: OutlineInputBorder( // Consistent focused border
+                    focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: const BorderSide(color: Color(0xFF8B5E3B), width: 2),
                     ),
@@ -166,7 +180,6 @@ class _SignUpPageState extends State<SignUpPage> {
                 ),
               const SizedBox(height: 20),
 
-              // Email Field
               TextFormField(
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
@@ -176,7 +189,7 @@ class _SignUpPageState extends State<SignUpPage> {
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  focusedBorder: OutlineInputBorder( // Consistent focused border
+                  focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: const BorderSide(color: Color(0xFF8B5E3B), width: 2),
                   ),
@@ -193,7 +206,6 @@ class _SignUpPageState extends State<SignUpPage> {
               ),
               const SizedBox(height: 20),
 
-              // Phone Number Field
               TextFormField(
                 controller: _phoneController,
                 keyboardType: TextInputType.phone,
@@ -203,7 +215,7 @@ class _SignUpPageState extends State<SignUpPage> {
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  focusedBorder: OutlineInputBorder( // Consistent focused border
+                  focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: const BorderSide(color: Color(0xFF8B5E3B), width: 2),
                   ),
@@ -215,7 +227,6 @@ class _SignUpPageState extends State<SignUpPage> {
               ),
               const SizedBox(height: 20),
 
-              // Address Field
               TextFormField(
                 controller: _addressController,
                 decoration: InputDecoration(
@@ -224,7 +235,7 @@ class _SignUpPageState extends State<SignUpPage> {
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  focusedBorder: OutlineInputBorder( // Consistent focused border
+                  focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: const BorderSide(color: Color(0xFF8B5E3B), width: 2),
                   ),
@@ -233,7 +244,6 @@ class _SignUpPageState extends State<SignUpPage> {
               ),
               const SizedBox(height: 20),
 
-              // Password Field
               TextFormField(
                 controller: _passwordController,
                 obscureText: _obscurePassword,
@@ -256,7 +266,7 @@ class _SignUpPageState extends State<SignUpPage> {
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  focusedBorder: OutlineInputBorder( // Consistent focused border
+                  focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: const BorderSide(color: Color(0xFF8B5E3B), width: 2),
                   ),
@@ -269,7 +279,6 @@ class _SignUpPageState extends State<SignUpPage> {
               ),
               const SizedBox(height: 20),
 
-              // Confirm Password Field
               TextFormField(
                 controller: _confirmPasswordController,
                 obscureText: _obscureConfirmPassword,
@@ -292,7 +301,7 @@ class _SignUpPageState extends State<SignUpPage> {
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  focusedBorder: OutlineInputBorder( // Consistent focused border
+                  focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: const BorderSide(color: Color(0xFF8B5E3B), width: 2),
                   ),
@@ -306,7 +315,6 @@ class _SignUpPageState extends State<SignUpPage> {
               ),
               const SizedBox(height: 30),
 
-              // Sign Up Button
               SizedBox(
                 width: double.infinity,
                 height: 50,
@@ -362,7 +370,6 @@ class _SignUpPageState extends State<SignUpPage> {
 
       final String userType = _selectedAccountType.toLowerCase();
       final bool isDriver = userType == 'driver';
-
 
       final authResponse = await _supabase.auth.signUp(
         email: _emailController.text.trim(),

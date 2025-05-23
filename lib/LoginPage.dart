@@ -15,7 +15,6 @@ class _SignInPageState extends State<SignInPage> {
   bool _isLoading = false;
   final _supabase = Supabase.instance.client;
   bool _obscurePassword = true;
-  // In your SignInPage (_signIn method)
 
   Future<void> _signIn() async {
     if (!_formKey.currentState!.validate()) return;
@@ -101,6 +100,31 @@ class _SignInPageState extends State<SignInPage> {
     }
   }
 
+  Widget _buildAppLogo() {
+    try {
+      return Image.asset(
+        'assets/EasyRideIcon.png',
+        height: 130, // Increased from 80 to 120
+        width: 130, // Increased from 80 to 120
+        errorBuilder: (context, error, stackTrace) {
+          debugPrint('Image load error: $error');
+          return _buildFallbackIcon();
+        },
+      );
+    } catch (e) {
+      debugPrint('Image load exception: $e');
+      return _buildFallbackIcon();
+    }
+  }
+
+  Widget _buildFallbackIcon() {
+    return const Icon(
+      Icons.directions_car,
+      size: 130, // Also increased the fallback icon size to match
+      color: Color(0xFF5A3D1F),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -113,20 +137,14 @@ class _SignInPageState extends State<SignInPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 60),
-              Center(
-                child: Icon(
-                  Icons.directions_car,
-                  size: 80,
-                  color: Color(0xFF5A3D1F),
-                ),
-              ),
+              Center(child: _buildAppLogo()),
               const SizedBox(height: 30),
               Text(
                 'Sign In',
                 style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF5A3D1F),
+                  color: const Color(0xFF5A3D1F),
                 ),
               ),
               const SizedBox(height: 8),
@@ -140,7 +158,7 @@ class _SignInPageState extends State<SignInPage> {
                 keyboardType: TextInputType.emailAddress,
                 decoration: InputDecoration(
                   labelText: 'Email Address',
-                  prefixIcon: Icon(Icons.email, color: Color(0xFF5A3D1F)),
+                  prefixIcon: const Icon(Icons.email, color: Color(0xFF5A3D1F)),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -158,16 +176,16 @@ class _SignInPageState extends State<SignInPage> {
               const SizedBox(height: 20),
               TextFormField(
                 controller: _passwordController,
-                obscureText: _obscurePassword, // Use the variable here
+                obscureText: _obscurePassword,
                 decoration: InputDecoration(
                   labelText: 'Password',
-                  prefixIcon: Icon(Icons.lock, color: Color(0xFF5A3D1F)),
+                  prefixIcon: const Icon(Icons.lock, color: Color(0xFF5A3D1F)),
                   suffixIcon: IconButton(
                     icon: Icon(
                       _obscurePassword
                           ? Icons.visibility
                           : Icons.visibility_off,
-                      color: Color(0xFF5A3D1F),
+                      color: const Color(0xFF5A3D1F),
                     ),
                     onPressed: () {
                       setState(() {
@@ -192,15 +210,15 @@ class _SignInPageState extends State<SignInPage> {
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _signIn,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Color(0xFF5A3D1F),
+                    backgroundColor: const Color(0xFF5A3D1F),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
                   child:
                       _isLoading
-                          ? CircularProgressIndicator(color: Colors.white)
-                          : Text(
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : const Text(
                             'Sign In',
                             style: TextStyle(fontSize: 18, color: Colors.white),
                           ),
@@ -210,7 +228,7 @@ class _SignInPageState extends State<SignInPage> {
               TextButton(
                 onPressed:
                     () => Navigator.pushNamed(context, '/forgot-password'),
-                child: Text(
+                child: const Text(
                   'Forgot Password?',
                   style: TextStyle(color: Color(0xFF5A3D1F)),
                 ),
@@ -219,12 +237,12 @@ class _SignInPageState extends State<SignInPage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text("Don't have an account? "),
+                  const Text("Don't have an account? "),
                   TextButton(
                     onPressed:
                         () =>
                             Navigator.pushReplacementNamed(context, '/signup'),
-                    child: Text(
+                    child: const Text(
                       'Sign Up',
                       style: TextStyle(
                         color: Color(0xFF5A3D1F),
