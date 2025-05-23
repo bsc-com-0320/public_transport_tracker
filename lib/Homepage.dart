@@ -8,33 +8,90 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
-  // Make sure these match the routes defined in main.dart
-  final List<String> _pages = ['/home', '/order', '/records', '/s-fund-account'];
+  final List<String> _pages = [
+    '/home',
+    '/order',
+    '/records',
+    '/s-fund-account',
+  ];
   final PageController _pageController = PageController(viewportFraction: 0.85);
   int _currentPage = 0;
   bool _showAlert = true;
+  String _userName = '';
+  String _userType = 'Passenger';
+  bool _isLoadingUserData = true;
 
-  void _onItemTapped(int index) {
-    if (_selectedIndex == index) return;
-    setState(() => _selectedIndex = index);
-    // Use pushReplacementNamed to prevent accumulating a stack of the same page
-    Navigator.pushReplacementNamed(context, _pages[index]);
-  }
+  final _supabase = Supabase.instance.client;
 
   @override
   void initState() {
     super.initState();
-    _pageController.addListener(() {
-      setState(() {
-        _currentPage = _pageController.page?.round() ?? 0;
-      });
+    _pageController.addListener(_updateCurrentPage);
+    _fetchUserData();
+  }
+
+  void _updateCurrentPage() {
+    setState(() {
+      _currentPage = _pageController.page?.round() ?? 0;
     });
+  }
+
+  Future<void> _fetchUserData() async {
+    try {
+      final user = _supabase.auth.currentUser;
+      if (user != null) {
+        // Try passenger profile first
+        final response =
+            await _supabase
+                .from('passenger_profiles')
+                .select()
+                .eq('user_id', user.id)
+                .maybeSingle();
+
+        if (response != null) {
+          setState(() {
+            _userName = response['full_name'] ?? '';
+            _userType = 'Passenger';
+            _isLoadingUserData = false;
+          });
+        } else {
+          // If not passenger, try driver profile
+          final driverResponse =
+              await _supabase
+                  .from('driver_profiles')
+                  .select()
+                  .eq('user_id', user.id)
+                  .maybeSingle();
+
+          setState(() {
+            _userName =
+                driverResponse?['full_name'] ??
+                driverResponse?['business_name'] ??
+                '';
+            _userType = 'Driver';
+            _isLoadingUserData = false;
+          });
+        }
+      }
+    } catch (e) {
+      setState(() {
+        _isLoadingUserData = false;
+      });
+      debugPrint('Error fetching user data: $e');
+    }
   }
 
   @override
   void dispose() {
+    _pageController.removeListener(_updateCurrentPage);
     _pageController.dispose();
     super.dispose();
+  }
+
+  void _onItemTapped(int index) {
+    if (_selectedIndex == index) return;
+    setState(() => _selectedIndex = index);
+    Navigator.pushReplacementNamed(context, _pages[index]);
   }
 
   Future<void> _showLogoutDialog() async {
@@ -82,8 +139,7 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _logout() async {
     try {
-      await Supabase.instance.client.auth.signOut();
-      // Navigate back to the login page and clear all previous routes
+      await _supabase.auth.signOut();
       Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -174,7 +230,7 @@ class _HomePageState extends State<HomePage> {
         backgroundColor: Colors.white,
         elevation: 0,
         title: Text(
-          "Passenger",
+          _isLoadingUserData ? 'Loading...' : _userType,
           style: TextStyle(
             color: Color(0xFF5A3D1F),
             fontWeight: FontWeight.bold,
@@ -206,8 +262,8 @@ class _HomePageState extends State<HomePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (_showAlert) _buildAlertBanner(),
-              SizedBox(height: 20),
+              // THIS IS THE LINE YOU NEED TO CHANGE
+              SizedBox(height: 5), // Change this from 20 to 5
               _buildUserSummary(),
               SizedBox(height: 25),
               _buildDashboardCards(),
@@ -223,43 +279,50 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildAlertBanner() {
-    return Container(
-      padding: EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: Color(0xFF8B5E3B).withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.flash_on, color: Color(0xFF5A3D1F)),
-          SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              "Express rides available! (Will add some Instant notification here)",
-              style: TextStyle(
-                color: Color(0xFF5A3D1F),
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-          IconButton(
-            icon: Icon(Icons.close, size: 18),
-            onPressed: () => setState(() => _showAlert = false),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildUserSummary() {
+    // Determine the greeting
+    String greetingText;
+    if (_isLoadingUserData) {
+      greetingText = "Welcome!";
+    } else if (_userName.isNotEmpty) {
+      greetingText = "Welcome back,"; // Separated for styling
+    } else {
+      greetingText = "Welcome back!";
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          "Welcome back!",
-          style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+          greetingText,
+          style: TextStyle(
+            fontSize: 20, // Increased size
+            color: Color(0xFF5A3D1F), // Darker brown from your theme
+            fontWeight:
+                FontWeight
+                    .normal, // Keep this normal for the "Welcome back," part
+            letterSpacing: 0.5, // Subtle letter spacing
+          ),
         ),
+        if (!_isLoadingUserData &&
+            _userName.isNotEmpty) // Only show name if not loading and available
+          Text(
+            _userName + '!', // Add exclamation for flair
+            style: TextStyle(
+              fontSize: 25, // Significantly larger for the name
+              fontWeight: FontWeight.bold, // Make the name bold
+              color: Color(0xFF5A3D1F), // Use your primary theme color
+              letterSpacing: 1.0, // More letter spacing for emphasis
+              shadows: [
+                // Add a subtle shadow for depth
+                Shadow(
+                  offset: Offset(1.0, 1.0),
+                  blurRadius: 3.0,
+                  color: Colors.black.withOpacity(0.2),
+                ),
+              ],
+            ),
+          ),
         SizedBox(height: 10),
         Row(
           children: [
@@ -416,11 +479,12 @@ class _HomePageState extends State<HomePage> {
                       iconUrl,
                       width: 30,
                       height: 30,
-                      errorBuilder: (_, __, ___) => Icon(
-                        Icons.directions_car,
-                        color: Colors.white,
-                        size: 24,
-                      ),
+                      errorBuilder:
+                          (_, __, ___) => Icon(
+                            Icons.directions_car,
+                            color: Colors.white,
+                            size: 24,
+                          ),
                     ),
                   ),
                 ),
@@ -452,10 +516,7 @@ class _HomePageState extends State<HomePage> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   ),
                   onPressed: onTap,
                   child: Text(
@@ -487,7 +548,8 @@ class _HomePageState extends State<HomePage> {
             margin: EdgeInsets.symmetric(horizontal: 4),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: index == _currentPage ? Color(0xFF5A3D1F) : Colors.grey[300],
+              color:
+                  index == _currentPage ? Color(0xFF5A3D1F) : Colors.grey[300],
             ),
           );
         }),
