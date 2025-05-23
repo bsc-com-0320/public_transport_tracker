@@ -4,7 +4,7 @@
 
    
     <application
-        android:label="public_transport_tracker"
+        android:label="EasyRide"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
