@@ -35,6 +35,7 @@ class _OrderPageState extends State<OrderPage> {
   double _distanceInKm = 0.0;
   LatLng? _pickupLatLng;
   LatLng? _dropoffLatLng;
+  bool _isProcessingBooking = false;
 
   final List<String> _vehicleTypes = [
     'All',
@@ -838,69 +839,74 @@ class _OrderPageState extends State<OrderPage> {
     }
   }
 
-void _showFullScreenMapWithRides() async {
-  try {
-    // First draw the route and get the distance/duration
-    final routeInfo = await _drawRoute();
-    if (!mounted) return;
-
-    // Ensure we have valid route information
-    if (routeInfo.isEmpty ||
-        routeInfo['distance'] == null ||
-        routeInfo['duration'] == null) {
+  void _showFullScreenMapWithRides() async {
+    try {
+      // First draw the route and get the distance/duration
+      final routeInfo = await _drawRoute();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Could not calculate route information'),
+
+      // Ensure we have valid route information
+      if (routeInfo.isEmpty ||
+          routeInfo['distance'] == null ||
+          routeInfo['duration'] == null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not calculate route information'),
+          ),
+        );
+        return;
+      }
+
+      final distance = routeInfo['distance']?.toDouble() ?? 0.0;
+      final duration = routeInfo['duration']?.toDouble() ?? 0.0;
+      final routePoints = routeInfo['points'] as List<LatLng>? ?? [];
+
+      // Ensure we have valid coordinates
+      if (_pickupLatLng == null && _pickupController.text.isNotEmpty) {
+        _pickupLatLng = await _getCoordinatesFromAddress(
+          _pickupController.text,
+        );
+        if (!mounted) return;
+      }
+      if (_dropoffLatLng == null && _dropoffController.text.isNotEmpty) {
+        _dropoffLatLng = await _getCoordinatesFromAddress(
+          _dropoffController.text,
+        );
+        if (!mounted) return;
+      }
+
+      if (!mounted) return;
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder:
+              (context) => AvailableRidesPage(
+                availableRides: availableRides,
+                isLoadingRides: isLoadingRides,
+                pickupLatLng: _pickupLatLng,
+                dropoffLatLng: _dropoffLatLng,
+                routePoints: routePoints,
+                distanceInKm: distance,
+                duration: duration,
+                onBookRide: _bookRide,
+                isOrderActive: isOrderActive,
+                selectedVehicleType: _selectedVehicleType,
+              ),
         ),
       );
-      return;
-    }
-
-    final distance = routeInfo['distance']?.toDouble() ?? 0.0;
-    final duration = routeInfo['duration']?.toDouble() ?? 0.0;
-    final routePoints = routeInfo['points'] as List<LatLng>? ?? [];
-
-    // Ensure we have valid coordinates
-    if (_pickupLatLng == null && _pickupController.text.isNotEmpty) {
-      _pickupLatLng = await _getCoordinatesFromAddress(_pickupController.text);
+    } catch (e) {
       if (!mounted) return;
-    }
-    if (_dropoffLatLng == null && _dropoffController.text.isNotEmpty) {
-      _dropoffLatLng = await _getCoordinatesFromAddress(_dropoffController.text);
-      if (!mounted) return;
-    }
-
-    if (!mounted) return;
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => AvailableRidesPage(
-          availableRides: availableRides,
-          isLoadingRides: isLoadingRides,
-          pickupLatLng: _pickupLatLng,
-          dropoffLatLng: _dropoffLatLng,
-          routePoints: routePoints,
-          distanceInKm: distance,
-          duration: duration,
-          onBookRide: _bookRide,
-          isOrderActive: isOrderActive,
-          selectedVehicleType: _selectedVehicleType,
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error showing rides: ${e.toString()}'),
+          duration: const Duration(seconds: 2),
         ),
-      ),
-    );
-  } catch (e) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Error showing rides: ${e.toString()}'),
-        duration: const Duration(seconds: 2),
-      ),
-    );
-    print('Error in _showFullScreenMapWithRides: $e');
+      );
+      print('Error in _showFullScreenMapWithRides: $e');
+    }
   }
-}
 
   Future<LatLng?> _getCoordinatesFromAddress(String address) async {
     try {
@@ -1582,128 +1588,74 @@ void _showFullScreenMapWithRides() async {
           ),
         ],
       ),
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Color(0xFF5A3D1F),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          padding: EdgeInsets.symmetric(vertical: 16),
-        ),
-        onPressed: () {
-          if (_selectedVehicleType == null) {
-            setState(
-              () => confirmationMessage = "Please select a vehicle type",
-            );
-            return;
-          }
-          if (_pickupController.text.isEmpty ||
-              _dropoffController.text.isEmpty) {
-            setState(
-              () =>
-                  confirmationMessage =
-                      "Please select pickup and dropoff locations",
-            );
-            return;
-          }
-          if (!isOrderActive && _dateTimeController.text.isEmpty) {
-            setState(() => confirmationMessage = "Please select date and time");
-            return;
-          }
+      child:
+          isLoadingRides
+              ? Center(child: CircularProgressIndicator())
+              : ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Color(0xFF5A3D1F),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                ),
+                onPressed: () {
+                  if (_selectedVehicleType == null) {
+                    setState(
+                      () =>
+                          confirmationMessage = "Please select a vehicle type",
+                    );
+                    return;
+                  }
+                  if (_pickupController.text.isEmpty ||
+                      _dropoffController.text.isEmpty) {
+                    setState(
+                      () =>
+                          confirmationMessage =
+                              "Please select pickup and dropoff locations",
+                    );
+                    return;
+                  }
+                  if (!isOrderActive && _dateTimeController.text.isEmpty) {
+                    setState(
+                      () => confirmationMessage = "Please select date and time",
+                    );
+                    return;
+                  }
 
-          setState(() => confirmationMessage = "");
-          _loadAvailableRides().then((_) {
-            _showFullScreenMapWithRides();
-          });
-        },
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              text,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
+                  setState(() {
+                    confirmationMessage = "";
+                    isLoadingRides = true;
+                  });
+                  _loadAvailableRides().then((_) {
+                    _showFullScreenMapWithRides();
+                    setState(() => isLoadingRides = false);
+                  });
+                },
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      text,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    Icon(Icons.arrow_forward, color: Colors.white),
+                  ],
+                ),
               ),
-            ),
-            SizedBox(width: 8),
-            Icon(Icons.arrow_forward, color: Colors.white),
-          ],
-        ),
-      ),
     );
   }
 
   Future<void> _bookRide(Map<String, dynamic> ride) async {
-    DateTime departureTime;
-    try {
-      departureTime =
-          DateTime.tryParse(ride['departure_time']) ?? DateTime.now();
-      if (departureTime == DateTime.now()) {
-        final formatsToTry = [
-          "yyyy-MM-dd HH:mm:ss",
-          "dd/MM/yyyy h:mm a",
-          "MMM dd, yyyy HH:mm",
-          "yyyy-MM-dd HH:mm",
-        ];
-
-        for (final format in formatsToTry) {
-          try {
-            departureTime = DateFormat(format).parse(ride['departure_time']);
-            break;
-          } catch (e) {
-            continue;
-          }
-        }
-      }
-    } catch (e) {
-      departureTime = DateTime.now();
-    }
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        final formattedTime = DateFormat(
-          'MMM dd, hh:mm a',
-        ).format(departureTime);
-
-        return AlertDialog(
-          title: Text('Confirm Booking'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Are you sure you want to book this ride?'),
-              SizedBox(height: 10),
-              Text(
-                'Ride #${ride['ride_number'] ?? 'N/A'}',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              Text('${ride['vehicle_type']} - $formattedTime'),
-              Text('Cost: \$${ride['total_cost']}'),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: Text('Cancel'),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Color(0xFF8B5E3B),
-              ),
-              onPressed: () => Navigator.pop(context, true),
-              child: Text('Confirm Booking'),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (confirmed != true) return;
+    setState(() => _isProcessingBooking = true); // Show loading
 
     try {
+      // Show loading snackbar
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
@@ -1729,47 +1681,54 @@ void _showFullScreenMapWithRides() async {
         throw Exception('Ride ID not found');
       }
 
+      // Create booking data
       final bookingData = {
-        'ride_id': rideId, // The ID of the ride being booked
-        'user_id': userId, // The logged-in user's ID
+        'ride_id': rideId,
+        'user_id': userId,
         'pickup': _pickupController.text,
         'pickup_lat': _pickupLatLng?.latitude,
         'pickup_lng': _pickupLatLng?.longitude,
         'dropoff': _dropoffController.text,
         'dropoff_lat': _dropoffLatLng?.latitude,
         'dropoff_lng': _dropoffLatLng?.longitude,
-        'booking_time':
-            DateTime.now().toIso8601String(), // Current booking time
-        'departure_time':
-            departureTime.toIso8601String(), // Ride's departure time
+        'booking_time': DateTime.now().toIso8601String(),
+        'departure_time': ride['departure_time'],
         'type': isOrderActive ? 'order' : 'book',
         'vehicle_type': _selectedVehicleType ?? ride['vehicle_type'],
         'total_cost': ride['total_cost'],
-        'status': 'pending', // Initial status
-       // 'distance': _distanceInKm, // Calculated distance
+        'status': 'pending',
       };
 
-      // Insert into request_ride table
+      // Insert booking
       await supabase.from('request_ride').insert(bookingData);
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('🎉 Ride booked successfully!')));
-
-      // Update the ride capacity if needed
+      // Update ride capacity
       if (ride['capacity'] > 0) {
         await supabase
             .from('ride')
             .update({'capacity': ride['capacity'] - 1})
-            .eq('id', rideId); // Use the rideId here
+            .eq('id', rideId);
       }
+
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('🎉 Ride booked successfully!'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
 
       // Reload available rides
       _loadAvailableRides();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('❌ Failed to book ride: ${e.toString()}')),
+        SnackBar(
+          content: Text('❌ Failed to book ride: ${e.toString()}'),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
+    } finally {
+      setState(() => _isProcessingBooking = false); // Hide loading
     }
   }
 
