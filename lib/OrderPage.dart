@@ -1922,30 +1922,54 @@ class _OrderPageState extends State<OrderPage> {
         ),
       );
 
+      // Get the current user's ID
+      final userId = supabase.auth.currentUser?.id;
+      if (userId == null) {
+        throw Exception('User not logged in');
+      }
+
+      // Get the ride ID from the ride data
+      final rideId = ride['id'];
+      if (rideId == null) {
+        throw Exception('Ride ID not found');
+      }
+
       final bookingData = {
-        'ride_id': ride['id'],
+        'ride_id': rideId, // The ID of the ride being booked
+        'user_id': userId, // The logged-in user's ID
         'pickup': _pickupController.text,
+        'pickup_lat': _pickupLatLng?.latitude,
+        'pickup_lng': _pickupLatLng?.longitude,
         'dropoff': _dropoffController.text,
-        'booking_time': DateTime.now().toIso8601String(),
+        'dropoff_lat': _dropoffLatLng?.latitude,
+        'dropoff_lng': _dropoffLatLng?.longitude,
+        'booking_time':
+            DateTime.now().toIso8601String(), // Current booking time
+        'departure_time':
+            departureTime.toIso8601String(), // Ride's departure time
         'type': isOrderActive ? 'order' : 'book',
-        'vehicle_type': ride['vehicle_type'],
-        'departure_time': departureTime.toIso8601String(),
+        'vehicle_type': _selectedVehicleType ?? ride['vehicle_type'],
         'total_cost': ride['total_cost'],
+        'status': 'pending', // Initial status
+       // 'distance': _distanceInKm, // Calculated distance
       };
 
+      // Insert into request_ride table
       await supabase.from('request_ride').insert(bookingData);
 
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('🎉 Ride booked successfully!')));
 
+      // Update the ride capacity if needed
       if (ride['capacity'] > 0) {
         await supabase
             .from('ride')
             .update({'capacity': ride['capacity'] - 1})
-            .eq('id', ride['id']);
+            .eq('id', rideId); // Use the rideId here
       }
 
+      // Reload available rides
       _loadAvailableRides();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
