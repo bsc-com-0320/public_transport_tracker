@@ -114,8 +114,11 @@ class _DriverAddRide extends State<DriverAddRide> {
   }
 
   Future<void> _getCurrentLocation(bool isPickup) async {
+    if (!mounted) return;
+
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
+      if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Location services are disabled')));
@@ -126,6 +129,7 @@ class _DriverAddRide extends State<DriverAddRide> {
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Location permissions are denied')),
         );
@@ -134,9 +138,33 @@ class _DriverAddRide extends State<DriverAddRide> {
     }
 
     if (permission == LocationPermission.deniedForever) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Location permissions are permanently denied')),
+      if (!mounted) return;
+
+      // Show a dialog with option to open settings
+      bool? openSettings = await showDialog<bool>(
+        context: context,
+        builder:
+            (context) => AlertDialog(
+              title: Text('Permission Required'),
+              content: Text(
+                'Location permissions are permanently denied. Please enable them in app settings.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: Text('Open Settings'),
+                ),
+              ],
+            ),
       );
+
+      if (openSettings == true) {
+        await Geolocator.openAppSettings();
+      }
       return;
     }
 
@@ -145,23 +173,38 @@ class _DriverAddRide extends State<DriverAddRide> {
         desiredAccuracy: LocationAccuracy.best,
       );
 
-      final locationName = await getLocationName(
+      if (!mounted) return;
+
+      // First set the text to "Getting location..." while we fetch the address
+      setState(() {
+        if (isPickup) {
+          _pickupLatLng = LatLng(position.latitude, position.longitude);
+          _pickupController.text = "Getting location...";
+        } else {
+          _dropoffLatLng = LatLng(position.latitude, position.longitude);
+          _dropoffController.text = "Getting location...";
+        }
+      });
+
+      // Get the actual address name
+      final address = await getLocationName(
         position.latitude,
         position.longitude,
       );
 
+      if (!mounted) return;
+
       setState(() {
         if (isPickup) {
-          _pickupLatLng = LatLng(position.latitude, position.longitude);
-          _pickupController.text = locationName;
+          _pickupController.text = address;
         } else {
-          _dropoffLatLng = LatLng(position.latitude, position.longitude);
-          _dropoffController.text = locationName;
+          _dropoffController.text = address;
         }
       });
 
       _calculateDistance();
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error getting location: ${e.toString()}')),
       );
@@ -257,6 +300,12 @@ class _DriverAddRide extends State<DriverAddRide> {
     });
 
     try {
+      // Get the current user's ID (driver's ID)
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) {
+        throw Exception('User not logged in');
+      }
+
       String? imageUrl;
       if (_selectedImage != null) {
         final filePath = 'rides/${DateTime.now().millisecondsSinceEpoch}.jpg';
@@ -281,6 +330,7 @@ class _DriverAddRide extends State<DriverAddRide> {
         'dropoff_lat': _dropoffLatLng?.latitude,
         'dropoff_lng': _dropoffLatLng?.longitude,
         'created_at': DateTime.now().toIso8601String(),
+        'driver_id': userId, // Add the driver's ID here
       });
 
       ScaffoldMessenger.of(
