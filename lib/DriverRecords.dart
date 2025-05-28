@@ -11,12 +11,15 @@ class DriverRecordsPage extends StatefulWidget {
 
 class _DriverRecordsPageState extends State<DriverRecordsPage> {
   final _supabase = Supabase.instance.client;
+  final Distance _distance = Distance();
   List<Map<String, dynamic>> _bookings = [];
   List<Map<String, dynamic>> _filteredBookings = [];
   bool _isLoading = true;
   String _searchQuery = '';
   String _filterType = 'all';
+  String _sortType = 'default';
   int _selectedIndex = 2;
+  Position? _currentPosition;
 
   final List<String> _pages = [
     '/driver-home',
@@ -29,6 +32,35 @@ class _DriverRecordsPageState extends State<DriverRecordsPage> {
   void initState() {
     super.initState();
     _fetchBookings();
+    _getCurrentLocation();
+  }
+
+  Future<void> _getCurrentLocation() async {
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          return;
+        }
+      }
+
+      Position position = await Geolocator.getCurrentPosition();
+      setState(() {
+        _currentPosition = position;
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error getting location: ${e.toString()}')),
+        );
+      }
+    }
   }
 
   Future<void> _fetchBookings() async {
@@ -91,11 +123,109 @@ class _DriverRecordsPageState extends State<DriverRecordsPage> {
               .toList();
     }
 
+    // Apply sorting
+    results = _sortBookings(results, _sortType);
+
     setState(() => _filteredBookings = results);
   }
 
+  List<Map<String, dynamic>> _sortBookings(
+    List<Map<String, dynamic>> bookings,
+    String sortType,
+  ) {
+    switch (sortType) {
+      case 'pickup':
+        return _sortByPickupDistance(bookings);
+      case 'dropoff':
+        return _sortByDropoffDistance(bookings);
+      case 'departure':
+        return _sortByDepartureTime(bookings);
+      case 'booking':
+        return _sortByBookingTime(bookings);
+      case 'default':
+      default:
+        return bookings
+          ..sort((a, b) => b['booking_time'].compareTo(a['booking_time']));
+    }
+  }
+
+  List<Map<String, dynamic>> _sortByPickupDistance(
+    List<Map<String, dynamic>> bookings,
+  ) {
+    if (_currentPosition == null) return bookings;
+
+    bookings.sort((a, b) {
+      if (a['pickup_lat'] == null || a['pickup_lng'] == null) return 1;
+      if (b['pickup_lat'] == null || b['pickup_lng'] == null) return -1;
+
+      final distanceA = _distance.as(
+        LengthUnit.Kilometer,
+        LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+        LatLng(a['pickup_lat'], a['pickup_lng']),
+      );
+
+      final distanceB = _distance.as(
+        LengthUnit.Kilometer,
+        LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+        LatLng(b['pickup_lat'], b['pickup_lng']),
+      );
+
+      return distanceA.compareTo(distanceB);
+    });
+
+    return bookings;
+  }
+
+  List<Map<String, dynamic>> _sortByDropoffDistance(
+    List<Map<String, dynamic>> bookings,
+  ) {
+    if (_currentPosition == null) return bookings;
+
+    bookings.sort((a, b) {
+      if (a['dropoff_lat'] == null || a['dropoff_lng'] == null) return 1;
+      if (b['dropoff_lat'] == null || b['dropoff_lng'] == null) return -1;
+
+      final distanceA = _distance.as(
+        LengthUnit.Kilometer,
+        LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+        LatLng(a['dropoff_lat'], a['dropoff_lng']),
+      );
+
+      final distanceB = _distance.as(
+        LengthUnit.Kilometer,
+        LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+        LatLng(b['dropoff_lat'], b['dropoff_lng']),
+      );
+
+      return distanceA.compareTo(distanceB);
+    });
+
+    return bookings;
+  }
+
+  List<Map<String, dynamic>> _sortByDepartureTime(
+    List<Map<String, dynamic>> bookings,
+  ) {
+    bookings.sort((a, b) {
+      final timeA = DateTime.parse(a['departure_time']);
+      final timeB = DateTime.parse(b['departure_time']);
+      return timeA.compareTo(timeB);
+    });
+    return bookings;
+  }
+
+  List<Map<String, dynamic>> _sortByBookingTime(
+    List<Map<String, dynamic>> bookings,
+  ) {
+    bookings.sort((a, b) {
+      final timeA = DateTime.parse(a['booking_time']);
+      final timeB = DateTime.parse(b['booking_time']);
+      return timeA.compareTo(timeB);
+    });
+    return bookings;
+  }
+
   Future<void> _updateBookingStatus(String bookingId, String newStatus) async {
-    // Determine action text for dialog and snackbar
     String actionText = '';
     String confirmationQuestion = '';
     String successMessage = '';
@@ -114,7 +244,6 @@ class _DriverRecordsPageState extends State<DriverRecordsPage> {
           'Are you sure you want to change this ride back to pending?';
       successMessage = 'Booking reverted to pending successfully!';
     } else if (newStatus == 'completed') {
-      // Assuming you might have a 'completed' status later
       actionText = 'Complete';
       confirmationQuestion =
           'Are you sure you want to mark this ride as completed?';
@@ -124,9 +253,7 @@ class _DriverRecordsPageState extends State<DriverRecordsPage> {
     final Color confirmButtonColor =
         newStatus == 'cancelled' ? Colors.red : const Color(0xFF5A3D1F);
     final String confirmButtonLabel =
-        newStatus == 'cancelled'
-            ? 'Yes, Cancel'
-            : 'Yes, Confirm'; // This will be dynamic based on newStatus
+        newStatus == 'cancelled' ? 'Yes, Cancel' : 'Yes, Confirm';
 
     final bool? confirm = await showDialog<bool>(
       context: context,
@@ -405,7 +532,6 @@ class _DriverRecordsPageState extends State<DriverRecordsPage> {
                 ],
               ),
               const SizedBox(height: 12),
-              // Conditional buttons based on current status
               if (currentStatus == 'pending')
                 Row(
                   children: [
@@ -467,9 +593,7 @@ class _DriverRecordsPageState extends State<DriverRecordsPage> {
                     Expanded(
                       child: OutlinedButton(
                         style: OutlinedButton.styleFrom(
-                          side: const BorderSide(
-                            color: Color(0xFF5A3D1F),
-                          ), // Theme color border
+                          side: const BorderSide(color: Color(0xFF5A3D1F)),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
@@ -478,9 +602,7 @@ class _DriverRecordsPageState extends State<DriverRecordsPage> {
                             () => _updateBookingStatus(bookingId, 'pending'),
                         child: const Text(
                           'Revert to Pending',
-                          style: TextStyle(
-                            color: Color(0xFF5A3D1F),
-                          ), // Theme color text
+                          style: TextStyle(color: Color(0xFF5A3D1F)),
                         ),
                       ),
                     ),
@@ -509,9 +631,7 @@ class _DriverRecordsPageState extends State<DriverRecordsPage> {
                     Expanded(
                       child: OutlinedButton(
                         style: OutlinedButton.styleFrom(
-                          side: const BorderSide(
-                            color: Color(0xFF5A3D1F),
-                          ), // Theme color border
+                          side: const BorderSide(color: Color(0xFF5A3D1F)),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
@@ -520,9 +640,7 @@ class _DriverRecordsPageState extends State<DriverRecordsPage> {
                             () => _updateBookingStatus(bookingId, 'pending'),
                         child: const Text(
                           'Revert to Pending',
-                          style: TextStyle(
-                            color: Color(0xFF5A3D1F),
-                          ), // Theme color text
+                          style: TextStyle(color: Color(0xFF5A3D1F)),
                         ),
                       ),
                     ),
@@ -536,81 +654,179 @@ class _DriverRecordsPageState extends State<DriverRecordsPage> {
   }
 
   Widget _buildFilterChips() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          const SizedBox(width: 16),
-          FilterChip(
-            label: const Text('All'),
-            selected: _filterType == 'all',
-            onSelected: (selected) {
-              setState(() => _filterType = 'all');
-              _filterBookings();
-            },
-            selectedColor: const Color(0xFF5A3D1F).withOpacity(0.2),
-            checkmarkColor: const Color(0xFF5A3D1F),
-            labelStyle: TextStyle(
-              color:
-                  _filterType == 'all'
-                      ? const Color(0xFF5A3D1F)
-                      : Colors.grey[700],
-            ),
+    return Column(
+      children: [
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              const SizedBox(width: 16),
+              FilterChip(
+                label: const Text('All'),
+                selected: _filterType == 'all',
+                onSelected: (selected) {
+                  setState(() => _filterType = 'all');
+                  _filterBookings();
+                },
+                selectedColor: const Color(0xFF5A3D1F).withOpacity(0.2),
+                checkmarkColor: const Color(0xFF5A3D1F),
+                labelStyle: TextStyle(
+                  color:
+                      _filterType == 'all'
+                          ? const Color(0xFF5A3D1F)
+                          : Colors.grey[700],
+                ),
+              ),
+              const SizedBox(width: 8),
+              FilterChip(
+                label: const Text('Pending'),
+                selected: _filterType == 'pending',
+                onSelected: (selected) {
+                  setState(() => _filterType = 'pending');
+                  _filterBookings();
+                },
+                selectedColor: const Color(0xFF5A3D1F).withOpacity(0.2),
+                checkmarkColor: const Color(0xFF5A3D1F),
+                labelStyle: TextStyle(
+                  color:
+                      _filterType == 'pending'
+                          ? const Color(0xFF5A3D1F)
+                          : Colors.grey[700],
+                ),
+              ),
+              const SizedBox(width: 8),
+              FilterChip(
+                label: const Text('Confirmed'),
+                selected: _filterType == 'confirmed',
+                onSelected: (selected) {
+                  setState(() => _filterType = 'confirmed');
+                  _filterBookings();
+                },
+                selectedColor: const Color(0xFF5A3D1F).withOpacity(0.2),
+                checkmarkColor: const Color(0xFF5A3D1F),
+                labelStyle: TextStyle(
+                  color:
+                      _filterType == 'confirmed'
+                          ? const Color(0xFF5A3D1F)
+                          : Colors.grey[700],
+                ),
+              ),
+              const SizedBox(width: 8),
+              FilterChip(
+                label: const Text('Cancelled'),
+                selected: _filterType == 'cancelled',
+                onSelected: (selected) {
+                  setState(() => _filterType = 'cancelled');
+                  _filterBookings();
+                },
+                selectedColor: const Color(0xFF5A3D1F).withOpacity(0.2),
+                checkmarkColor: const Color(0xFF5A3D1F),
+                labelStyle: TextStyle(
+                  color:
+                      _filterType == 'cancelled'
+                          ? const Color(0xFF5A3D1F)
+                          : Colors.grey[700],
+                ),
+              ),
+              const SizedBox(width: 16),
+            ],
           ),
-          const SizedBox(width: 8),
-          FilterChip(
-            label: const Text('Pending'),
-            selected: _filterType == 'pending',
-            onSelected: (selected) {
-              setState(() => _filterType = 'pending');
-              _filterBookings();
-            },
-            selectedColor: const Color(0xFF5A3D1F).withOpacity(0.2),
-            checkmarkColor: const Color(0xFF5A3D1F),
-            labelStyle: TextStyle(
-              color:
-                  _filterType == 'pending'
-                      ? const Color(0xFF5A3D1F)
-                      : Colors.grey[700],
-            ),
+        ),
+        const SizedBox(height: 8),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              const SizedBox(width: 16),
+              FilterChip(
+                label: const Text('Default'),
+                selected: _sortType == 'default',
+                onSelected: (selected) {
+                  setState(() => _sortType = 'default');
+                  _filterBookings();
+                },
+                selectedColor: const Color(0xFF5A3D1F).withOpacity(0.2),
+                checkmarkColor: const Color(0xFF5A3D1F),
+                labelStyle: TextStyle(
+                  color:
+                      _sortType == 'default'
+                          ? const Color(0xFF5A3D1F)
+                          : Colors.grey[700],
+                ),
+              ),
+              const SizedBox(width: 8),
+              FilterChip(
+                label: const Text('Pickup Proximity'),
+                selected: _sortType == 'pickup',
+                onSelected: (selected) {
+                  setState(() => _sortType = 'pickup');
+                  _filterBookings();
+                },
+                selectedColor: const Color(0xFF5A3D1F).withOpacity(0.2),
+                checkmarkColor: const Color(0xFF5A3D1F),
+                labelStyle: TextStyle(
+                  color:
+                      _sortType == 'pickup'
+                          ? const Color(0xFF5A3D1F)
+                          : Colors.grey[700],
+                ),
+              ),
+              const SizedBox(width: 8),
+              FilterChip(
+                label: const Text('Dropoff Proximity'),
+                selected: _sortType == 'dropoff',
+                onSelected: (selected) {
+                  setState(() => _sortType = 'dropoff');
+                  _filterBookings();
+                },
+                selectedColor: const Color(0xFF5A3D1F).withOpacity(0.2),
+                checkmarkColor: const Color(0xFF5A3D1F),
+                labelStyle: TextStyle(
+                  color:
+                      _sortType == 'dropoff'
+                          ? const Color(0xFF5A3D1F)
+                          : Colors.grey[700],
+                ),
+              ),
+              const SizedBox(width: 8),
+              FilterChip(
+                label: const Text('Departure Time'),
+                selected: _sortType == 'departure',
+                onSelected: (selected) {
+                  setState(() => _sortType = 'departure');
+                  _filterBookings();
+                },
+                selectedColor: const Color(0xFF5A3D1F).withOpacity(0.2),
+                checkmarkColor: const Color(0xFF5A3D1F),
+                labelStyle: TextStyle(
+                  color:
+                      _sortType == 'departure'
+                          ? const Color(0xFF5A3D1F)
+                          : Colors.grey[700],
+                ),
+              ),
+              const SizedBox(width: 8),
+              FilterChip(
+                label: const Text('Booking Time'),
+                selected: _sortType == 'booking',
+                onSelected: (selected) {
+                  setState(() => _sortType = 'booking');
+                  _filterBookings();
+                },
+                selectedColor: const Color(0xFF5A3D1F).withOpacity(0.2),
+                checkmarkColor: const Color(0xFF5A3D1F),
+                labelStyle: TextStyle(
+                  color:
+                      _sortType == 'booking'
+                          ? const Color(0xFF5A3D1F)
+                          : Colors.grey[700],
+                ),
+              ),
+              const SizedBox(width: 16),
+            ],
           ),
-          const SizedBox(width: 8),
-          FilterChip(
-            label: const Text('Confirmed'),
-            selected: _filterType == 'confirmed',
-            onSelected: (selected) {
-              setState(() => _filterType = 'confirmed');
-              _filterBookings();
-            },
-            selectedColor: const Color(0xFF5A3D1F).withOpacity(0.2),
-            checkmarkColor: const Color(0xFF5A3D1F),
-            labelStyle: TextStyle(
-              color:
-                  _filterType == 'confirmed'
-                      ? const Color(0xFF5A3D1F)
-                      : Colors.grey[700],
-            ),
-          ),
-          const SizedBox(width: 8),
-          FilterChip(
-            label: const Text('Cancelled'),
-            selected: _filterType == 'cancelled',
-            onSelected: (selected) {
-              setState(() => _filterType = 'cancelled');
-              _filterBookings();
-            },
-            selectedColor: const Color(0xFF5A3D1F).withOpacity(0.2),
-            checkmarkColor: const Color(0xFF5A3D1F),
-            labelStyle: TextStyle(
-              color:
-                  _filterType == 'cancelled'
-                      ? const Color(0xFF5A3D1F)
-                      : Colors.grey[700],
-            ),
-          ),
-          const SizedBox(width: 16),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
