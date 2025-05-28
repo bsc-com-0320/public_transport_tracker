@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
-import 'package:geolocator/geolocator.dart'; // Keep if you use it elsewhere
-import 'package:latlong2/latlong.dart'; // Keep if you use it elsewhere
+import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart';
 
 class DriverRecordsPage extends StatefulWidget {
   @override
@@ -18,7 +18,6 @@ class _DriverRecordsPageState extends State<DriverRecordsPage> {
   String _filterType = 'all';
   int _selectedIndex = 2;
 
-  // Navigation routes
   final List<String> _pages = [
     '/driver-home',
     '/driver-ride',
@@ -57,7 +56,7 @@ class _DriverRecordsPageState extends State<DriverRecordsPage> {
 
       setState(() {
         _bookings = List<Map<String, dynamic>>.from(response);
-        _filterBookings(); // Apply current filters after fetching new data
+        _filterBookings();
         _isLoading = false;
       });
     } catch (e) {
@@ -73,38 +72,61 @@ class _DriverRecordsPageState extends State<DriverRecordsPage> {
   void _filterBookings() {
     List<Map<String, dynamic>> results = _bookings;
 
-    // Apply status filter
     if (_filterType != 'all') {
       results =
           results.where((booking) => booking['status'] == _filterType).toList();
     }
 
-    // Apply search query
     if (_searchQuery.isNotEmpty) {
       final query = _searchQuery.toLowerCase();
       results =
-          results.where((booking) {
-            return booking['pickup_point'].toLowerCase().contains(query) ||
-                booking['dropoff_point'].toLowerCase().contains(query) ||
-                booking['departure_time'].toLowerCase().contains(query) ||
-                booking['vehicle_type'].toLowerCase().contains(query);
-          }).toList();
+          results
+              .where(
+                (booking) =>
+                    booking['pickup_point'].toLowerCase().contains(query) ||
+                    booking['dropoff_point'].toLowerCase().contains(query) ||
+                    booking['departure_time'].toLowerCase().contains(query) ||
+                    booking['vehicle_type'].toLowerCase().contains(query),
+              )
+              .toList();
     }
 
     setState(() => _filteredBookings = results);
   }
 
-  // --- Update Booking Status (Confirm Ride) ---
   Future<void> _updateBookingStatus(String bookingId, String newStatus) async {
-    final String actionText = newStatus == 'confirmed' ? 'Confirm' : 'Cancel';
-    final String confirmationQuestion =
-        newStatus == 'confirmed'
-            ? 'Are you sure you want to confirm this ride?'
-            : 'Are you sure you want to cancel this ride?';
-    final Color buttonColor =
-        newStatus == 'confirmed' ? const Color(0xFF5A3D1F) : Colors.red;
-    final String buttonLabel =
-        newStatus == 'confirmed' ? 'Yes, Confirm' : 'Yes, Cancel';
+    // Determine action text for dialog and snackbar
+    String actionText = '';
+    String confirmationQuestion = '';
+    String successMessage = '';
+
+    if (newStatus == 'confirmed') {
+      actionText = 'Confirm';
+      confirmationQuestion = 'Are you sure you want to confirm this ride?';
+      successMessage = 'Booking confirmed successfully!';
+    } else if (newStatus == 'cancelled') {
+      actionText = 'Cancel';
+      confirmationQuestion = 'Are you sure you want to cancel this ride?';
+      successMessage = 'Booking cancelled successfully!';
+    } else if (newStatus == 'pending') {
+      actionText = 'Revert to Pending';
+      confirmationQuestion =
+          'Are you sure you want to change this ride back to pending?';
+      successMessage = 'Booking reverted to pending successfully!';
+    } else if (newStatus == 'completed') {
+      // Assuming you might have a 'completed' status later
+      actionText = 'Complete';
+      confirmationQuestion =
+          'Are you sure you want to mark this ride as completed?';
+      successMessage = 'Booking marked as completed!';
+    }
+
+    final Color confirmButtonColor =
+        newStatus == 'cancelled' ? Colors.red : const Color(0xFF5A3D1F);
+    final String confirmButtonLabel =
+        newStatus == 'cancelled'
+            ? 'Yes, Cancel'
+            : 'Yes, Confirm'; // This will be dynamic based on newStatus
 
     final bool? confirm = await showDialog<bool>(
       context: context,
@@ -119,9 +141,11 @@ class _DriverRecordsPageState extends State<DriverRecordsPage> {
               ),
               ElevatedButton(
                 onPressed: () => Navigator.pop(context, true),
-                style: ElevatedButton.styleFrom(backgroundColor: buttonColor),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: confirmButtonColor,
+                ),
                 child: Text(
-                  buttonLabel,
+                  confirmButtonLabel,
                   style: const TextStyle(color: Colors.white),
                 ),
               ),
@@ -134,17 +158,14 @@ class _DriverRecordsPageState extends State<DriverRecordsPage> {
         await _supabase
             .from('request_ride')
             .update({'status': newStatus})
-            .eq(
-              'id',
-              bookingId,
-            ); // Ensure bookingId is a String for Supabase eq method
+            .eq('id', bookingId);
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Booking $newStatus successfully!')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(successMessage)));
         }
-        _fetchBookings(); // Refresh the list to reflect the change
+        _fetchBookings();
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -181,13 +202,13 @@ class _DriverRecordsPageState extends State<DriverRecordsPage> {
                   _buildDetailRow(
                     'Departure Time',
                     DateFormat(
-                      'MMM dd, yyyy - hh:mm a',
+                      'MMM dd,EEEE - hh:mm a',
                     ).format(DateTime.parse(booking['departure_time'])),
                   ),
                   _buildDetailRow(
                     'Booking Time',
                     DateFormat(
-                      'MMM dd, yyyy - hh:mm a',
+                      'MMM dd,EEEE - hh:mm a',
                     ).format(DateTime.parse(booking['booking_time'])),
                   ),
                   _buildDetailRow('Total Cost', '\$${booking['total_cost']}'),
@@ -220,7 +241,6 @@ class _DriverRecordsPageState extends State<DriverRecordsPage> {
   }
 
   Widget _buildDetailRow(String label, dynamic value, {Color? color}) {
-    // Ensure value is converted to String to prevent type errors in Text widget
     final String displayValue = value?.toString() ?? 'N/A';
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -261,8 +281,8 @@ class _DriverRecordsPageState extends State<DriverRecordsPage> {
   }
 
   Widget _buildBookingCard(Map<String, dynamic> booking) {
-    // Ensure bookingId is a String
     final String bookingId = booking['id'].toString();
+    final String currentStatus = booking['status'].toLowerCase();
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
@@ -385,44 +405,129 @@ class _DriverRecordsPageState extends State<DriverRecordsPage> {
                 ],
               ),
               const SizedBox(height: 12),
-              // Show buttons for pending, confirmed, and cancelled statuses
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Colors.red),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+              // Conditional buttons based on current status
+              if (currentStatus == 'pending')
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Colors.red),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        onPressed:
+                            () => _updateBookingStatus(bookingId, 'cancelled'),
+                        child: const Text(
+                          'Cancel',
+                          style: TextStyle(color: Colors.red),
                         ),
                       ),
-                      onPressed:
-                          () => _updateBookingStatus(bookingId, 'cancelled'),
-                      child: const Text(
-                        'Cancel',
-                        style: TextStyle(color: Colors.red),
-                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF5A3D1F),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF5A3D1F),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        onPressed:
+                            () => _updateBookingStatus(bookingId, 'confirmed'),
+                        child: const Text(
+                          'Confirm',
+                          style: TextStyle(color: Colors.white),
                         ),
                       ),
-                      onPressed:
-                          () => _updateBookingStatus(bookingId, 'confirmed'),
-                      child: const Text(
-                        'Confirm',
-                        style: TextStyle(color: Colors.white),
+                    ),
+                  ],
+                ),
+              if (currentStatus == 'confirmed')
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Colors.red),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        onPressed:
+                            () => _updateBookingStatus(bookingId, 'cancelled'),
+                        child: const Text(
+                          'Cancel Ride',
+                          style: TextStyle(color: Colors.red),
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(
+                            color: Color(0xFF5A3D1F),
+                          ), // Theme color border
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        onPressed:
+                            () => _updateBookingStatus(bookingId, 'pending'),
+                        child: const Text(
+                          'Revert to Pending',
+                          style: TextStyle(
+                            color: Color(0xFF5A3D1F),
+                          ), // Theme color text
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              if (currentStatus == 'cancelled')
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF5A3D1F),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        onPressed:
+                            () => _updateBookingStatus(bookingId, 'confirmed'),
+                        child: const Text(
+                          'Re-Confirm',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(
+                            color: Color(0xFF5A3D1F),
+                          ), // Theme color border
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        onPressed:
+                            () => _updateBookingStatus(bookingId, 'pending'),
+                        child: const Text(
+                          'Revert to Pending',
+                          style: TextStyle(
+                            color: Color(0xFF5A3D1F),
+                          ), // Theme color text
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
             ],
           ),
         ),
