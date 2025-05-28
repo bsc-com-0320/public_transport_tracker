@@ -55,8 +55,8 @@ class _AvailableRidesPageState extends State<AvailableRidesPage> {
         // Fetch all active/pending bookings from 'request_ride' for the current user
         final response = await _supabase
             .from('request_ride')
-            .select('ride_id')
-            .eq('user_id', user.id)
+            .select('user_id')
+            .eq('passenger_id', user.id)
             .inFilter('status', ['pending', 'confirmed', 'active']); // Use inFilter
 
         setState(() {
@@ -79,7 +79,16 @@ class _AvailableRidesPageState extends State<AvailableRidesPage> {
   // This getter now uses the RideSearchService to filter and sort rides.
   List<Map<String, dynamic>> get _filteredAndSortedRides {
     if (widget.pickupLatLng == null || widget.dropoffLatLng == null) {
-      return []; // Cannot filter without user's pickup/dropoff
+      // If pickup or dropoff is not set, return only rides that are not full or already booked
+      // This is a fallback to prevent crashing if coordinates are missing
+      return widget.availableRides.where((ride) {
+        final remainingCapacity = ride['remaining_capacity'] is int
+            ? ride['remaining_capacity'] as int
+            : ride['capacity'] is int ? ride['capacity'] as int : 0;
+        final isFull = remainingCapacity <= 0;
+        final isAlreadyBooked = _bookedRideIds.contains(ride['id'].toString());
+        return !isFull && !isAlreadyBooked;
+      }).toList();
     }
 
     return _rideSearchService.searchRides(
@@ -91,37 +100,44 @@ class _AvailableRidesPageState extends State<AvailableRidesPage> {
     );
   }
 
+  // Helper to parse departure time string to DateTime (now more robust for character varying).
   DateTime _parseDepartureTime(String? timeString) {
     if (timeString == null) return DateTime.now();
 
-    final isoTime = DateTime.tryParse(timeString);
-    if (isoTime != null) return isoTime;
+    // Try parsing as ISO 8601 first (common for database timestamps)
+    DateTime? parsedTime = DateTime.tryParse(timeString);
+    if (parsedTime != null) return parsedTime;
 
-    if (RegExp(r'^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$').hasMatch(timeString)) {
-      final now = DateTime.now();
-      final timeParts = timeString.split(':');
-      return DateTime(
-        now.year,
-        now.month,
-        now.day,
-        int.parse(timeParts[0]),
-        int.parse(timeParts[1]),
-      );
-    }
-
-    final formats = [
-      'yyyy-MM-dd HH:mm:ss',
-      'MM/dd/yyyy hh:mm a',
-      'dd-MM-yyyy HH:mm',
-      'h:mm a',
+    // List of common date/time formats to try for 'character varying'
+    final List<String> formatsToTry = [
+      "yyyy-MM-dd HH:mm:ss.SSSSSSZ", // ISO with microseconds and Z for UTC
+      "yyyy-MM-dd HH:mm:ss",       // Standard date and time
+      "yyyy-MM-dd HH:mm",          // Date and time without seconds
+      "MM/dd/yyyy HH:mm:ss",       // US format with time
+      "dd-MM-yyyy HH:mm:ss",       // European format with time
+      "MM/dd/yyyy h:mm a",         // US format with 12-hour time and AM/PM
+      "dd-MM-yyyy h:mm a",         // European format with 12-hour time and AM/PM
+      "HH:mm:ss",                  // Time only (assume today's date)
+      "HH:mm",                     // Time only (assume today's date)
+      "h:mm a",                    // 12-hour time only (assume today's date)
+      "yyyy-MM-dd",                // Date only (assume start of day)
     ];
 
-    for (final format in formats) {
+    for (final format in formatsToTry) {
       try {
+        // For time-only formats, combine with today's date
+        if (format == "HH:mm:ss" || format == "HH:mm" || format == "h:mm a") {
+          final now = DateTime.now();
+          final parsedDate = DateFormat(format).parse(timeString);
+          return DateTime(now.year, now.month, now.day, parsedDate.hour, parsedDate.minute, parsedDate.second);
+        }
         return DateFormat(format).parse(timeString);
-      } catch (_) {}
+      } catch (_) {
+        // Continue to the next format if parsing fails
+      }
     }
 
+    // If all attempts fail, return current time as a fallback
     return DateTime.now();
   }
 
@@ -152,21 +168,76 @@ class _AvailableRidesPageState extends State<AvailableRidesPage> {
         return;
       }
 
-      final departureTime = _parseDepartureTime(ride['departure_time']);
+      final departureTime = _parseDepartureTime(ride['departure_time']); // Using departure_time
       final formattedTime = departureTime.toIso8601String();
       
-      final updatedRide = Map<String, dynamic>.from(ride)
-        ..['departure_time'] = formattedTime;
+      final updatedRideData = Map<String, dynamic>.from(ride)
+        ..['departure_time'] = formattedTime; // Still pass as departure_time to onBookRide if it expects it
       
-      await widget.onBookRide(updatedRide);
+      // Explicitly add driver_id to the data being sent for booking
+      final String? driverId = ride['driver_id']?.toString(); // Safely get as string
+
+      if (driverId != null) {
+        updatedRideData['driver_id'] = driverId;
+      } else {
+        debugPrint('Error: driver_id is null for ride ${ride['id']}. Cannot proceed with booking.');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to book: Driver information missing.'), backgroundColor: Colors.red),
+        );
+        return; // Stop booking process if driver_id is missing
+      }
+
+      // Step 1: Call the booking function passed from the parent widget
+      await widget.onBookRide(updatedRideData);
+
+      // Step 2: Decrement remaining_capacity in the 'rides' table
+      final String rideId = ride['id'].toString();
+      // Get the current remaining capacity from the ride object itself
+      final int? currentRemainingCapacity = ride['remaining_capacity'] as int?;
+
+      if (currentRemainingCapacity != null && currentRemainingCapacity > 0) {
+        final int newRemainingCapacity = currentRemainingCapacity - 1;
+        debugPrint('Attempting to decrement capacity for ride $rideId. Old: $currentRemainingCapacity, New: $newRemainingCapacity');
+
+        try {
+          await _supabase
+              .from('rides') // Assuming your rides table is named 'rides'
+              .update({'remaining_capacity': newRemainingCapacity})
+              .eq('id', rideId);
+
+          debugPrint('Remaining capacity for ride $rideId decremented in DB to $newRemainingCapacity');
+
+          setState(() {
+            _bookedRideIds.add(ride['id'].toString());
+            // Explicitly update the 'remaining_capacity' in the local ride map
+            // that is part of the widget.availableRides list.
+            // This ensures the UI rebuilds with the correct value.
+            final int index = widget.availableRides.indexWhere((r) => r['id'].toString() == rideId);
+            if (index != -1) {
+              widget.availableRides[index]['remaining_capacity'] = newRemainingCapacity;
+            }
+          });
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Ride booked successfully!')),
+          );
+        } on PostgrestException catch (e) {
+          debugPrint('Supabase update failed for capacity decrement: ${e.message}');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to update ride capacity: ${e.message}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } else {
+        debugPrint('Cannot decrement capacity for ride $rideId: already 0 or invalid ($currentRemainingCapacity).');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Cannot book: Ride is full or invalid capacity.'), backgroundColor: Colors.orange),
+        );
+        return; // Prevent further booking logic if capacity is invalid
+      }
       
-      setState(() {
-        _bookedRideIds.add(ride['id'].toString());
-      });
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ride booked successfully!')),
-      );
     } on PostgrestException catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -378,7 +449,7 @@ class _AvailableRidesPageState extends State<AvailableRidesPage> {
                     width: 50,
                     height: 5,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF8B5E3B).withOpacity(0.5),
+                      color: Colors.grey[300], // Keep grey for handle
                       borderRadius: BorderRadius.circular(2.5),
                     ),
                   ),
@@ -416,7 +487,7 @@ class _AvailableRidesPageState extends State<AvailableRidesPage> {
                             itemCount: _filteredAndSortedRides.length, // Use filtered and sorted rides
                             separatorBuilder: (_, __) => const SizedBox(height: 8),
                             itemBuilder: (context, index) {
-                              final ride = _filteredAndSortedRides[index]; // Use filtered and sorted rides
+                              final ride = _filteredAndSortedRides[index]; // Corrected typo here
                               try {
                                 return _buildRideCard(ride, context);
                               } catch (e) {
@@ -680,7 +751,7 @@ class _AvailableRidesPageState extends State<AvailableRidesPage> {
                 height: 5,
                 margin: const EdgeInsets.only(bottom: 16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF8B5E3B).withOpacity(0.5),
+                  color: Colors.grey[300],
                   borderRadius: BorderRadius.circular(2.5),
                 ),
               ),
