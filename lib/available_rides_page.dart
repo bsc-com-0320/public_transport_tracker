@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-class AvailableRidesPage extends StatelessWidget {
+class AvailableRidesPage extends StatefulWidget {
   final List<Map<String, dynamic>> availableRides;
   final bool isLoadingRides;
   final LatLng? pickupLatLng;
@@ -30,6 +31,187 @@ class AvailableRidesPage extends StatelessWidget {
   }) : super(key: key);
 
   @override
+  _AvailableRidesPageState createState() => _AvailableRidesPageState();
+}
+
+class _AvailableRidesPageState extends State<AvailableRidesPage> {
+  final _supabase = Supabase.instance.client;
+  Set<String> _bookedRideIds = {};
+  bool _isCheckingBookings = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUserBookings();
+  }
+
+  Future<void> _fetchUserBookings() async {
+    try {
+      final user = _supabase.auth.currentUser;
+      if (user != null) {
+        // Fetch all active/pending bookings from 'request_ride' for the current user
+        // These are the statuses that should prevent a new booking
+        final response = await _supabase
+            .from('request_ride') // Assuming 'request_ride' is the table name
+            .select('ride_id')
+            .eq('user_id', user.id)
+            .inFilter('status', [
+              'pending',
+              'confirmed',
+              'active',
+            ]); // Corrected from .in_ to .inFilter
+
+        setState(() {
+          _bookedRideIds = Set.from(
+            response.map((r) => r['ride_id'].toString()),
+          );
+          _isCheckingBookings = false;
+        });
+      } else {
+        setState(() {
+          _isCheckingBookings =
+              false; // User not logged in, no bookings to check
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _isCheckingBookings = false;
+      });
+      debugPrint('Error fetching user bookings: $e');
+    }
+  }
+
+  List<Map<String, dynamic>> get _filteredRides {
+    return widget.availableRides.where((ride) {
+      final remainingCapacity =
+          ride['remaining_capacity'] is int
+              ? ride['remaining_capacity'] as int
+              : ride['capacity'] is int
+              ? ride['capacity'] as int
+              : 0;
+      final isFull = remainingCapacity <= 0;
+      final isAlreadyBooked = _bookedRideIds.contains(ride['id'].toString());
+      // A ride is available if it's not full and not already booked by the user
+      return !isFull && !isAlreadyBooked;
+    }).toList();
+  }
+
+  DateTime _parseDepartureTime(String? timeString) {
+    if (timeString == null) return DateTime.now();
+
+    // Try ISO format first
+    final isoTime = DateTime.tryParse(timeString);
+    if (isoTime != null) return isoTime;
+
+    // Handle time-only format (HH:mm)
+    if (RegExp(r'^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$').hasMatch(timeString)) {
+      final now = DateTime.now();
+      final timeParts = timeString.split(':');
+      return DateTime(
+        now.year,
+        now.month,
+        now.day,
+        int.parse(timeParts[0]),
+        int.parse(timeParts[1]),
+      );
+    }
+
+    // Try common date/time formats
+    final formats = [
+      'yyyy-MM-dd HH:mm:ss',
+      'MM/dd/yyyy hh:mm a',
+      'dd-MM-yyyy HH:mm',
+      'h:mm a', // 12-hour format
+    ];
+
+    for (final format in formats) {
+      try {
+        return DateFormat(format).parse(timeString);
+      } catch (_) {}
+    }
+
+    return DateTime.now();
+  }
+
+  Future<void> _handleBooking(
+    BuildContext context,
+    Map<String, dynamic> ride,
+  ) async {
+    final user = _supabase.auth.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please log in to book a ride.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    try {
+      // Step 1: Check for existing active bookings for this user in 'request_ride' table
+      // This is the crucial check to ensure only one active booking per user
+      final existingBookings = await _supabase
+          .from(
+            'request_ride',
+          ) // Ensure this is the correct table name for active requests
+          .select('id')
+          .eq('user_id', user.id)
+          .inFilter('status', [
+            'pending',
+            'confirmed',
+            'active',
+          ]); // Corrected from .in_ to .inFilter
+
+      if (existingBookings.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'You already have an active ride request. Please complete or cancel it first.',
+            ),
+            backgroundColor: Colors.orange, // Use an orange color for warning
+          ),
+        );
+        return; // Prevent booking if an active ride exists
+      }
+
+      // If no active bookings, proceed with booking the new ride
+      final departureTime = _parseDepartureTime(ride['departure_time']);
+      final formattedTime = departureTime.toIso8601String();
+
+      // Create a mutable map to update the departure_time
+      final updatedRide = Map<String, dynamic>.from(ride)
+        ..['departure_time'] = formattedTime;
+
+      // Call the booking function passed from the parent widget
+      await widget.onBookRide(updatedRide);
+
+      // Update local state to reflect the new booking, disabling the card
+      setState(() {
+        _bookedRideIds.add(ride['id'].toString());
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ride booked successfully!')),
+      );
+    } on PostgrestException catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Booking failed: ${e.message}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -46,18 +228,13 @@ class AvailableRidesPage extends StatelessWidget {
       ),
       body: Stack(
         children: [
-          // Map Background
           _buildMapView(),
-          
-          // Route Information Card
           Positioned(
             top: 16,
             left: 16,
             right: 16,
             child: _buildRouteInfoCard(),
           ),
-          
-          // Rides List Bottom Sheet
           _buildRidesBottomSheet(context),
         ],
       ),
@@ -67,61 +244,53 @@ class AvailableRidesPage extends StatelessWidget {
   Widget _buildMapView() {
     return FlutterMap(
       options: MapOptions(
-        center: pickupLatLng ?? LatLng(-15.7861, 35.0058),
+        center: widget.pickupLatLng ?? LatLng(-15.7861, 35.0058),
         zoom: 13.0,
       ),
       children: [
         TileLayer(
           urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
           subdomains: const ['a', 'b', 'c'],
-          tileBuilder: (context, widget, tile) {
-            return Opacity(
-              opacity: 0.9,
-              child: widget,
-            );
-          },
         ),
-        if (pickupLatLng != null)
+        if (widget.pickupLatLng != null)
           MarkerLayer(
             markers: [
               Marker(
-                width: 40,
-                height: 40,
-                point: pickupLatLng!,
-                builder: (ctx) => const Tooltip(
-                  message: 'Pickup',
-                  child: Icon(
-                    Icons.location_pin,
-                    color: Color(0xFF8B5E3B),
-                    size: 30,
-                  ),
-                ),
+                point: widget.pickupLatLng!,
+                builder:
+                    (ctx) => const Tooltip(
+                      message: 'Pickup',
+                      child: Icon(
+                        Icons.location_pin,
+                        color: Color(0xFF8B5E3B),
+                        size: 30,
+                      ),
+                    ),
               ),
             ],
           ),
-        if (dropoffLatLng != null)
+        if (widget.dropoffLatLng != null)
           MarkerLayer(
             markers: [
               Marker(
-                width: 40,
-                height: 40,
-                point: dropoffLatLng!,
-                builder: (ctx) => const Tooltip(
-                  message: 'Dropoff',
-                  child: Icon(
-                    Icons.location_pin,
-                    color: Color(0xFF5A3D1F),
-                    size: 30,
-                  ),
-                ),
+                point: widget.dropoffLatLng!,
+                builder:
+                    (ctx) => const Tooltip(
+                      message: 'Dropoff',
+                      child: Icon(
+                        Icons.location_pin,
+                        color: Color(0xFF5A3D1F),
+                        size: 30,
+                      ),
+                    ),
               ),
             ],
           ),
-        if (routePoints.isNotEmpty)
+        if (widget.routePoints.isNotEmpty)
           PolylineLayer(
             polylines: [
               Polyline(
-                points: routePoints,
+                points: widget.routePoints,
                 color: const Color(0xFF8B5E3B).withOpacity(0.7),
                 strokeWidth: 4.0,
               ),
@@ -134,9 +303,7 @@ class AvailableRidesPage extends StatelessWidget {
   Widget _buildRouteInfoCard() {
     return Card(
       elevation: 3,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
@@ -156,17 +323,17 @@ class AvailableRidesPage extends StatelessWidget {
               children: [
                 _buildInfoItem(
                   icon: Icons.alt_route,
-                  value: '${distanceInKm.toStringAsFixed(1)} km',
+                  value: '${widget.distanceInKm.toStringAsFixed(1)} km',
                   label: 'Distance',
                 ),
                 _buildInfoItem(
                   icon: Icons.timer,
-                  value: '${duration.toStringAsFixed(0)} mins',
+                  value: '${widget.duration.toStringAsFixed(0)} mins',
                   label: 'Duration',
                 ),
                 _buildInfoItem(
                   icon: Icons.directions_car,
-                  value: selectedVehicleType ?? 'Any',
+                  value: widget.selectedVehicleType ?? 'Any',
                   label: 'Vehicle',
                 ),
               ],
@@ -196,10 +363,7 @@ class AvailableRidesPage extends StatelessWidget {
         ),
         Text(
           label,
-          style: const TextStyle(
-            fontSize: 10,
-            color: Color(0xFF8B5E3B),
-          ),
+          style: const TextStyle(fontSize: 10, color: Color(0xFF8B5E3B)),
         ),
       ],
     );
@@ -210,22 +374,15 @@ class AvailableRidesPage extends StatelessWidget {
       initialChildSize: 0.35,
       minChildSize: 0.2,
       maxChildSize: 0.8,
-      builder: (BuildContext context, ScrollController scrollController) {
+      builder: (context, scrollController) {
         return Container(
           decoration: const BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black26,
-                blurRadius: 15,
-                spreadRadius: 0,
-              ),
-            ],
+            boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 15)],
           ),
           child: Column(
             children: [
-              // Handle bar
               Padding(
                 padding: const EdgeInsets.only(top: 8, bottom: 4),
                 child: Center(
@@ -239,15 +396,16 @@ class AvailableRidesPage extends StatelessWidget {
                   ),
                 ),
               ),
-              
-              // Header
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      '${availableRides.length} Available Rides',
+                      '${_filteredRides.length} Available Rides',
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -255,44 +413,50 @@ class AvailableRidesPage extends StatelessWidget {
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.close, size: 20, color: Color(0xFF5A3D1F)),
+                      icon: const Icon(
+                        Icons.close,
+                        size: 20,
+                        color: Color(0xFF5A3D1F),
+                      ),
                       onPressed: () => Navigator.pop(context),
                       padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
                     ),
                   ],
                 ),
               ),
-              
-              // Rides List
               Expanded(
-                child: isLoadingRides
-                    ? const Center(child: CircularProgressIndicator(color: Color(0xFF8B5E3B)))
-                    : availableRides.isEmpty
+                child:
+                    widget.isLoadingRides || _isCheckingBookings
                         ? const Center(
-                            child: Text(
-                              'No available rides found',
-                              style: TextStyle(color: Color(0xFF5A3D1F)),
-                            ),
-                          )
-                        : ListView.separated(
-                            controller: scrollController,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
-                            itemCount: availableRides.length,
-                            separatorBuilder: (context, index) =>
-                                const SizedBox(height: 8),
-                            itemBuilder: (context, index) {
-                              final ride = availableRides[index];
-                              try {
-                                return _buildRideCard(ride, context);
-                              } catch (e) {
-                                return _buildErrorCard(e.toString(), context);
-                              }
-                            },
+                          child: CircularProgressIndicator(
+                            color: Color(0xFF8B5E3B),
                           ),
+                        )
+                        : _filteredRides.isEmpty
+                        ? const Center(
+                          child: Text(
+                            'No available rides found',
+                            style: TextStyle(color: Color(0xFF5A3D1F)),
+                          ),
+                        )
+                        : ListView.separated(
+                          controller: scrollController,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          itemCount: _filteredRides.length,
+                          separatorBuilder:
+                              (_, __) => const SizedBox(height: 8),
+                          itemBuilder: (context, index) {
+                            final ride = _filteredRides[index];
+                            try {
+                              return _buildRideCard(ride, context);
+                            } catch (e) {
+                              return _buildErrorCard(e.toString(), context);
+                            }
+                          },
+                        ),
               ),
             ],
           ),
@@ -305,16 +469,19 @@ class AvailableRidesPage extends StatelessWidget {
     final departureTime = _parseDepartureTime(ride['departure_time']);
     final formattedTime = DateFormat('h:mm a').format(departureTime);
     final totalCapacity = ride['capacity'] is int ? ride['capacity'] : 0;
-    final remainingCapacity = ride['remaining_capacity'] is int
-        ? ride['remaining_capacity']
-        : totalCapacity;
-    final isFull = remainingCapacity <= 0;
-    final totalCost = ride['total_cost'] is num
-        ? (ride['total_cost'] as num).toDouble()
-        : 0.0;
-    final distanceFromUser = ride['distance_from_user'] is double
-        ? (ride['distance_from_user'] as double).toStringAsFixed(1)
-        : 'N/A';
+    final remainingCapacity =
+        ride['remaining_capacity'] is int
+            ? ride['remaining_capacity']
+            : totalCapacity;
+    final totalCost =
+        ride['total_cost'] is num
+            ? (ride['total_cost'] as num).toDouble()
+            : 0.0;
+    final distanceFromUser =
+        ride['distance_from_user'] is double
+            ? (ride['distance_from_user'] as double).toStringAsFixed(1)
+            : 'N/A';
+    final isAlreadyBooked = _bookedRideIds.contains(ride['id'].toString());
 
     return InkWell(
       borderRadius: BorderRadius.circular(12),
@@ -335,11 +502,9 @@ class AvailableRidesPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // First row - Driver info and price
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // Driver info
                 Row(
                   children: [
                     Container(
@@ -378,8 +543,6 @@ class AvailableRidesPage extends StatelessWidget {
                     ),
                   ],
                 ),
-                
-                // Price
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
@@ -400,14 +563,10 @@ class AvailableRidesPage extends StatelessWidget {
                 ),
               ],
             ),
-            
             const SizedBox(height: 12),
-            
-            // Route information
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Timeline
                 Column(
                   children: [
                     Container(
@@ -433,10 +592,7 @@ class AvailableRidesPage extends StatelessWidget {
                     ),
                   ],
                 ),
-                
                 const SizedBox(width: 8),
-                
-                // Locations
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -465,8 +621,6 @@ class AvailableRidesPage extends StatelessWidget {
                     ],
                   ),
                 ),
-                
-                // Departure time
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 8,
@@ -487,14 +641,10 @@ class AvailableRidesPage extends StatelessWidget {
                 ),
               ],
             ),
-            
             const SizedBox(height: 12),
-            
-            // Bottom row - Capacity and action button
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // Capacity indicator
                 Row(
                   children: [
                     _buildCapacityIndicator(totalCapacity, remainingCapacity),
@@ -508,24 +658,25 @@ class AvailableRidesPage extends StatelessWidget {
                     ),
                   ],
                 ),
-                
-                // Book button
                 SizedBox(
                   height: 32,
                   child: ElevatedButton(
-                    onPressed: isFull ? null : () => onBookRide(ride),
+                    onPressed:
+                        isAlreadyBooked
+                            ? null
+                            : () => _handleBooking(context, ride),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: isFull
-                          ? Colors.grey[400]
-                          : const Color(0xFF5A3D1F),
+                      backgroundColor:
+                          isAlreadyBooked
+                              ? Colors.grey[400]
+                              : const Color(0xFF5A3D1F),
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
                       ),
-                      elevation: 0,
                     ),
                     child: Text(
-                      isFull ? 'FULL' : 'REQUEST NOW',
+                      isAlreadyBooked ? 'BOOKED' : 'BOOK NOW',
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
@@ -551,9 +702,8 @@ class AvailableRidesPage extends StatelessWidget {
         Icon(
           Icons.people_alt_outlined,
           size: 14,
-          color: isLowCapacity
-              ? const Color(0xFFD4A76A)
-              : const Color(0xFF8B5E3B),
+          color:
+              isLowCapacity ? const Color(0xFFD4A76A) : const Color(0xFF8B5E3B),
         ),
         const SizedBox(width: 4),
         Text(
@@ -561,240 +711,208 @@ class AvailableRidesPage extends StatelessWidget {
           style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.bold,
-            color: isLowCapacity
-                ? const Color(0xFFD4A76A)
-                : const Color(0xFF8B5E3B),
+            color:
+                isLowCapacity
+                    ? const Color(0xFFD4A76A)
+                    : const Color(0xFF8B5E3B),
           ),
         ),
       ],
     );
   }
 
-  DateTime _parseDepartureTime(String? departureTime) {
-    if (departureTime == null) return DateTime.now();
-
-    try {
-      DateTime? parsedTime = DateTime.tryParse(departureTime);
-      if (parsedTime != null) return parsedTime;
-
-      final formatsToTry = [
-        "yyyy-MM-dd HH:mm:ss",
-        "dd/MM/yyyy h:mm a",
-        "MMM dd,yyyy HH:mm",
-        "yyyy-MM-dd HH:mm",
-      ];
-
-      for (final format in formatsToTry) {
-        try {
-          return DateFormat(format).parse(departureTime);
-        } catch (e) {
-          continue;
-        }
-      }
-    } catch (e) {
-      return DateTime.now();
-    }
-
-    return DateTime.now();
-  }
-
   void _showRideDetails(BuildContext context, Map<String, dynamic> ride) {
     final departureTime = _parseDepartureTime(ride['departure_time']);
     final totalCapacity = ride['capacity'] is int ? ride['capacity'] : 0;
-    final remainingCapacity = ride['remaining_capacity'] is int
-        ? ride['remaining_capacity']
-        : totalCapacity;
-    final isFull = remainingCapacity <= 0;
+    final remainingCapacity =
+        ride['remaining_capacity'] is int
+            ? ride['remaining_capacity']
+            : totalCapacity;
+    final isAlreadyBooked = _bookedRideIds.contains(ride['id'].toString());
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.85,
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            // Handle bar
-            Center(
-              child: Container(
-                width: 50,
-                height: 5,
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF8B5E3B).withOpacity(0.5),
-                  borderRadius: BorderRadius.circular(2.5),
-                ),
-              ),
+      builder:
+          (context) => Container(
+            height: MediaQuery.of(context).size.height * 0.85,
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
             ),
-            
-            // Ride header
-            Row(
+            padding: const EdgeInsets.all(20),
+            child: Column(
               children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: const Color(0xFF8B5E3B).withOpacity(0.2),
-                  ),
-                  child: const Icon(
-                    Icons.directions_car,
-                    size: 24,
-                    color: Color(0xFF8B5E3B),
+                Center(
+                  child: Container(
+                    width: 50,
+                    height: 5,
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF8B5E3B).withOpacity(0.5),
+                      borderRadius: BorderRadius.circular(2.5),
+                    ),
                   ),
                 ),
-                const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                Row(
                   children: [
-                    Text(
-                      'Ride #${ride['ride_number']?.toString() ?? 'N/A'}',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF5A3D1F),
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: const Color(0xFF8B5E3B).withOpacity(0.2),
+                      ),
+                      child: const Icon(
+                        Icons.directions_car,
+                        size: 24,
+                        color: Color(0xFF8B5E3B),
                       ),
                     ),
-                    Text(
-                      ride['vehicle_type']?.toString() ?? 'Vehicle',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: const Color(0xFF8B5E3B).withOpacity(0.7),
+                    const SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Ride #${ride['ride_number']?.toString() ?? 'N/A'}',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF5A3D1F),
+                          ),
+                        ),
+                        Text(
+                          ride['vehicle_type']?.toString() ?? 'Vehicle',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: const Color(0xFF8B5E3B).withOpacity(0.7),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF5A3D1F).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        'K${(ride['total_cost'] as num?)?.toStringAsFixed(2) ?? 'N/A'}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: Color(0xFF5A3D1F),
+                        ),
                       ),
                     ),
                   ],
                 ),
-                const Spacer(),
+                const SizedBox(height: 24),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
+                  padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF5A3D1F).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    'K${(ride['total_cost'] as num?)?.toStringAsFixed(2) ?? 'N/A'}',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: Color(0xFF5A3D1F),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            
-            const SizedBox(height: 24),
-            
-            // Route visualization
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF5F0E6),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                children: [
-                  _buildRoutePoint(
-                    icon: Icons.location_pin,
-                    iconColor: const Color(0xFF8B5E3B),
-                    title: 'Pickup',
-                    subtitle: ride['pickup_point']?.toString() ?? 'N/A',
-                    time: DateFormat('h:mm a').format(departureTime),
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    margin: const EdgeInsets.only(left: 12),
-                    height: 20,
-                    width: 2,
-                    color: const Color(0xFF8B5E3B).withOpacity(0.3),
-                  ),
-                  const SizedBox(height: 8),
-                  _buildRoutePoint(
-                    icon: Icons.location_pin,
-                    iconColor: const Color(0xFF5A3D1F),
-                    title: 'Dropoff',
-                    subtitle: ride['dropoff_point']?.toString() ?? 'N/A',
-                    time: DateFormat('h:mm a').format(
-                      departureTime.add(Duration(minutes: duration.toInt())),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            
-            const SizedBox(height: 24),
-            
-            // Details grid
-            GridView.count(
-              shrinkWrap: true,
-              crossAxisCount: 2,
-              childAspectRatio: 3.5,
-              physics: const NeverScrollableScrollPhysics(),
-              children: [
-                _buildDetailItem(
-                  icon: Icons.person,
-                  title: 'Driver',
-                  value: ride['driver_name']?.toString() ?? 'N/A',
-                ),
-                _buildDetailItem(
-                  icon: Icons.calendar_today,
-                  title: 'Date',
-                  value: DateFormat('MMM dd, yyyy').format(departureTime),
-                ),
-                _buildDetailItem(
-                  icon: Icons.people,
-                  title: 'Capacity',
-                  value: '$remainingCapacity/$totalCapacity',
-                ),
-                _buildDetailItem(
-                  icon: Icons.speed,
-                  title: 'Distance',
-                  value: '${distanceInKm.toStringAsFixed(1)} km',
-                ),
-              ],
-            ),
-            
-            const Spacer(),
-            
-            // Action button
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: isFull
-                    ? null
-                    : () {
-                        onBookRide(ride);
-                        Navigator.pop(context);
-                      },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                      isFull ? Colors.grey[400] : const Color(0xFF5A3D1F),
-                  shape: RoundedRectangleBorder(
+                    color: const Color(0xFFF5F0E6),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                ),
-                child: Text(
-                  isFull ? 'NO SEATS AVAILABLE' : 'CONFIRM REQUEST',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                  child: Column(
+                    children: [
+                      _buildRoutePoint(
+                        icon: Icons.location_pin,
+                        iconColor: const Color(0xFF8B5E3B),
+                        title: 'Pickup',
+                        subtitle: ride['pickup_point']?.toString() ?? 'N/A',
+                        time: DateFormat('h:mm a').format(departureTime),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        margin: const EdgeInsets.only(left: 12),
+                        height: 20,
+                        width: 2,
+                        color: const Color(0xFF8B5E3B).withOpacity(0.3),
+                      ),
+                      const SizedBox(height: 8),
+                      _buildRoutePoint(
+                        icon: Icons.location_pin,
+                        iconColor: const Color(0xFF5A3D1F),
+                        title: 'Dropoff',
+                        subtitle: ride['dropoff_point']?.toString() ?? 'N/A',
+                        time: DateFormat('h:mm a').format(
+                          departureTime.add(
+                            Duration(minutes: widget.duration.toInt()),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ),
+                const SizedBox(height: 24),
+                GridView.count(
+                  shrinkWrap: true,
+                  crossAxisCount: 2,
+                  childAspectRatio: 3.5,
+                  physics: const NeverScrollableScrollPhysics(),
+                  children: [
+                    _buildDetailItem(
+                      icon: Icons.person,
+                      title: 'Driver',
+                      value: ride['driver_name']?.toString() ?? 'N/A',
+                    ),
+                    _buildDetailItem(
+                      icon: Icons.calendar_today,
+                      title: 'Date',
+                      value: DateFormat('MMM dd,yyyy').format(departureTime),
+                    ),
+                    _buildDetailItem(
+                      icon: Icons.people,
+                      title: 'Capacity',
+                      value: '$remainingCapacity/$totalCapacity',
+                    ),
+                    _buildDetailItem(
+                      icon: Icons.speed,
+                      title: 'Distance',
+                      value: '${widget.distanceInKm.toStringAsFixed(1)} km',
+                    ),
+                  ],
+                ),
+                const Spacer(),
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed:
+                        isAlreadyBooked
+                            ? null
+                            : () {
+                              _handleBooking(context, ride);
+                              Navigator.pop(context);
+                            },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor:
+                          isAlreadyBooked
+                              ? Colors.grey[400]
+                              : const Color(0xFF5A3D1F),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Text(
+                      isAlreadyBooked ? 'ALREADY BOOKED' : 'CONFIRM BOOKING',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
     );
   }
 
@@ -885,9 +1003,7 @@ class AvailableRidesPage extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       color: const Color(0xFFF5E6E6),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Row(
