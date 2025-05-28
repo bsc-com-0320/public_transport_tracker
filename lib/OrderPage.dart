@@ -1720,26 +1720,37 @@ class _OrderPageState extends State<OrderPage> {
       // Insert booking into 'request_ride' table
       await supabase.from('request_ride').insert(bookingData);
 
-      // Update ride capacity in 'ride' table
-      if (ride['capacity'] != null && ride['capacity'] > 0) {
+      // --- Capacity Decrement Logic (UPDATED) ---
+      final int? currentRemainingCapacity = ride['remaining_capacity'] as int?;
+
+      if (currentRemainingCapacity != null && currentRemainingCapacity > 0) {
+        final int newRemainingCapacity = currentRemainingCapacity - 1;
         print(
-          'Attempting to decrement capacity for ride $rideId. Old: ${ride['capacity']}, New: ${ride['capacity'] - 1}',
+          'Attempting to decrement remaining_capacity for ride $rideId. Old: $currentRemainingCapacity, New: $newRemainingCapacity',
         );
         try {
           await supabase
               .from('ride')
-              .update({'capacity': ride['capacity'] - 1})
+              .update({'remaining_capacity': newRemainingCapacity})
               .eq('id', rideId);
-        } catch (updateError) {
-          print('Supabase update failed for capacity decrement: $updateError');
-          // You might want to handle this error more gracefully,
-          // perhaps by rolling back the booking or notifying the user.
+          print('Successfully decremented remaining_capacity.');
+        } on PostgrestException catch (updateError) {
+          print(
+            'Supabase update failed for remaining_capacity decrement: ${updateError.message}',
+          );
+          // Consider rolling back the booking here if capacity update is critical.
+          // For now, we'll just log and proceed with the booking confirmation.
+        } catch (e) {
+          print('Unexpected error during remaining_capacity decrement: $e');
         }
       } else {
         print(
-          'Ride capacity is null or not greater than 0. Not decrementing capacity.',
+          'Ride remaining_capacity is null or not greater than 0. Not decrementing capacity.',
         );
+        // You might want to throw an error here or show a warning to the user
+        // if booking is not allowed when capacity is 0 or null.
       }
+      // --- End Capacity Decrement Logic ---
 
       if (!mounted) return;
       // Show success message
@@ -1751,6 +1762,7 @@ class _OrderPageState extends State<OrderPage> {
       );
 
       // Reload available rides to reflect capacity change
+      // This is important to ensure the UI shows the updated capacity
       _loadAvailableRides();
 
       // Optionally navigate back after successful booking
@@ -1765,9 +1777,10 @@ class _OrderPageState extends State<OrderPage> {
       } else if (e.message?.contains("'driver_id' column") == true) {
         errorMessage =
             'Driver information is missing or invalid. Please select another ride.';
-      } else if (e.message?.contains("'dropoff_point' column") == true) {
+      } else if (e.message?.contains("'dropoff_point' column") == true ||
+          e.message?.contains("'pickup_point' column") == true) {
         errorMessage =
-            "Database error: 'dropoff_point' column missing. Please contact support.";
+            "Database error: missing address column in request_ride. Please contact support.";
       }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
