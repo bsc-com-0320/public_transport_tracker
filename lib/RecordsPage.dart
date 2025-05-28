@@ -25,6 +25,15 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.brown,
         scaffoldBackgroundColor: Colors.grey[50],
       ),
+      // Define routes for navigation
+      routes: {
+        '/home': (context) => const Center(child: Text('Home Page (Not implemented)')), // Replace with your actual Home page
+        '/order': (context) => const Center(child: Text('Order Page (Not implemented)')), // Replace with your actual Order page
+        '/records': (context) => const RecordsPage(),
+        '/s-fund-account': (context) => const Center(child: Text('Fund Account Page (Not implemented)')), // Replace with your actual Fund Account page
+        '/profile': (context) => const Center(child: Text('Profile Page (Not implemented)')), // Replace with your actual Profile page
+        '/login': (context) => const Center(child: Text('Login Page (Not implemented)')), // Replace with your actual Login page
+      },
       home: const RecordsPage(),
     );
   }
@@ -41,7 +50,7 @@ class _RecordsPageState extends State<RecordsPage> {
   final SupabaseClient supabase = Supabase.instance.client;
   List<Map<String, dynamic>> bookings = [];
   bool isLoading = true;
-  int _selectedIndex = 2;
+  int _selectedIndex = 2; // Assuming 'Records' is at index 2
   final List<String> _pages = [
     '/home',
     '/order',
@@ -55,11 +64,19 @@ class _RecordsPageState extends State<RecordsPage> {
     _loadBookings();
   }
 
+  /// Loads the bookings for the current user from Supabase.
+  ///
+  /// Sets `isLoading` to true before fetching data and to false afterwards.
+  /// If no user is logged in, an exception is thrown.
+  /// Fetches `id`, `ride_id`, `pickup_point`, `dropoff_point`, `booking_time`,
+  /// `departure_time`, `vehicle_type`, `total_cost`, `status`, and `type`
+  /// from the 'request_ride' table, filtered by the current user's ID
+  /// and ordered by `booking_time` in descending order.
+  /// Displays a SnackBar with an error message if loading fails.
   Future<void> _loadBookings() async {
     setState(() => isLoading = true);
 
     try {
-      // Get current user ID
       final userId = supabase.auth.currentUser?.id;
       if (userId == null) {
         throw Exception('User not logged in');
@@ -79,7 +96,7 @@ class _RecordsPageState extends State<RecordsPage> {
             status,
             type
           ''')
-          .eq('user_id', userId) // Filter by current user's ID
+          .eq('user_id', userId)
           .order('booking_time', ascending: false);
 
       setState(() {
@@ -88,26 +105,37 @@ class _RecordsPageState extends State<RecordsPage> {
       });
     } catch (e) {
       setState(() => isLoading = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error loading bookings: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading bookings: $e')),
+        );
+      }
     }
   }
 
+  /// Cancels a booking by its ID.
+  ///
+  /// Deletes the booking from the 'request_ride' table in Supabase.
+  /// Displays a success message or an error message using a SnackBar.
+  /// Reloads the bookings after a successful cancellation.
   Future<void> _cancelBooking(String bookingId) async {
     try {
       setState(() => isLoading = true);
       await supabase.from('request_ride').delete().eq('id', bookingId);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Booking cancelled successfully')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Booking cancelled successfully')),
+        );
+      }
       await _loadBookings();
     } catch (e) {
       setState(() => isLoading = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to cancel booking: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to cancel booking: $e')),
+        );
+      }
     }
   }
 
@@ -133,7 +161,9 @@ class _RecordsPageState extends State<RecordsPage> {
               Icons.notifications_none,
               color: Color(0xFF5A3D1F),
             ),
-            onPressed: () {},
+            onPressed: () {
+              // Handle notifications
+            },
           ),
           Padding(
             padding: const EdgeInsets.only(right: 10),
@@ -152,9 +182,13 @@ class _RecordsPageState extends State<RecordsPage> {
     );
   }
 
+  /// Builds the main body of the page.
+  /// Displays a loading indicator if `isLoading` is true.
+  /// If `bookings` is empty, displays a message and a refresh button.
+  /// Otherwise, displays a list of booking cards with a `RefreshIndicator`.
   Widget _buildBody() {
     if (isLoading) {
-      return Center(child: CircularProgressIndicator(color: Color(0xFF5A3D1F)));
+      return const Center(child: CircularProgressIndicator(color: Color(0xFF5A3D1F)));
     }
 
     if (bookings.isEmpty) {
@@ -181,13 +215,13 @@ class _RecordsPageState extends State<RecordsPage> {
             ElevatedButton(
               onPressed: _loadBookings,
               style: ElevatedButton.styleFrom(
-                backgroundColor: Color(0xFF5A3D1F),
+                backgroundColor: const Color(0xFF5A3D1F),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
-                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               ),
-              child: Text('Refresh', style: TextStyle(color: Colors.white)),
+              child: const Text('Refresh', style: TextStyle(color: Colors.white)),
             ),
           ],
         ),
@@ -196,7 +230,7 @@ class _RecordsPageState extends State<RecordsPage> {
 
     return RefreshIndicator(
       onRefresh: _loadBookings,
-      color: Color(0xFF5A3D1F),
+      color: const Color(0xFF5A3D1F),
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: bookings.length,
@@ -212,10 +246,13 @@ class _RecordsPageState extends State<RecordsPage> {
     );
   }
 
+  /// Builds the bottom navigation bar for the application.
+  ///
+  /// Highlights the selected item and navigates to the corresponding page.
   Widget _buildBottomNavBar() {
     return BottomNavigationBar(
       backgroundColor: Colors.white,
-      selectedItemColor: Color(0xFF5A3D1F),
+      selectedItemColor: const Color(0xFF5A3D1F),
       unselectedItemColor: Colors.grey[600],
       currentIndex: _selectedIndex,
       onTap: (index) {
@@ -224,7 +261,7 @@ class _RecordsPageState extends State<RecordsPage> {
       },
       type: BottomNavigationBarType.fixed,
       elevation: 10,
-      selectedLabelStyle: TextStyle(fontWeight: FontWeight.bold),
+      selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
       items: const [
         BottomNavigationBarItem(
           icon: Icon(Icons.home_outlined),
@@ -250,13 +287,14 @@ class _RecordsPageState extends State<RecordsPage> {
     );
   }
 
+  /// Builds an error card to display when there's an issue loading a booking.
   Widget _buildErrorCard(String error) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(
             color: Colors.black26,
             blurRadius: 10,
@@ -291,41 +329,32 @@ class _RecordsPageState extends State<RecordsPage> {
     );
   }
 
+  /// Builds a `Card` widget to display individual booking details.
+  ///
+  /// Parses and formats booking time, departure time, and total cost.
+  /// Includes a "Cancel" button if the booking status is 'pending'.
   Widget _buildBookingCard(Map<String, dynamic> booking) {
     try {
-      // Safely parse dates with null checks
       final bookingTime =
-          booking['booking_time'] != null
-              ? DateTime.tryParse(booking['booking_time']) ?? DateTime.now()
-              : DateTime.now();
+          booking['booking_time'] != null ? DateTime.tryParse(booking['booking_time']) ?? DateTime.now() : DateTime.now();
 
       final departureTime =
-          booking['departure_time'] != null
-              ? DateTime.tryParse(booking['departure_time'])
-              : null;
+          booking['departure_time'] != null ? DateTime.tryParse(booking['departure_time']) : null;
 
-      // Format dates safely
       final formattedBookingDate = DateFormat('MMM d, y').format(bookingTime);
       final formattedBookingTime = DateFormat('h:mm a').format(bookingTime);
       final formattedDeparture =
-          departureTime != null
-              ? DateFormat('MMM d, h:mm a').format(departureTime)
-              : 'Not specified';
+          departureTime != null ? DateFormat('MMM d, h:mm a').format(departureTime) : 'Not specified';
 
-      // Safely format price with null check
       final price =
-          booking['total_cost'] != null
-              ? NumberFormat.currency(
-                symbol: '\$',
-              ).format(booking['total_cost'])
-              : '\$0.00';
+          booking['total_cost'] != null ? NumberFormat.currency(symbol: '\$').format(booking['total_cost']) : '\$0.00';
 
       return Container(
         margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
-          boxShadow: [
+          boxShadow: const [
             BoxShadow(
               color: Colors.black26,
               blurRadius: 10,
@@ -338,7 +367,6 @@ class _RecordsPageState extends State<RecordsPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Booking header with ID and status
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -361,7 +389,7 @@ class _RecordsPageState extends State<RecordsPage> {
                     ),
                     child: Text(
                       (booking['status'] ?? 'pending').toUpperCase(),
-                      style: TextStyle(
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
@@ -371,48 +399,34 @@ class _RecordsPageState extends State<RecordsPage> {
                 ],
               ),
               const SizedBox(height: 16),
-
-              // Vehicle Type
               _buildInfoRow(
                 Icons.directions_car,
                 'Vehicle Type:',
                 booking['vehicle_type']?.toString() ?? 'Not specified',
               ),
               const SizedBox(height: 12),
-
-              // Pickup Point
               _buildInfoRow(
                 Icons.location_on,
                 'Pickup:',
                 booking['pickup_point']?.toString() ?? 'Unknown location',
               ),
               const SizedBox(height: 12),
-
-              // Dropoff Point
               _buildInfoRow(
                 Icons.location_on,
                 'Dropoff:',
                 booking['dropoff_point']?.toString() ?? 'Unknown location',
               ),
               const SizedBox(height: 12),
-
-              // Departure Time
               _buildInfoRow(
                 Icons.access_time,
                 'Departure:',
                 formattedDeparture,
               ),
               const SizedBox(height: 12),
-
-              // Total Cost
               _buildInfoRow(Icons.monetization_on, 'Total Cost:', price),
               const SizedBox(height: 16),
-
-              // Divider
               Divider(height: 1, color: Colors.grey[300]),
               const SizedBox(height: 12),
-
-              // Footer with booking time and cancel button
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -429,19 +443,17 @@ class _RecordsPageState extends State<RecordsPage> {
                       ),
                     ],
                   ),
+                  // Only show cancel button if the status is 'pending'
                   if ((booking['status'] ?? 'pending') == 'pending')
                     ElevatedButton(
-                      onPressed:
-                          () => _showCancelDialog(
-                            booking['id']?.toString() ?? '',
-                          ),
+                      onPressed: () => _showCancelDialog(booking['id']?.toString() ?? ''),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.white,
                         foregroundColor: Colors.red,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
-                          side: BorderSide(color: Colors.red),
+                          side: const BorderSide(color: Colors.red),
                         ),
                         padding: const EdgeInsets.symmetric(
                           horizontal: 16,
@@ -466,20 +478,20 @@ class _RecordsPageState extends State<RecordsPage> {
     }
   }
 
+  /// Formats a booking ID for display, truncating long IDs.
   String _formatBookingId(dynamic id) {
     if (id == null) return 'N/A';
     final idStr = id.toString();
     if (idStr.isEmpty) return 'N/A';
-    return idStr.length <= 8
-        ? idStr
-        : '...${idStr.substring(idStr.length - 5)}';
+    return idStr.length <= 8 ? idStr : '...${idStr.substring(idStr.length - 5)}';
   }
 
+  /// Builds a row to display an icon, label, and value for booking information.
   Widget _buildInfoRow(IconData icon, String label, String value) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, color: Color(0xFF5A3D1F), size: 20),
+        Icon(icon, color: const Color(0xFF5A3D1F), size: 20),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
@@ -496,7 +508,7 @@ class _RecordsPageState extends State<RecordsPage> {
               const SizedBox(height: 4),
               Text(
                 value,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
                   color: Color(0xFF5A3D1F),
@@ -509,6 +521,7 @@ class _RecordsPageState extends State<RecordsPage> {
     );
   }
 
+  /// Returns a color based on the booking status.
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
       case 'completed':
@@ -524,10 +537,13 @@ class _RecordsPageState extends State<RecordsPage> {
     }
   }
 
+  /// Shows a confirmation dialog for canceling a booking.
+  ///
+  /// If the user confirms, the `_cancelBooking` method is called.
   Future<void> _showCancelDialog(String bookingId) async {
     return showDialog<void>(
       context: context,
-      barrierDismissible: true,
+      barrierDismissible: true, // User can dismiss by tapping outside
       builder: (BuildContext context) {
         return Dialog(
           shape: RoundedRectangleBorder(
@@ -538,7 +554,7 @@ class _RecordsPageState extends State<RecordsPage> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
+                const Text(
                   'Cancel Booking',
                   style: TextStyle(
                     fontSize: 18,
@@ -559,16 +575,16 @@ class _RecordsPageState extends State<RecordsPage> {
                     TextButton(
                       onPressed: () => Navigator.of(context).pop(),
                       style: TextButton.styleFrom(
-                        padding: EdgeInsets.symmetric(
+                        padding: const EdgeInsets.symmetric(
                           horizontal: 24,
                           vertical: 12,
                         ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
-                          side: BorderSide(color: Color(0xFF5A3D1F)),
+                          side: const BorderSide(color: Color(0xFF5A3D1F)),
                         ),
                       ),
-                      child: Text(
+                      child: const Text(
                         'No',
                         style: TextStyle(
                           color: Color(0xFF5A3D1F),
@@ -578,15 +594,15 @@ class _RecordsPageState extends State<RecordsPage> {
                     ),
                     ElevatedButton(
                       onPressed: () {
-                        Navigator.of(context).pop();
-                        _cancelBooking(bookingId);
+                        Navigator.of(context).pop(); // Close the dialog
+                        _cancelBooking(bookingId); // Perform the cancellation
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.red,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        padding: EdgeInsets.symmetric(
+                        padding: const EdgeInsets.symmetric(
                           horizontal: 24,
                           vertical: 12,
                         ),
@@ -609,6 +625,7 @@ class _RecordsPageState extends State<RecordsPage> {
     );
   }
 
+  /// Shows a modal bottom sheet with profile options (Profile, Logout).
   Future<void> _showProfileMenu() async {
     await showModalBottomSheet(
       context: context,
@@ -671,6 +688,9 @@ class _RecordsPageState extends State<RecordsPage> {
     );
   }
 
+  /// Shows a confirmation dialog for logging out.
+  ///
+  /// If the user confirms, the `_logout` method is called.
   Future<void> _showLogoutDialog() async {
     return showDialog(
       context: context,
@@ -720,17 +740,23 @@ class _RecordsPageState extends State<RecordsPage> {
     );
   }
 
+  /// Logs the user out from Supabase and navigates to the login page.
+  /// Displays a SnackBar with an error message if logout fails.
   Future<void> _logout() async {
     try {
       await supabase.auth.signOut();
-      Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+      if (mounted) {
+        Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Logout failed: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Logout failed: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 }
