@@ -315,9 +315,14 @@ class _DriverAddRide extends State<DriverAddRide> {
         imageUrl = _supabase.storage.from('ride_images').getPublicUrl(filePath);
       }
 
+      // Get the capacity value from the controller
+      final capacity = int.parse(_capacityController.text);
+
       await _supabase.from('ride').insert({
         'ride_number': _rideNumberController.text,
-        'capacity': int.parse(_capacityController.text),
+        'capacity': capacity,
+        'remaining_capacity':
+            capacity, // Set remaining_capacity equal to capacity
         'total_cost': double.parse(_totalCostController.text),
         'departure_time': _departureTimeController.text,
         'vehicle_type': _selectedVehicleType,
@@ -330,7 +335,8 @@ class _DriverAddRide extends State<DriverAddRide> {
         'dropoff_lat': _dropoffLatLng?.latitude,
         'dropoff_lng': _dropoffLatLng?.longitude,
         'created_at': DateTime.now().toIso8601String(),
-        'driver_id': userId, // Add the driver's ID here
+        'driver_id': userId,
+        //'image_url': imageUrl, // Also include the image URL if it exists
       });
 
       ScaffoldMessenger.of(
