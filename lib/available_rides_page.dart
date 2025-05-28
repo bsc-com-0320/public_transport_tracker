@@ -3,6 +3,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:public_transport_tracker/ride_search_service.dart'; // Import the new service file
 
 class AvailableRidesPage extends StatefulWidget {
   final List<Map<String, dynamic>> availableRides;
@@ -38,6 +39,8 @@ class _AvailableRidesPageState extends State<AvailableRidesPage> {
   final _supabase = Supabase.instance.client;
   Set<String> _bookedRideIds = {};
   bool _isCheckingBookings = true;
+  final RideSearchService _rideSearchService = RideSearchService(); // Instantiate the new service
+  RideFilterOptions _currentFilterOptions = const RideFilterOptions(); // Hold current filter settings
 
   @override
   void initState() {
@@ -50,27 +53,19 @@ class _AvailableRidesPageState extends State<AvailableRidesPage> {
       final user = _supabase.auth.currentUser;
       if (user != null) {
         // Fetch all active/pending bookings from 'request_ride' for the current user
-        // These are the statuses that should prevent a new booking
         final response = await _supabase
-            .from('request_ride') // Assuming 'request_ride' is the table name
+            .from('request_ride')
             .select('ride_id')
-            .eq('user_id', user.id)
-            .inFilter('status', [
-              'pending',
-              'confirmed',
-              'active',
-            ]); // Corrected from .in_ to .inFilter
+            .eq('passenger_id', user.id)
+            .inFilter('status', ['pending', 'confirmed', 'active']); // Use inFilter
 
         setState(() {
-          _bookedRideIds = Set.from(
-            response.map((r) => r['ride_id'].toString()),
-          );
+          _bookedRideIds = Set.from(response.map((r) => r['ride_id'].toString()));
           _isCheckingBookings = false;
         });
       } else {
         setState(() {
-          _isCheckingBookings =
-              false; // User not logged in, no bookings to check
+          _isCheckingBookings = false;
         });
       }
     } catch (e) {
@@ -81,29 +76,27 @@ class _AvailableRidesPageState extends State<AvailableRidesPage> {
     }
   }
 
-  List<Map<String, dynamic>> get _filteredRides {
-    return widget.availableRides.where((ride) {
-      final remainingCapacity =
-          ride['remaining_capacity'] is int
-              ? ride['remaining_capacity'] as int
-              : ride['capacity'] is int
-              ? ride['capacity'] as int
-              : 0;
-      final isFull = remainingCapacity <= 0;
-      final isAlreadyBooked = _bookedRideIds.contains(ride['id'].toString());
-      // A ride is available if it's not full and not already booked by the user
-      return !isFull && !isAlreadyBooked;
-    }).toList();
+  // This getter now uses the RideSearchService to filter and sort rides.
+  List<Map<String, dynamic>> get _filteredAndSortedRides {
+    if (widget.pickupLatLng == null || widget.dropoffLatLng == null) {
+      return []; // Cannot filter without user's pickup/dropoff
+    }
+
+    return _rideSearchService.searchRides(
+      allRides: widget.availableRides,
+      userPickup: widget.pickupLatLng!,
+      userDropoff: widget.dropoffLatLng!,
+      options: _currentFilterOptions,
+      bookedRideIds: _bookedRideIds, // Pass the set of already booked ride IDs
+    );
   }
 
   DateTime _parseDepartureTime(String? timeString) {
     if (timeString == null) return DateTime.now();
 
-    // Try ISO format first
     final isoTime = DateTime.tryParse(timeString);
     if (isoTime != null) return isoTime;
 
-    // Handle time-only format (HH:mm)
     if (RegExp(r'^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$').hasMatch(timeString)) {
       final now = DateTime.now();
       final timeParts = timeString.split(':');
@@ -116,12 +109,11 @@ class _AvailableRidesPageState extends State<AvailableRidesPage> {
       );
     }
 
-    // Try common date/time formats
     final formats = [
       'yyyy-MM-dd HH:mm:ss',
       'MM/dd/yyyy hh:mm a',
       'dd-MM-yyyy HH:mm',
-      'h:mm a', // 12-hour format
+      'h:mm a',
     ];
 
     for (final format in formats) {
@@ -133,64 +125,45 @@ class _AvailableRidesPageState extends State<AvailableRidesPage> {
     return DateTime.now();
   }
 
-  Future<void> _handleBooking(
-    BuildContext context,
-    Map<String, dynamic> ride,
-  ) async {
+  Future<void> _handleBooking(BuildContext context, Map<String, dynamic> ride) async {
     final user = _supabase.auth.currentUser;
     if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please log in to book a ride.'),
-          backgroundColor: Colors.red,
-        ),
+        const SnackBar(content: Text('Please log in to book a ride.'), backgroundColor: Colors.red),
       );
       return;
     }
 
     try {
-      // Step 1: Check for existing active bookings for this user in 'request_ride' table
-      // This is the crucial check to ensure only one active booking per user
+      // Check for existing active bookings for this user in 'request_ride' table
       final existingBookings = await _supabase
-          .from(
-            'request_ride',
-          ) // Ensure this is the correct table name for active requests
+          .from('request_ride')
           .select('id')
-          .eq('user_id', user.id)
-          .inFilter('status', [
-            'pending',
-            'confirmed',
-            'active',
-          ]); // Corrected from .in_ to .inFilter
+          .eq('passenger_id', user.id)
+          .inFilter('status', ['pending', 'confirmed', 'active']); // Use inFilter
 
       if (existingBookings.isNotEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text(
-              'You already have an active ride request. Please complete or cancel it first.',
-            ),
-            backgroundColor: Colors.orange, // Use an orange color for warning
+            content: Text('You already have an active ride request. Please complete or cancel it first.'),
+            backgroundColor: Colors.orange,
           ),
         );
-        return; // Prevent booking if an active ride exists
+        return;
       }
 
-      // If no active bookings, proceed with booking the new ride
       final departureTime = _parseDepartureTime(ride['departure_time']);
       final formattedTime = departureTime.toIso8601String();
-
-      // Create a mutable map to update the departure_time
+      
       final updatedRide = Map<String, dynamic>.from(ride)
         ..['departure_time'] = formattedTime;
-
-      // Call the booking function passed from the parent widget
+      
       await widget.onBookRide(updatedRide);
-
-      // Update local state to reflect the new booking, disabling the card
+      
       setState(() {
         _bookedRideIds.add(ride['id'].toString());
       });
-
+      
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Ride booked successfully!')),
       );
@@ -211,6 +184,24 @@ class _AvailableRidesPageState extends State<AvailableRidesPage> {
     }
   }
 
+  // Method to show the filter settings bottom sheet
+  void _showFilterSettingsBottomSheet() async {
+    final newOptions = await showModalBottomSheet<RideFilterOptions>(
+      context: context,
+      isScrollControlled: true, // Allows the sheet to take more height if needed
+      backgroundColor: Colors.transparent, // For rounded corners to show
+      builder: (context) => FilterSettingsBottomSheet(
+        currentOptions: _currentFilterOptions,
+      ),
+    );
+
+    if (newOptions != null) {
+      setState(() {
+        _currentFilterOptions = newOptions;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -225,6 +216,13 @@ class _AvailableRidesPageState extends State<AvailableRidesPage> {
         backgroundColor: Colors.white,
         elevation: 0,
         iconTheme: const IconThemeData(color: Color(0xFF5A3D1F)),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.filter_list, color: Color(0xFF5A3D1F)),
+            onPressed: _showFilterSettingsBottomSheet,
+            tooltip: 'Filter Rides',
+          ),
+        ],
       ),
       body: Stack(
         children: [
@@ -257,15 +255,10 @@ class _AvailableRidesPageState extends State<AvailableRidesPage> {
             markers: [
               Marker(
                 point: widget.pickupLatLng!,
-                builder:
-                    (ctx) => const Tooltip(
-                      message: 'Pickup',
-                      child: Icon(
-                        Icons.location_pin,
-                        color: Color(0xFF8B5E3B),
-                        size: 30,
-                      ),
-                    ),
+                builder: (ctx) => const Tooltip(
+                  message: 'Pickup',
+                  child: Icon(Icons.location_pin, color: Color(0xFF8B5E3B), size: 30),
+                ),
               ),
             ],
           ),
@@ -274,15 +267,10 @@ class _AvailableRidesPageState extends State<AvailableRidesPage> {
             markers: [
               Marker(
                 point: widget.dropoffLatLng!,
-                builder:
-                    (ctx) => const Tooltip(
-                      message: 'Dropoff',
-                      child: Icon(
-                        Icons.location_pin,
-                        color: Color(0xFF5A3D1F),
-                        size: 30,
-                      ),
-                    ),
+                builder: (ctx) => const Tooltip(
+                  message: 'Dropoff',
+                  child: Icon(Icons.location_pin, color: Color(0xFF5A3D1F), size: 30),
+                ),
               ),
             ],
           ),
@@ -397,15 +385,12 @@ class _AvailableRidesPageState extends State<AvailableRidesPage> {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      '${_filteredRides.length} Available Rides',
+                      '${_filteredAndSortedRides.length} Available Rides', // Use filtered and sorted rides count
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -413,11 +398,7 @@ class _AvailableRidesPageState extends State<AvailableRidesPage> {
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(
-                        Icons.close,
-                        size: 20,
-                        color: Color(0xFF5A3D1F),
-                      ),
+                      icon: const Icon(Icons.close, size: 20, color: Color(0xFF5A3D1F)),
                       onPressed: () => Navigator.pop(context),
                       padding: EdgeInsets.zero,
                     ),
@@ -425,38 +406,24 @@ class _AvailableRidesPageState extends State<AvailableRidesPage> {
                 ),
               ),
               Expanded(
-                child:
-                    widget.isLoadingRides || _isCheckingBookings
-                        ? const Center(
-                          child: CircularProgressIndicator(
-                            color: Color(0xFF8B5E3B),
-                          ),
-                        )
-                        : _filteredRides.isEmpty
-                        ? const Center(
-                          child: Text(
-                            'No available rides found',
-                            style: TextStyle(color: Color(0xFF5A3D1F)),
-                          ),
-                        )
+                child: widget.isLoadingRides || _isCheckingBookings
+                    ? const Center(child: CircularProgressIndicator(color: Color(0xFF8B5E3B)))
+                    : _filteredAndSortedRides.isEmpty // Use filtered and sorted rides
+                        ? const Center(child: Text('No available rides found matching your criteria.', style: TextStyle(color: Color(0xFF5A3D1F))))
                         : ListView.separated(
-                          controller: scrollController,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
+                            controller: scrollController,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            itemCount: _filteredAndSortedRides.length, // Use filtered and sorted rides
+                            separatorBuilder: (_, __) => const SizedBox(height: 8),
+                            itemBuilder: (context, index) {
+                              final ride = _filteredAndSortedRides[index]; // Use filtered and sorted rides
+                              try {
+                                return _buildRideCard(ride, context);
+                              } catch (e) {
+                                return _buildErrorCard(e.toString(), context);
+                              }
+                            },
                           ),
-                          itemCount: _filteredRides.length,
-                          separatorBuilder:
-                              (_, __) => const SizedBox(height: 8),
-                          itemBuilder: (context, index) {
-                            final ride = _filteredRides[index];
-                            try {
-                              return _buildRideCard(ride, context);
-                            } catch (e) {
-                              return _buildErrorCard(e.toString(), context);
-                            }
-                          },
-                        ),
               ),
             ],
           ),
@@ -469,19 +436,13 @@ class _AvailableRidesPageState extends State<AvailableRidesPage> {
     final departureTime = _parseDepartureTime(ride['departure_time']);
     final formattedTime = DateFormat('h:mm a').format(departureTime);
     final totalCapacity = ride['capacity'] is int ? ride['capacity'] : 0;
-    final remainingCapacity =
-        ride['remaining_capacity'] is int
-            ? ride['remaining_capacity']
-            : totalCapacity;
-    final totalCost =
-        ride['total_cost'] is num
-            ? (ride['total_cost'] as num).toDouble()
-            : 0.0;
-    final distanceFromUser =
-        ride['distance_from_user'] is double
-            ? (ride['distance_from_user'] as double).toStringAsFixed(1)
-            : 'N/A';
+    final remainingCapacity = ride['remaining_capacity'] is int ? ride['remaining_capacity'] : totalCapacity;
+    final totalCost = ride['total_cost'] is num ? (ride['total_cost'] as num).toDouble() : 0.0;
+    final distanceFromUser = ride['calculated_distance_to_pickup'] is double // Use calculated distance from service
+        ? (ride['calculated_distance_to_pickup'] as double).toStringAsFixed(1)
+        : 'N/A';
     final isAlreadyBooked = _bookedRideIds.contains(ride['id'].toString());
+    final isFull = remainingCapacity <= 0; // Re-check isFull for display
 
     return InkWell(
       borderRadius: BorderRadius.circular(12),
@@ -490,13 +451,7 @@ class _AvailableRidesPageState extends State<AvailableRidesPage> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4, offset: const Offset(0, 2))],
         ),
         padding: const EdgeInsets.all(12),
         child: Column(
@@ -514,11 +469,7 @@ class _AvailableRidesPageState extends State<AvailableRidesPage> {
                         shape: BoxShape.circle,
                         color: const Color(0xFF8B5E3B).withOpacity(0.2),
                       ),
-                      child: const Icon(
-                        Icons.person,
-                        size: 18,
-                        color: Color(0xFF8B5E3B),
-                      ),
+                      child: const Icon(Icons.person, size: 18, color: Color(0xFF8B5E3B)),
                     ),
                     const SizedBox(width: 8),
                     Column(
@@ -544,10 +495,7 @@ class _AvailableRidesPageState extends State<AvailableRidesPage> {
                   ],
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: const Color(0xFF5A3D1F).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(20),
@@ -622,10 +570,7 @@ class _AvailableRidesPageState extends State<AvailableRidesPage> {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: const Color(0xFF8B5E3B).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(10),
@@ -661,22 +606,14 @@ class _AvailableRidesPageState extends State<AvailableRidesPage> {
                 SizedBox(
                   height: 32,
                   child: ElevatedButton(
-                    onPressed:
-                        isAlreadyBooked
-                            ? null
-                            : () => _handleBooking(context, ride),
+                    onPressed: (isAlreadyBooked || isFull) ? null : () => _handleBooking(context, ride),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor:
-                          isAlreadyBooked
-                              ? Colors.grey[400]
-                              : const Color(0xFF5A3D1F),
+                      backgroundColor: (isAlreadyBooked || isFull) ? Colors.grey[400] : const Color(0xFF5A3D1F),
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     ),
                     child: Text(
-                      isAlreadyBooked ? 'BOOKED' : 'BOOK NOW',
+                      isAlreadyBooked ? 'BOOKED' : (isFull ? 'FULL' : 'BOOK NOW'),
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
@@ -702,8 +639,7 @@ class _AvailableRidesPageState extends State<AvailableRidesPage> {
         Icon(
           Icons.people_alt_outlined,
           size: 14,
-          color:
-              isLowCapacity ? const Color(0xFFD4A76A) : const Color(0xFF8B5E3B),
+          color: isLowCapacity ? const Color(0xFFD4A76A) : const Color(0xFF8B5E3B),
         ),
         const SizedBox(width: 4),
         Text(
@@ -711,10 +647,7 @@ class _AvailableRidesPageState extends State<AvailableRidesPage> {
           style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.bold,
-            color:
-                isLowCapacity
-                    ? const Color(0xFFD4A76A)
-                    : const Color(0xFF8B5E3B),
+            color: isLowCapacity ? const Color(0xFFD4A76A) : const Color(0xFF8B5E3B),
           ),
         ),
       ],
@@ -724,195 +657,178 @@ class _AvailableRidesPageState extends State<AvailableRidesPage> {
   void _showRideDetails(BuildContext context, Map<String, dynamic> ride) {
     final departureTime = _parseDepartureTime(ride['departure_time']);
     final totalCapacity = ride['capacity'] is int ? ride['capacity'] : 0;
-    final remainingCapacity =
-        ride['remaining_capacity'] is int
-            ? ride['remaining_capacity']
-            : totalCapacity;
+    final remainingCapacity = ride['remaining_capacity'] is int ? ride['remaining_capacity'] : totalCapacity;
     final isAlreadyBooked = _bookedRideIds.contains(ride['id'].toString());
+    final isFull = remainingCapacity <= 0;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder:
-          (context) => Container(
-            height: MediaQuery.of(context).size.height * 0.85,
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.85,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            Center(
+              child: Container(
+                width: 50,
+                height: 5,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF8B5E3B).withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(2.5),
+                ),
+              ),
             ),
-            padding: const EdgeInsets.all(20),
-            child: Column(
+            Row(
               children: [
-                Center(
-                  child: Container(
-                    width: 50,
-                    height: 5,
-                    margin: const EdgeInsets.only(bottom: 16),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF8B5E3B).withOpacity(0.5),
-                      borderRadius: BorderRadius.circular(2.5),
-                    ),
-                  ),
-                ),
-                Row(
-                  children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: const Color(0xFF8B5E3B).withOpacity(0.2),
-                      ),
-                      child: const Icon(
-                        Icons.directions_car,
-                        size: 24,
-                        color: Color(0xFF8B5E3B),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Ride #${ride['ride_number']?.toString() ?? 'N/A'}',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF5A3D1F),
-                          ),
-                        ),
-                        Text(
-                          ride['vehicle_type']?.toString() ?? 'Vehicle',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: const Color(0xFF8B5E3B).withOpacity(0.7),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const Spacer(),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF5A3D1F).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        'K${(ride['total_cost'] as num?)?.toStringAsFixed(2) ?? 'N/A'}',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          color: Color(0xFF5A3D1F),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
                 Container(
-                  padding: const EdgeInsets.all(16),
+                  width: 48,
+                  height: 48,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF5F0E6),
-                    borderRadius: BorderRadius.circular(12),
+                    shape: BoxShape.circle,
+                    color: const Color(0xFF8B5E3B).withOpacity(0.2),
                   ),
-                  child: Column(
-                    children: [
-                      _buildRoutePoint(
-                        icon: Icons.location_pin,
-                        iconColor: const Color(0xFF8B5E3B),
-                        title: 'Pickup',
-                        subtitle: ride['pickup_point']?.toString() ?? 'N/A',
-                        time: DateFormat('h:mm a').format(departureTime),
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        margin: const EdgeInsets.only(left: 12),
-                        height: 20,
-                        width: 2,
-                        color: const Color(0xFF8B5E3B).withOpacity(0.3),
-                      ),
-                      const SizedBox(height: 8),
-                      _buildRoutePoint(
-                        icon: Icons.location_pin,
-                        iconColor: const Color(0xFF5A3D1F),
-                        title: 'Dropoff',
-                        subtitle: ride['dropoff_point']?.toString() ?? 'N/A',
-                        time: DateFormat('h:mm a').format(
-                          departureTime.add(
-                            Duration(minutes: widget.duration.toInt()),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                  child: const Icon(Icons.directions_car, size: 24, color: Color(0xFF8B5E3B)),
                 ),
-                const SizedBox(height: 24),
-                GridView.count(
-                  shrinkWrap: true,
-                  crossAxisCount: 2,
-                  childAspectRatio: 3.5,
-                  physics: const NeverScrollableScrollPhysics(),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildDetailItem(
-                      icon: Icons.person,
-                      title: 'Driver',
-                      value: ride['driver_name']?.toString() ?? 'N/A',
+                    Text(
+                      'Ride #${ride['ride_number']?.toString() ?? 'N/A'}',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF5A3D1F),
+                      ),
                     ),
-                    _buildDetailItem(
-                      icon: Icons.calendar_today,
-                      title: 'Date',
-                      value: DateFormat('MMM dd,yyyy').format(departureTime),
-                    ),
-                    _buildDetailItem(
-                      icon: Icons.people,
-                      title: 'Capacity',
-                      value: '$remainingCapacity/$totalCapacity',
-                    ),
-                    _buildDetailItem(
-                      icon: Icons.speed,
-                      title: 'Distance',
-                      value: '${widget.distanceInKm.toStringAsFixed(1)} km',
+                    Text(
+                      ride['vehicle_type']?.toString() ?? 'Vehicle',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: const Color(0xFF8B5E3B).withOpacity(0.7),
+                      ),
                     ),
                   ],
                 ),
                 const Spacer(),
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed:
-                        isAlreadyBooked
-                            ? null
-                            : () {
-                              _handleBooking(context, ride);
-                              Navigator.pop(context);
-                            },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor:
-                          isAlreadyBooked
-                              ? Colors.grey[400]
-                              : const Color(0xFF5A3D1F),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: Text(
-                      isAlreadyBooked ? 'ALREADY BOOKED' : 'CONFIRM BOOKING',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF5A3D1F).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    'K${(ride['total_cost'] as num?)?.toStringAsFixed(2) ?? 'N/A'}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: Color(0xFF5A3D1F),
                     ),
                   ),
                 ),
               ],
             ),
-          ),
+            const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF5F0E6),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                children: [
+                  _buildRoutePoint(
+                    icon: Icons.location_pin,
+                    iconColor: const Color(0xFF8B5E3B),
+                    title: 'Pickup',
+                    subtitle: ride['pickup_point']?.toString() ?? 'N/A',
+                    time: DateFormat('h:mm a').format(departureTime),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    margin: const EdgeInsets.only(left: 12),
+                    height: 20,
+                    width: 2,
+                    color: const Color(0xFF8B5E3B).withOpacity(0.3),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildRoutePoint(
+                    icon: Icons.location_pin,
+                    iconColor: const Color(0xFF5A3D1F),
+                    title: 'Dropoff',
+                    subtitle: ride['dropoff_point']?.toString() ?? 'N/A',
+                    time: DateFormat('h:mm a').format(
+                      departureTime.add(Duration(minutes: widget.duration.toInt())),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            GridView.count(
+              shrinkWrap: true,
+              crossAxisCount: 2,
+              childAspectRatio: 3.5,
+              physics: const NeverScrollableScrollPhysics(),
+              children: [
+                _buildDetailItem(
+                  icon: Icons.person,
+                  title: 'Driver',
+                  value: ride['driver_name']?.toString() ?? 'N/A',
+                ),
+                _buildDetailItem(
+                  icon: Icons.calendar_today,
+                  title: 'Date',
+                  value: DateFormat('MMM dd,yyyy').format(departureTime),
+                ),
+                _buildDetailItem(
+                  icon: Icons.people,
+                  title: 'Capacity',
+                  value: '$remainingCapacity/$totalCapacity',
+                ),
+                _buildDetailItem(
+                  icon: Icons.speed,
+                  title: 'Distance',
+                  value: '${widget.distanceInKm.toStringAsFixed(1)} km',
+                ),
+              ],
+            ),
+            const Spacer(),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: (isAlreadyBooked || isFull)
+                    ? null
+                    : () {
+                        _handleBooking(context, ride);
+                        Navigator.pop(context);
+                      },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: (isAlreadyBooked || isFull) ? Colors.grey[400] : const Color(0xFF5A3D1F),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                ),
+                child: Text(
+                  isAlreadyBooked ? 'ALREADY BOOKED' : (isFull ? 'FULL' : 'CONFIRM BOOKING'),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -1018,6 +934,195 @@ class _AvailableRidesPageState extends State<AvailableRidesPage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// New Widget for Filter Settings Bottom Sheet
+class FilterSettingsBottomSheet extends StatefulWidget {
+  final RideFilterOptions currentOptions;
+
+  const FilterSettingsBottomSheet({Key? key, required this.currentOptions}) : super(key: key);
+
+  @override
+  _FilterSettingsBottomSheetState createState() => _FilterSettingsBottomSheetState();
+}
+
+class _FilterSettingsBottomSheetState extends State<FilterSettingsBottomSheet> {
+  late double _pickupRadius;
+  late double _dropoffRadius;
+  late RideSortCriteria _sortCriteria;
+
+  @override
+  void initState() {
+    super.initState();
+    _pickupRadius = widget.currentOptions.pickupRadiusKm;
+    _dropoffRadius = widget.currentOptions.dropoffRadiusKm;
+    _sortCriteria = widget.currentOptions.sortCriteria;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Handle bar
+          Center(
+            child: Container(
+              width: 50,
+              height: 5,
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2.5),
+              ),
+            ),
+          ),
+          Text(
+            'Filter Settings',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF5A3D1F), // Theme color
+            ),
+          ),
+          const SizedBox(height: 20),
+          // Pickup Radius Slider
+          Row(
+            children: [
+              const Icon(Icons.location_on, color: Color(0xFF8B5E3B)), // Theme color
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Pickup Radius: ${_pickupRadius.toStringAsFixed(1)} km',
+                  style: TextStyle(color: Colors.grey[700]),
+                ),
+              ),
+            ],
+          ),
+          Slider(
+            value: _pickupRadius,
+            min: 0.5,
+            max: 10.0,
+            divisions: 19, // 0.5, 1.0, ..., 10.0
+            label: _pickupRadius.toStringAsFixed(1),
+            onChanged: (value) {
+              setState(() {
+                _pickupRadius = value;
+              });
+            },
+            activeColor: const Color(0xFF8B5E3B), // Theme color
+            inactiveColor: const Color(0xFF8B5E3B).withOpacity(0.3), // Theme color
+          ),
+          const SizedBox(height: 10),
+          // Dropoff Radius Slider
+          Row(
+            children: [
+              const Icon(Icons.location_on_outlined, color: Color(0xFF5A3D1F)), // Theme color
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Dropoff Radius: ${_dropoffRadius.toStringAsFixed(1)} km',
+                  style: TextStyle(color: Colors.grey[700]),
+                ),
+              ),
+            ],
+          ),
+          Slider(
+            value: _dropoffRadius,
+            min: 0.5,
+            max: 10.0,
+            divisions: 19,
+            label: _dropoffRadius.toStringAsFixed(1),
+            onChanged: (value) {
+              setState(() {
+                _dropoffRadius = value;
+              });
+            },
+            activeColor: const Color(0xFF5A3D1F), // Theme color
+            inactiveColor: const Color(0xFF5A3D1F).withOpacity(0.3), // Theme color
+          ),
+          const SizedBox(height: 20),
+          // Sort Criteria Dropdown
+          DropdownButtonFormField<RideSortCriteria>(
+            value: _sortCriteria,
+            decoration: InputDecoration(
+              labelText: 'Sort By',
+              labelStyle: const TextStyle(color: Color(0xFF5A3D1F)), // Theme color
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFFD4A76A)), // Theme color
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFF8B5E3B), width: 2), // Theme color
+              ),
+            ),
+            items: const [
+              DropdownMenuItem(
+                value: RideSortCriteria.shortestDistanceFromPickup,
+                child: Text('Shortest Distance (Pickup)'),
+              ),
+              DropdownMenuItem(
+                value: RideSortCriteria.lowestCost,
+                child: Text('Lowest Cost'),
+              ),
+              DropdownMenuItem(
+                value: RideSortCriteria.earliestDeparture,
+                child: Text('Earliest Departure'),
+              ),
+            ],
+            onChanged: (value) {
+              if (value != null) {
+                setState(() {
+                  _sortCriteria = value;
+                });
+              }
+            },
+            style: const TextStyle(color: Color(0xFF5A3D1F), fontSize: 16), // Theme color
+            iconEnabledColor: const Color(0xFF8B5E3B), // Theme color
+          ),
+          const SizedBox(height: 30),
+          // Apply Filters Button
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.pop(
+                  context,
+                  RideFilterOptions(
+                    pickupRadiusKm: _pickupRadius,
+                    dropoffRadiusKm: _dropoffRadius,
+                    sortCriteria: _sortCriteria,
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF5A3D1F), // Theme color
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 5, // Add some elevation for consistency
+              ),
+              child: const Text(
+                'APPLY FILTERS',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
