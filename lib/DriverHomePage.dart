@@ -508,28 +508,19 @@ class _DriverHomePageState extends State<DriverHomePage> {
               _buildDashboardCard(
                 iconUrl:
                     'https://cdn-icons-png.flaticon.com/512/3663/3663360.png',
-                title: "Instant Ride",
-                subtitle: "Book now with 1 tap",
-                buttonText: "Book Now",
+                title: "Let Passengers find you",
+                subtitle: "click to add ride",
+                buttonText: "Add Ride",
                 gradientColors: const [Color(0xFF8B5E3B), Color(0xFF5A3D1F)],
-                onTap: () => Navigator.pushNamed(context, '/order'),
+                onTap: () => Navigator.pushNamed(context, '/driver-ride'),
               ),
               _buildDashboardCard(
                 iconUrl:
                     'https://cdn-icons-png.flaticon.com/512/3132/3132693.png',
-                title: "Your Journeys",
-                subtitle: "Past trips & receipts",
-                buttonText: "View History",
+                title: "Your Bookings",
+                subtitle: "View who booked",
+                buttonText: "View Records",
                 gradientColors: const [Color(0xFF5A3D1F), Color(0xFF3A2A15)],
-                onTap: () => Navigator.pushNamed(context, '/records'),
-              ),
-              _buildDashboardCard(
-                iconUrl:
-                    'https://cdn-icons-png.flaticon.com/512/1570/1570887.png',
-                title: "Driver Portal",
-                subtitle: "Manage vehicles",
-                buttonText: "Dashboard",
-                gradientColors: const [Color(0xFF3A2A15), Color(0xFF1A120B)],
                 onTap: () => Navigator.pushNamed(context, '/driver-records'),
               ),
             ],
