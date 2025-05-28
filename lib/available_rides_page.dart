@@ -56,7 +56,7 @@ class _AvailableRidesPageState extends State<AvailableRidesPage> {
         final response = await _supabase
             .from('request_ride')
             .select('ride_id')
-            .eq('passenger_id', user.id)
+            .eq('user_id', user.id)
             .inFilter('status', ['pending', 'confirmed', 'active']); // Use inFilter
 
         setState(() {
@@ -139,7 +139,7 @@ class _AvailableRidesPageState extends State<AvailableRidesPage> {
       final existingBookings = await _supabase
           .from('request_ride')
           .select('id')
-          .eq('passenger_id', user.id)
+          .eq('user_id', user.id)
           .inFilter('status', ['pending', 'confirmed', 'active']); // Use inFilter
 
       if (existingBookings.isNotEmpty) {
@@ -170,7 +170,7 @@ class _AvailableRidesPageState extends State<AvailableRidesPage> {
     } on PostgrestException catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Booking failed: ${e.message}'),
+          content: Text('Requesting failed: ${e.message}'),
           backgroundColor: Colors.red,
         ),
       );
@@ -613,7 +613,7 @@ class _AvailableRidesPageState extends State<AvailableRidesPage> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     ),
                     child: Text(
-                      isAlreadyBooked ? 'BOOKED' : (isFull ? 'FULL' : 'BOOK NOW'),
+                      isAlreadyBooked ? 'REQUESTED' : (isFull ? 'FULL' : 'REQUEST'),
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
@@ -817,7 +817,7 @@ class _AvailableRidesPageState extends State<AvailableRidesPage> {
                     borderRadius: BorderRadius.circular(12)),
                 ),
                 child: Text(
-                  isAlreadyBooked ? 'ALREADY BOOKED' : (isFull ? 'FULL' : 'CONFIRM BOOKING'),
+                  isAlreadyBooked ? 'ALREADY REQUESRED' : (isFull ? 'FULL' : 'CONFIRM REQUEST'),
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
