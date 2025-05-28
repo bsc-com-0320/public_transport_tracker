@@ -1576,113 +1576,136 @@ class _OrderPageState extends State<OrderPage> {
     );
   }
 
-Widget _buildConfirmButton(String text) {
-  return Container(
-    decoration: BoxDecoration(
-      borderRadius: BorderRadius.circular(12),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black26,
-          blurRadius: 10,
-          offset: Offset(0, 5),
-        ),
-      ],
-    ),
-    child: isLoadingRides
-        ? Center(child: CircularProgressIndicator())
-        : ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Color(0xFF5A3D1F),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              padding: EdgeInsets.symmetric(vertical: 16),
-            ),
-            onPressed: () {
-              if (_selectedVehicleType == null) {
-                setState(
-                  () => confirmationMessage = "Please select a vehicle type");
-                return;
-              }
-              if (_pickupController.text.isEmpty ||
-                  _dropoffController.text.isEmpty) {
-                setState(
-                  () => confirmationMessage =
-                      "Please select pickup and dropoff locations");
-                return;
-              }
-              if (!isOrderActive && _dateTimeController.text.isEmpty) {
-                setState(
-                    () => confirmationMessage = "Please select date and time");
-                return;
-              }
-
-              setState(() {
-                confirmationMessage = "";
-                isLoadingRides = true;
-              });
-              _loadAvailableRides().then((_) {
-                _showFullScreenMapWithRides();
-                setState(() => isLoadingRides = false);
-              });
-            },
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  text,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                SizedBox(width: 8),
-                Icon(Icons.arrow_forward, color: Colors.white),
-              ],
-            ),
+  Widget _buildConfirmButton(String text) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black26,
+            blurRadius: 10,
+            offset: Offset(0, 5),
           ),
-  );
-}
+        ],
+      ),
+      child:
+          isLoadingRides
+              ? Center(child: CircularProgressIndicator())
+              : ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Color(0xFF5A3D1F),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                ),
+                onPressed: () {
+                  if (_selectedVehicleType == null) {
+                    setState(
+                      () =>
+                          confirmationMessage = "Please select a vehicle type",
+                    );
+                    return;
+                  }
+                  if (_pickupController.text.isEmpty ||
+                      _dropoffController.text.isEmpty) {
+                    setState(
+                      () =>
+                          confirmationMessage =
+                              "Please select pickup and dropoff locations",
+                    );
+                    return;
+                  }
+                  if (!isOrderActive && _dateTimeController.text.isEmpty) {
+                    setState(
+                      () => confirmationMessage = "Please select date and time",
+                    );
+                    return;
+                  }
+
+                  setState(() {
+                    confirmationMessage = "";
+                    isLoadingRides = true;
+                  });
+                  _loadAvailableRides().then((_) {
+                    _showFullScreenMapWithRides();
+                    setState(() => isLoadingRides = false);
+                  });
+                },
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      text,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    Icon(Icons.arrow_forward, color: Colors.white),
+                  ],
+                ),
+              ),
+    );
+  }
 
   Future<void> _bookRide(Map<String, dynamic> ride) async {
+    if (_isProcessingBooking) return; // Prevent multiple bookings
+
     setState(() => _isProcessingBooking = true); // Show loading
 
-    try {
-      // Show loading snackbar
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(width: 10),
-              Text('Processing your booking...'),
-            ],
-          ),
-          duration: Duration(seconds: 2),
+    // Show loading snackbar
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 10),
+            Text('Processing your booking...'),
+          ],
         ),
-      );
+        duration: Duration(seconds: 2),
+      ),
+    );
 
+    try {
       // Get the current user's ID
       final userId = supabase.auth.currentUser?.id;
       if (userId == null) {
+        if (!mounted) return; // Check if the widget is still mounted
         throw Exception('User not logged in');
       }
 
       // Get the ride ID from the ride data
       final rideId = ride['id'];
       if (rideId == null) {
+        if (!mounted) return;
         throw Exception('Ride ID not found');
+      }
+
+      // Extract the driver_id from the 'ride' map
+      final String? driverId = ride['driver_id'] as String?;
+      if (driverId == null) {
+        if (!mounted) return;
+        throw Exception(
+          'Driver ID not found for this ride. Cannot book without a driver.',
+        );
       }
 
       // Create booking data
       final bookingData = {
         'ride_id': rideId,
         'user_id': userId,
-        'pickup': _pickupController.text,
+        'pickup_point':
+            _pickupController
+                .text, // Ensure this column exists in request_ride table
         'pickup_lat': _pickupLatLng?.latitude,
         'pickup_lng': _pickupLatLng?.longitude,
-        'dropoff': _dropoffController.text,
+        'dropoff_point':
+            _dropoffController
+                .text, // Ensure this column exists in request_ride table
         'dropoff_lat': _dropoffLatLng?.latitude,
         'dropoff_lng': _dropoffLatLng?.longitude,
         'booking_time': DateTime.now().toIso8601String(),
@@ -1691,19 +1714,34 @@ Widget _buildConfirmButton(String text) {
         'vehicle_type': _selectedVehicleType ?? ride['vehicle_type'],
         'total_cost': ride['total_cost'],
         'status': 'pending',
+        'driver_id': driverId, // Explicitly add the driver_id here
       };
 
-      // Insert booking
+      // Insert booking into 'request_ride' table
       await supabase.from('request_ride').insert(bookingData);
 
-      // Update ride capacity
-      if (ride['capacity'] > 0) {
-        await supabase
-            .from('ride')
-            .update({'capacity': ride['capacity'] - 1})
-            .eq('id', rideId);
+      // Update ride capacity in 'ride' table
+      if (ride['capacity'] != null && ride['capacity'] > 0) {
+        print(
+          'Attempting to decrement capacity for ride $rideId. Old: ${ride['capacity']}, New: ${ride['capacity'] - 1}',
+        );
+        try {
+          await supabase
+              .from('ride')
+              .update({'capacity': ride['capacity'] - 1})
+              .eq('id', rideId);
+        } catch (updateError) {
+          print('Supabase update failed for capacity decrement: $updateError');
+          // You might want to handle this error more gracefully,
+          // perhaps by rolling back the booking or notifying the user.
+        }
+      } else {
+        print(
+          'Ride capacity is null or not greater than 0. Not decrementing capacity.',
+        );
       }
 
+      if (!mounted) return;
       // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -1712,12 +1750,37 @@ Widget _buildConfirmButton(String text) {
         ),
       );
 
-      // Reload available rides
+      // Reload available rides to reflect capacity change
       _loadAvailableRides();
-    } catch (e) {
+
+      // Optionally navigate back after successful booking
+      Navigator.pop(context);
+    } on PostgrestException catch (e) {
+      print('Failed to book ride: $e');
+      if (!mounted) return;
+      String errorMessage = 'Failed to book ride. Please try again.';
+      if (e.code == '23502') {
+        errorMessage =
+            'Missing required information. Check if all fields are filled.';
+      } else if (e.message?.contains("'driver_id' column") == true) {
+        errorMessage =
+            'Driver information is missing or invalid. Please select another ride.';
+      } else if (e.message?.contains("'dropoff_point' column") == true) {
+        errorMessage =
+            "Database error: 'dropoff_point' column missing. Please contact support.";
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('❌ Failed to book ride: ${e.toString()}'),
+          content: Text('❌ $errorMessage'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      print('Unexpected error booking ride: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ An unexpected error occurred: ${e.toString()}'),
           behavior: SnackBarBehavior.floating,
         ),
       );
