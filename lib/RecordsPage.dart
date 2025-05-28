@@ -42,7 +42,12 @@ class _RecordsPageState extends State<RecordsPage> {
   List<Map<String, dynamic>> bookings = [];
   bool isLoading = true;
   int _selectedIndex = 2;
-  final List<String> _pages = ['/home', '/order', '/records', '/s-fund-account'];
+  final List<String> _pages = [
+    '/home',
+    '/order',
+    '/records',
+    '/s-fund-account',
+  ];
 
   @override
   void initState() {
@@ -54,19 +59,27 @@ class _RecordsPageState extends State<RecordsPage> {
     setState(() => isLoading = true);
 
     try {
+      // Get current user ID
+      final userId = supabase.auth.currentUser?.id;
+      if (userId == null) {
+        throw Exception('User not logged in');
+      }
+
       final response = await supabase
           .from('request_ride')
           .select('''
             id,
             ride_id,
-            pickup,
-            dropoff,
+            pickup_point,
+            dropoff_point,
             booking_time,
-            type,
-            vehicle_type,
             departure_time,
-            total_cost
+            vehicle_type,
+            total_cost,
+            status,
+            type
           ''')
+          .eq('user_id', userId) // Filter by current user's ID
           .order('booking_time', ascending: false);
 
       setState(() {
@@ -98,141 +111,6 @@ class _RecordsPageState extends State<RecordsPage> {
     }
   }
 
-  // ======================
-  // LOGOUT FUNCTIONALITY
-  // ======================
-
-  Future<void> _showLogoutDialog() async {
-    return showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: const Text(
-            "Logout",
-            style: TextStyle(
-              color: Color(0xFF5A3D1F),
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          content: const Text(
-            "Are you sure you want to logout?",
-            style: TextStyle(color: Color.fromARGB(255, 120, 119, 119)),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text(
-                "Cancel",
-                style: TextStyle(color: Color(0xFF5A3D1F)),
-              ),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF5A3D1F),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              onPressed: () async {
-                Navigator.of(context).pop();
-                await _logout();
-              },
-              child: const Text(
-                "Logout",
-                style: TextStyle(color: Colors.white),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Future<void> _logout() async {
-    try {
-      await supabase.auth.signOut();
-      Navigator.pushNamedAndRemoveUntil(
-        context, 
-        '/login', 
-        (route) => false
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Logout failed: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
-  void _showProfileMenu() {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) {
-        return Container(
-          padding: const EdgeInsets.all(20),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 60,
-                height: 5,
-                margin: const EdgeInsets.only(bottom: 15),
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(5),
-                ),
-              ),
-              ListTile(
-                leading: const Icon(Icons.person, color: Color(0xFF5A3D1F)),
-                title: const Text(
-                  "Profile",
-                  style: TextStyle(
-                    color: Color(0xFF5A3D1F),
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.pushNamed(context, '/profile');
-                },
-              ),
-              const Divider(height: 20, color: Colors.grey),
-              ListTile(
-                leading: const Icon(Icons.logout, color: Colors.red),
-                title: const Text(
-                  "Logout",
-                  style: TextStyle(
-                    color: Colors.red,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  _showLogoutDialog();
-                },
-              ),
-              const SizedBox(height: 10),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -242,7 +120,7 @@ class _RecordsPageState extends State<RecordsPage> {
         backgroundColor: Colors.white,
         elevation: 0,
         title: const Text(
-          'All Bookings',
+          'My Bookings',
           style: TextStyle(
             color: Color(0xFF5A3D1F),
             fontWeight: FontWeight.bold,
@@ -251,7 +129,10 @@ class _RecordsPageState extends State<RecordsPage> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.notifications_none, color: Color(0xFF5A3D1F)),
+            icon: const Icon(
+              Icons.notifications_none,
+              color: Color(0xFF5A3D1F),
+            ),
             onPressed: () {},
           ),
           Padding(
@@ -293,7 +174,7 @@ class _RecordsPageState extends State<RecordsPage> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Check back later for new bookings',
+              'Your booking history will appear here',
               style: TextStyle(fontSize: 14, color: Colors.grey[500]),
             ),
             const SizedBox(height: 20),
@@ -412,23 +293,32 @@ class _RecordsPageState extends State<RecordsPage> {
 
   Widget _buildBookingCard(Map<String, dynamic> booking) {
     try {
-      // Parse dates
+      // Safely parse dates with null checks
       final bookingTime =
           booking['booking_time'] != null
-              ? DateTime.parse(booking['booking_time'])
+              ? DateTime.tryParse(booking['booking_time']) ?? DateTime.now()
               : DateTime.now();
+
       final departureTime =
           booking['departure_time'] != null
-              ? DateTime.parse(booking['departure_time'])
+              ? DateTime.tryParse(booking['departure_time'])
               : null;
 
-      // Format dates
+      // Format dates safely
       final formattedBookingDate = DateFormat('MMM d, y').format(bookingTime);
       final formattedBookingTime = DateFormat('h:mm a').format(bookingTime);
       final formattedDeparture =
           departureTime != null
               ? DateFormat('MMM d, h:mm a').format(departureTime)
               : 'Not specified';
+
+      // Safely format price with null check
+      final price =
+          booking['total_cost'] != null
+              ? NumberFormat.currency(
+                symbol: '\$',
+              ).format(booking['total_cost'])
+              : '\$0.00';
 
       return Container(
         margin: const EdgeInsets.only(bottom: 16),
@@ -448,11 +338,12 @@ class _RecordsPageState extends State<RecordsPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Booking header with ID and status
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Booking #${booking['id']?.toString().substring(0, 8) ?? 'N/A'}',
+                    'Booking #${_formatBookingId(booking['id'])}',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
@@ -461,46 +352,67 @@ class _RecordsPageState extends State<RecordsPage> {
                   ),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
+                      horizontal: 8,
                       vertical: 4,
                     ),
-
+                    decoration: BoxDecoration(
+                      color: _getStatusColor(booking['status'] ?? 'pending'),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      (booking['status'] ?? 'pending').toUpperCase(),
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ],
               ),
               const SizedBox(height: 16),
+
+              // Vehicle Type
               _buildInfoRow(
                 Icons.directions_car,
                 'Vehicle Type:',
-                booking['vehicle_type'] ?? 'Unknown',
+                booking['vehicle_type']?.toString() ?? 'Not specified',
               ),
               const SizedBox(height: 12),
+
+              // Pickup Point
               _buildInfoRow(
                 Icons.location_on,
                 'Pickup:',
-                booking['pickup'] ?? 'Unknown location',
+                booking['pickup_point']?.toString() ?? 'Unknown location',
               ),
               const SizedBox(height: 12),
+
+              // Dropoff Point
               _buildInfoRow(
                 Icons.location_on,
                 'Dropoff:',
-                booking['dropoff'] ?? 'Unknown location',
+                booking['dropoff_point']?.toString() ?? 'Unknown location',
               ),
               const SizedBox(height: 12),
+
+              // Departure Time
               _buildInfoRow(
                 Icons.access_time,
                 'Departure:',
                 formattedDeparture,
               ),
               const SizedBox(height: 12),
-              _buildInfoRow(
-                Icons.monetization_on,
-                'Total Cost:',
-                '\K${booking['total_cost']?.toStringAsFixed(2) ?? '0.00'}',
-              ),
+
+              // Total Cost
+              _buildInfoRow(Icons.monetization_on, 'Total Cost:', price),
               const SizedBox(height: 16),
+
+              // Divider
               Divider(height: 1, color: Colors.grey[300]),
               const SizedBox(height: 12),
+
+              // Footer with booking time and cancel button
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -517,35 +429,50 @@ class _RecordsPageState extends State<RecordsPage> {
                       ),
                     ],
                   ),
-                  ElevatedButton(
-                    onPressed: () => _showCancelDialog(booking['id']),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: Colors.red,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        side: BorderSide(color: Colors.red),
+                  if ((booking['status'] ?? 'pending') == 'pending')
+                    ElevatedButton(
+                      onPressed:
+                          () => _showCancelDialog(
+                            booking['id']?.toString() ?? '',
+                          ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: Colors.red,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: BorderSide(color: Colors.red),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
                       ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
+                      child: const Text(
+                        'Cancel',
+                        style: TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),
-                    child: const Text(
-                      'Cancel',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ),
                 ],
               ),
             ],
           ),
         ),
       );
-    } catch (e) {
-      return _buildErrorCard(e.toString());
+    } catch (e, stackTrace) {
+      debugPrint('Error building booking card: $e');
+      debugPrint('Stack trace: $stackTrace');
+      return _buildErrorCard('Failed to load booking details. Tap to retry.');
     }
+  }
+
+  String _formatBookingId(dynamic id) {
+    if (id == null) return 'N/A';
+    final idStr = id.toString();
+    if (idStr.isEmpty) return 'N/A';
+    return idStr.length <= 8
+        ? idStr
+        : '...${idStr.substring(idStr.length - 5)}';
   }
 
   Widget _buildInfoRow(IconData icon, String label, String value) {
@@ -582,14 +509,18 @@ class _RecordsPageState extends State<RecordsPage> {
     );
   }
 
-  Color _getStatusColor(String type) {
-    switch (type.toLowerCase()) {
-      case 'order':
-        return Color(0xFF8B5E3B);
-      case 'book':
-        return Color(0xFF5A3D1F);
-      default:
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'completed':
+        return Colors.green;
+      case 'cancelled':
+        return Colors.red;
+      case 'pending':
         return Colors.orange;
+      case 'in_progress':
+        return Colors.blue;
+      default:
+        return Colors.grey;
     }
   }
 
@@ -676,5 +607,130 @@ class _RecordsPageState extends State<RecordsPage> {
         );
       },
     );
+  }
+
+  Future<void> _showProfileMenu() async {
+    await showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(20),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 60,
+                height: 5,
+                margin: const EdgeInsets.only(bottom: 15),
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(5),
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.person, color: Color(0xFF5A3D1F)),
+                title: const Text(
+                  "Profile",
+                  style: TextStyle(
+                    color: Color(0xFF5A3D1F),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.pushNamed(context, '/profile');
+                },
+              ),
+              const Divider(height: 20, color: Colors.grey),
+              ListTile(
+                leading: const Icon(Icons.logout, color: Colors.red),
+                title: const Text(
+                  "Logout",
+                  style: TextStyle(
+                    color: Colors.red,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showLogoutDialog();
+                },
+              ),
+              const SizedBox(height: 10),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _showLogoutDialog() async {
+    return showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text(
+            "Logout",
+            style: TextStyle(
+              color: Color(0xFF5A3D1F),
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: const Text(
+            "Are you sure you want to logout?",
+            style: TextStyle(color: Color.fromARGB(255, 120, 119, 119)),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text(
+                "Cancel",
+                style: TextStyle(color: Color(0xFF5A3D1F)),
+              ),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF5A3D1F),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              onPressed: () async {
+                Navigator.of(context).pop();
+                await _logout();
+              },
+              child: const Text(
+                "Logout",
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _logout() async {
+    try {
+      await supabase.auth.signOut();
+      Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Logout failed: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 }
