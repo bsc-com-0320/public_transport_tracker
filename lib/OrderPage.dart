@@ -1576,80 +1576,74 @@ class _OrderPageState extends State<OrderPage> {
     );
   }
 
-  Widget _buildConfirmButton(String text) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black26,
-            blurRadius: 10,
-            offset: Offset(0, 5),
-          ),
-        ],
-      ),
-      child:
-          isLoadingRides
-              ? Center(child: CircularProgressIndicator())
-              : ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(0xFF5A3D1F),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  padding: EdgeInsets.symmetric(vertical: 16),
-                ),
-                onPressed: () {
-                  if (_selectedVehicleType == null) {
-                    setState(
-                      () =>
-                          confirmationMessage = "Please select a vehicle type",
-                    );
-                    return;
-                  }
-                  if (_pickupController.text.isEmpty ||
-                      _dropoffController.text.isEmpty) {
-                    setState(
-                      () =>
-                          confirmationMessage =
-                              "Please select pickup and dropoff locations",
-                    );
-                    return;
-                  }
-                  if (!isOrderActive && _dateTimeController.text.isEmpty) {
-                    setState(
-                      () => confirmationMessage = "Please select date and time",
-                    );
-                    return;
-                  }
-
-                  setState(() {
-                    confirmationMessage = "";
-                    isLoadingRides = true;
-                  });
-                  _loadAvailableRides().then((_) {
-                    _showFullScreenMapWithRides();
-                    setState(() => isLoadingRides = false);
-                  });
-                },
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      text,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    SizedBox(width: 8),
-                    Icon(Icons.arrow_forward, color: Colors.white),
-                  ],
-                ),
+Widget _buildConfirmButton(String text) {
+  return Container(
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(12),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black26,
+          blurRadius: 10,
+          offset: Offset(0, 5),
+        ),
+      ],
+    ),
+    child: isLoadingRides
+        ? Center(child: CircularProgressIndicator())
+        : ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Color(0xFF5A3D1F),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
               ),
-    );
-  }
+              padding: EdgeInsets.symmetric(vertical: 16),
+            ),
+            onPressed: () {
+              if (_selectedVehicleType == null) {
+                setState(
+                  () => confirmationMessage = "Please select a vehicle type");
+                return;
+              }
+              if (_pickupController.text.isEmpty ||
+                  _dropoffController.text.isEmpty) {
+                setState(
+                  () => confirmationMessage =
+                      "Please select pickup and dropoff locations");
+                return;
+              }
+              if (!isOrderActive && _dateTimeController.text.isEmpty) {
+                setState(
+                    () => confirmationMessage = "Please select date and time");
+                return;
+              }
+
+              setState(() {
+                confirmationMessage = "";
+                isLoadingRides = true;
+              });
+              _loadAvailableRides().then((_) {
+                _showFullScreenMapWithRides();
+                setState(() => isLoadingRides = false);
+              });
+            },
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  text,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(width: 8),
+                Icon(Icons.arrow_forward, color: Colors.white),
+              ],
+            ),
+          ),
+  );
+}
 
   Future<void> _bookRide(Map<String, dynamic> ride) async {
     setState(() => _isProcessingBooking = true); // Show loading

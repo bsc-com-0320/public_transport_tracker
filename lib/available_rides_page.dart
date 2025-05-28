@@ -33,10 +33,16 @@ class AvailableRidesPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Available Rides'),
-        backgroundColor: const Color(0xFF2C3E50),
+        title: const Text(
+          'Available Rides',
+          style: TextStyle(
+            color: Color(0xFF5A3D1F),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        backgroundColor: Colors.white,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
+        iconTheme: const IconThemeData(color: Color(0xFF5A3D1F)),
       ),
       body: Stack(
         children: [
@@ -86,7 +92,7 @@ class AvailableRidesPage extends StatelessWidget {
                   message: 'Pickup',
                   child: Icon(
                     Icons.location_pin,
-                    color: Colors.green,
+                    color: Color(0xFF8B5E3B),
                     size: 30,
                   ),
                 ),
@@ -104,7 +110,7 @@ class AvailableRidesPage extends StatelessWidget {
                   message: 'Dropoff',
                   child: Icon(
                     Icons.location_pin,
-                    color: Colors.red,
+                    color: Color(0xFF5A3D1F),
                     size: 30,
                   ),
                 ),
@@ -116,7 +122,7 @@ class AvailableRidesPage extends StatelessWidget {
             polylines: [
               Polyline(
                 points: routePoints,
-                color: const Color(0xFF3498DB).withOpacity(0.7),
+                color: const Color(0xFF8B5E3B).withOpacity(0.7),
                 strokeWidth: 4.0,
               ),
             ],
@@ -141,7 +147,7 @@ class AvailableRidesPage extends StatelessWidget {
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 14,
-                color: Color(0xFF2C3E50),
+                color: Color(0xFF5A3D1F),
               ),
             ),
             const SizedBox(height: 8),
@@ -178,20 +184,21 @@ class AvailableRidesPage extends StatelessWidget {
   }) {
     return Column(
       children: [
-        Icon(icon, size: 18, color: const Color(0xFF3498DB)),
+        Icon(icon, size: 18, color: const Color(0xFF8B5E3B)),
         const SizedBox(height: 4),
         Text(
           value,
           style: const TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 12,
+            color: Color(0xFF5A3D1F),
           ),
         ),
         Text(
           label,
           style: const TextStyle(
             fontSize: 10,
-            color: Colors.grey,
+            color: Color(0xFF8B5E3B),
           ),
         ),
       ],
@@ -226,7 +233,7 @@ class AvailableRidesPage extends StatelessWidget {
                     width: 50,
                     height: 5,
                     decoration: BoxDecoration(
-                      color: Colors.grey[400],
+                      color: const Color(0xFF8B5E3B).withOpacity(0.5),
                       borderRadius: BorderRadius.circular(2.5),
                     ),
                   ),
@@ -244,11 +251,11 @@ class AvailableRidesPage extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF2C3E50),
+                        color: Color(0xFF5A3D1F),
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.close, size: 20),
+                      icon: const Icon(Icons.close, size: 20, color: Color(0xFF5A3D1F)),
                       onPressed: () => Navigator.pop(context),
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
@@ -260,10 +267,13 @@ class AvailableRidesPage extends StatelessWidget {
               // Rides List
               Expanded(
                 child: isLoadingRides
-                    ? const Center(child: CircularProgressIndicator())
+                    ? const Center(child: CircularProgressIndicator(color: Color(0xFF8B5E3B)))
                     : availableRides.isEmpty
                         ? const Center(
-                            child: Text('No available rides found'),
+                            child: Text(
+                              'No available rides found',
+                              style: TextStyle(color: Color(0xFF5A3D1F)),
+                            ),
                           )
                         : ListView.separated(
                             controller: scrollController,
@@ -315,7 +325,7 @@ class AvailableRidesPage extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.black12,
+              color: Colors.black.withOpacity(0.1),
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),
@@ -337,12 +347,12 @@ class AvailableRidesPage extends StatelessWidget {
                       height: 36,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: const Color(0xFF3498DB).withOpacity(0.2),
+                        color: const Color(0xFF8B5E3B).withOpacity(0.2),
                       ),
                       child: const Icon(
                         Icons.person,
                         size: 18,
-                        color: Color(0xFF3498DB),
+                        color: Color(0xFF8B5E3B),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -354,13 +364,14 @@ class AvailableRidesPage extends StatelessWidget {
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 12,
+                            color: Color(0xFF5A3D1F),
                           ),
                         ),
                         Text(
                           ride['vehicle_type']?.toString() ?? 'Vehicle',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 10,
-                            color: Colors.grey,
+                            color: const Color(0xFF8B5E3B).withOpacity(0.7),
                           ),
                         ),
                       ],
@@ -375,7 +386,7 @@ class AvailableRidesPage extends StatelessWidget {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF2C3E50).withOpacity(0.1),
+                    color: const Color(0xFF5A3D1F).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -383,7 +394,7 @@ class AvailableRidesPage extends StatelessWidget {
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
-                      color: Color(0xFF2C3E50),
+                      color: Color(0xFF5A3D1F),
                     ),
                   ),
                 ),
@@ -404,20 +415,20 @@ class AvailableRidesPage extends StatelessWidget {
                       height: 12,
                       decoration: const BoxDecoration(
                         shape: BoxShape.circle,
-                        color: Colors.green,
+                        color: Color(0xFF8B5E3B),
                       ),
                     ),
                     Container(
                       width: 2,
                       height: 20,
-                      color: Colors.grey[300],
+                      color: const Color(0xFF8B5E3B).withOpacity(0.3),
                     ),
                     Container(
                       width: 12,
                       height: 12,
                       decoration: const BoxDecoration(
                         shape: BoxShape.circle,
-                        color: Colors.red,
+                        color: Color(0xFF5A3D1F),
                       ),
                     ),
                   ],
@@ -435,6 +446,7 @@ class AvailableRidesPage extends StatelessWidget {
                         style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
+                          color: Color(0xFF5A3D1F),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -445,6 +457,7 @@ class AvailableRidesPage extends StatelessWidget {
                         style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
+                          color: Color(0xFF5A3D1F),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -460,7 +473,7 @@ class AvailableRidesPage extends StatelessWidget {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF3498DB).withOpacity(0.1),
+                    color: const Color(0xFF8B5E3B).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
@@ -468,7 +481,7 @@ class AvailableRidesPage extends StatelessWidget {
                     style: const TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF3498DB),
+                      color: Color(0xFF8B5E3B),
                     ),
                   ),
                 ),
@@ -488,9 +501,9 @@ class AvailableRidesPage extends StatelessWidget {
                     const SizedBox(width: 8),
                     Text(
                       '$distanceFromUser km away',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 10,
-                        color: Colors.grey,
+                        color: const Color(0xFF8B5E3B).withOpacity(0.7),
                       ),
                     ),
                   ],
@@ -504,7 +517,7 @@ class AvailableRidesPage extends StatelessWidget {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: isFull
                           ? Colors.grey[400]
-                          : const Color(0xFF2C3E50),
+                          : const Color(0xFF5A3D1F),
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
@@ -512,7 +525,7 @@ class AvailableRidesPage extends StatelessWidget {
                       elevation: 0,
                     ),
                     child: Text(
-                      isFull ? 'FULL' : 'BOOK NOW',
+                      isFull ? 'FULL' : 'REQUEST NOW',
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
@@ -539,8 +552,8 @@ class AvailableRidesPage extends StatelessWidget {
           Icons.people_alt_outlined,
           size: 14,
           color: isLowCapacity
-              ? Colors.orange
-              : const Color(0xFF3498DB),
+              ? const Color(0xFFD4A76A)
+              : const Color(0xFF8B5E3B),
         ),
         const SizedBox(width: 4),
         Text(
@@ -549,8 +562,8 @@ class AvailableRidesPage extends StatelessWidget {
             fontSize: 11,
             fontWeight: FontWeight.bold,
             color: isLowCapacity
-                ? Colors.orange
-                : const Color(0xFF3498DB),
+                ? const Color(0xFFD4A76A)
+                : const Color(0xFF8B5E3B),
           ),
         ),
       ],
@@ -613,7 +626,7 @@ class AvailableRidesPage extends StatelessWidget {
                 height: 5,
                 margin: const EdgeInsets.only(bottom: 16),
                 decoration: BoxDecoration(
-                  color: Colors.grey[300],
+                  color: const Color(0xFF8B5E3B).withOpacity(0.5),
                   borderRadius: BorderRadius.circular(2.5),
                 ),
               ),
@@ -627,12 +640,12 @@ class AvailableRidesPage extends StatelessWidget {
                   height: 48,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: const Color(0xFF3498DB).withOpacity(0.2),
+                    color: const Color(0xFF8B5E3B).withOpacity(0.2),
                   ),
                   child: const Icon(
                     Icons.directions_car,
                     size: 24,
-                    color: Color(0xFF3498DB),
+                    color: Color(0xFF8B5E3B),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -644,13 +657,14 @@ class AvailableRidesPage extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
+                        color: Color(0xFF5A3D1F),
                       ),
                     ),
                     Text(
                       ride['vehicle_type']?.toString() ?? 'Vehicle',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
-                        color: Colors.grey,
+                        color: const Color(0xFF8B5E3B).withOpacity(0.7),
                       ),
                     ),
                   ],
@@ -662,7 +676,7 @@ class AvailableRidesPage extends StatelessWidget {
                     vertical: 8,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF2C3E50).withOpacity(0.1),
+                    color: const Color(0xFF5A3D1F).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -670,7 +684,7 @@ class AvailableRidesPage extends StatelessWidget {
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
-                      color: Color(0xFF2C3E50),
+                      color: Color(0xFF5A3D1F),
                     ),
                   ),
                 ),
@@ -683,14 +697,14 @@ class AvailableRidesPage extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.grey[50],
+                color: const Color(0xFFF5F0E6),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Column(
                 children: [
                   _buildRoutePoint(
                     icon: Icons.location_pin,
-                    iconColor: Colors.green,
+                    iconColor: const Color(0xFF8B5E3B),
                     title: 'Pickup',
                     subtitle: ride['pickup_point']?.toString() ?? 'N/A',
                     time: DateFormat('h:mm a').format(departureTime),
@@ -700,12 +714,12 @@ class AvailableRidesPage extends StatelessWidget {
                     margin: const EdgeInsets.only(left: 12),
                     height: 20,
                     width: 2,
-                    color: Colors.grey[300],
+                    color: const Color(0xFF8B5E3B).withOpacity(0.3),
                   ),
                   const SizedBox(height: 8),
                   _buildRoutePoint(
                     icon: Icons.location_pin,
-                    iconColor: Colors.red,
+                    iconColor: const Color(0xFF5A3D1F),
                     title: 'Dropoff',
                     subtitle: ride['dropoff_point']?.toString() ?? 'N/A',
                     time: DateFormat('h:mm a').format(
@@ -763,13 +777,13 @@ class AvailableRidesPage extends StatelessWidget {
                       },
                 style: ElevatedButton.styleFrom(
                   backgroundColor:
-                      isFull ? Colors.grey[400] : const Color(0xFF2C3E50),
+                      isFull ? Colors.grey[400] : const Color(0xFF5A3D1F),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
                 child: Text(
-                  isFull ? 'NO SEATS AVAILABLE' : 'CONFIRM BOOKING',
+                  isFull ? 'NO SEATS AVAILABLE' : 'CONFIRM REQUEST',
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
@@ -801,9 +815,9 @@ class AvailableRidesPage extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
-                  color: Colors.grey,
+                  color: const Color(0xFF8B5E3B).withOpacity(0.7),
                 ),
               ),
               Text(
@@ -811,6 +825,7 @@ class AvailableRidesPage extends StatelessWidget {
                 style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
+                  color: Color(0xFF5A3D1F),
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -823,7 +838,7 @@ class AvailableRidesPage extends StatelessWidget {
           style: const TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF3498DB),
+            color: Color(0xFF8B5E3B),
           ),
         ),
       ],
@@ -839,16 +854,16 @@ class AvailableRidesPage extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          Icon(icon, size: 18, color: const Color(0xFF3498DB)),
+          Icon(icon, size: 18, color: const Color(0xFF8B5E3B)),
           const SizedBox(width: 8),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
-                  color: Colors.grey,
+                  color: const Color(0xFF8B5E3B).withOpacity(0.7),
                 ),
               ),
               Text(
@@ -856,6 +871,7 @@ class AvailableRidesPage extends StatelessWidget {
                 style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
+                  color: Color(0xFF5A3D1F),
                 ),
               ),
             ],
@@ -868,7 +884,7 @@ class AvailableRidesPage extends StatelessWidget {
   Widget _buildErrorCard(String error, BuildContext context) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      color: Colors.red[50],
+      color: const Color(0xFFF5E6E6),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
@@ -876,12 +892,12 @@ class AvailableRidesPage extends StatelessWidget {
         padding: const EdgeInsets.all(12),
         child: Row(
           children: [
-            const Icon(Icons.error_outline, color: Colors.red),
+            const Icon(Icons.error_outline, color: Color(0xFFD4A76A)),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
                 'Error loading ride: $error',
-                style: const TextStyle(color: Colors.red),
+                style: const TextStyle(color: Color(0xFF8B5E3B)),
               ),
             ),
           ],
