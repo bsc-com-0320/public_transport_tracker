@@ -1,43 +1,108 @@
+// File: lib/s_fund_account_page.dart (Your main page)
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:geocoding/geocoding.dart';
-import 'package:latlong2/latlong.dart';
 import 'package:intl/intl.dart';
-import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart'; // Import for launching URLs
+import 'package:public_transport_tracker/server/fund_account.model.dart'; // Ensure this path is correct
+import 'package:public_transport_tracker/server/fund_account.service.dart'; // Ensure this path is correct
+import 'package:http/http.dart' as http; // Import http with an alias
 
 class SFundAccountPage extends StatefulWidget {
   const SFundAccountPage({Key? key}) : super(key: key);
 
   @override
-  State<SFundAccountPage> createState() => _FundAccountPageState();
+  State<SFundAccountPage> createState() => _SFundAccountPageState(); // Renamed state class for clarity
 }
 
-class _FundAccountPageState extends State<SFundAccountPage> {
-  // Fund Account Controllers
+class _SFundAccountPageState extends State<SFundAccountPage> {
   final TextEditingController _amountController = TextEditingController();
-  String? _selectedPaymentMethod = 'PayChangu';
-  
-  // Order Controllers
-  final TextEditingController _pickupController = TextEditingController();
-  final TextEditingController _dropoffController = TextEditingController();
-  final TextEditingController _dateTimeController = TextEditingController();
-  
+  final TextEditingController _narrationController =
+      TextEditingController(); // Added for narration
+  String? _selectedPaymentMethod = 'PayChangu'; // Default to PayChangu
+
+  final FundAccountService _fundAccountService = FundAccountService(
+    baseUrl: "https://unimatherapyapplication.com/publictransporttracker",
+  );
+
+  // User details
+  String _userName = 'Guest';
+  String _userPhone = 'N/A';
+
   // Navigation
-  int _selectedIndex = 3;
+  int _selectedIndex = 3; // Corresponds to 'Fund Account' in the BottomNavBar
+
   final List<String> _pages = [
     '/home',
     '/order',
     '/records',
     '/s-fund-account',
   ];
-  
-  // Order State
-  bool _showOrderSection = false;
-  bool isOrderActive = true;
-  String confirmationMessage = "";
-  DateTime? selectedDateTime;
 
   final SupabaseClient supabase = Supabase.instance.client;
+
+  @override
+  void initState() {
+    super.initState();
+    _narrationController.text = 'Fund Account'; // Set a default narration
+    _loadUserProfile(); // Load user profile on initialization
+  }
+
+  Future<void> _loadUserProfile() async {
+    final user = supabase.auth.currentUser;
+    if (user == null) {
+      setState(() {
+        _userName = 'Not Logged In';
+        _userPhone = 'N/A';
+      });
+      return;
+    }
+
+    try {
+      // First try to get from driver_profiles
+      final driverResponse =
+          await supabase
+              .from('driver_profiles')
+              .select('business_name, phone')
+              .eq('user_id', user.id)
+              .maybeSingle();
+
+      if (driverResponse != null && driverResponse.isNotEmpty) {
+        setState(() {
+          _userName = (driverResponse['business_name'] ?? 'Driver').toString();
+          _userPhone = (driverResponse['phone']?.toString() ?? 'Unknown Phone');
+        });
+      } else {
+        // If not found in driver_profiles, try passenger_profiles
+        final passengerResponse =
+            await supabase
+                .from('passenger_profiles')
+                .select('full_name, phone')
+                .eq('user_id', user.id)
+                .maybeSingle();
+
+        if (passengerResponse != null && passengerResponse.isNotEmpty) {
+          setState(() {
+            _userName =
+                (passengerResponse['full_name'] ?? 'Passenger').toString();
+            _userPhone =
+                (passengerResponse['phone']?.toString() ?? 'Unknown Phone');
+          });
+        } else {
+          setState(() {
+            _userName = 'User Profile Not Found';
+            _userPhone = 'N/A';
+          });
+        }
+      }
+    } catch (e) {
+      print('Error loading user profile: $e');
+      setState(() {
+        _userName = 'Error Loading Profile';
+        _userPhone = 'N/A';
+      });
+      _showSnackBar('Failed to load user profile details.', Colors.red);
+    }
+  }
 
   Future<void> _showLogoutDialog() async {
     return showDialog(
@@ -91,14 +156,13 @@ class _FundAccountPageState extends State<SFundAccountPage> {
   Future<void> _logout() async {
     try {
       await supabase.auth.signOut();
-      Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+      if (mounted) {
+        Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Logout failed: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        _showSnackBar('Logout failed: ${e.toString()}', Colors.red);
+      }
     }
   }
 
@@ -170,247 +234,202 @@ class _FundAccountPageState extends State<SFundAccountPage> {
     Navigator.pushReplacementNamed(context, _pages[index]);
   }
 
-  void _onFundAccountPressed() {
+  Future<void> _fundAccount() async {
     final amount = double.tryParse(_amountController.text);
+    final narration = _narrationController.text.trim();
 
+    // Validate amount
     if (amount == null || amount <= 0) {
       _showSnackBar('Please enter a valid amount to fund.', Colors.red);
       return;
     }
 
-    _showSnackBar(
-      'Attempting to fund K${amount.toStringAsFixed(2)} via PayChangu.',
-      Colors.blueAccent,
-    );
-  }
-
-  void _showSnackBar(String message, Color color) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: color,
-        duration: const Duration(seconds: 2),
-      ),
-    );
-  }
-
-  void _toggleOrderSection() {
-    setState(() {
-      _showOrderSection = !_showOrderSection;
-      confirmationMessage = ""; // Clear any previous messages
-    });
-  }
-
-  void _selectPickup() async {
-    final LatLng? result = await Navigator.pushNamed(context, '/map') as LatLng?;
-    if (result != null) {
-      String locationName = await getLocationName(result.latitude, result.longitude);
-      setState(() => _pickupController.text = locationName);
-    }
-  }
-
-  void _selectDropoff() async {
-    final LatLng? result = await Navigator.pushNamed(context, '/map') as LatLng?;
-    if (result != null) {
-      String locationName = await getLocationName(result.latitude, result.longitude);
-      setState(() => _dropoffController.text = locationName);
-    }
-  }
-
-  void _selectDateTime() async {
-    DateTime? pickedDate = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime.now(),
-      lastDate: DateTime(2101),
-    );
-    if (pickedDate != null) {
-      TimeOfDay? pickedTime = await showTimePicker(
-        context: context,
-        initialTime: TimeOfDay.now(),
-      );
-      if (pickedTime != null) {
-        setState(() {
-          selectedDateTime = DateTime(
-            pickedDate.year, pickedDate.month, pickedDate.day,
-            pickedTime.hour, pickedTime.minute,
-          );
-          _dateTimeController.text = DateFormat("yyyy-MM-dd HH:mm").format(selectedDateTime!);
-        });
-      }
-    }
-  }
-
-  Future<void> _confirmRide() async {
-    if (_pickupController.text.isEmpty || _dropoffController.text.isEmpty || (!isOrderActive && _dateTimeController.text.isEmpty)) {
-      setState(() => confirmationMessage = "Please fill in all fields.");
+    // Validate narration
+    if (narration.isEmpty) {
+      _showSnackBar('Please enter a narration for the payment.', Colors.red);
       return;
     }
 
-    final rideData = {
-      'pickup': _pickupController.text,
-      'dropoff': _dropoffController.text,
-      'date_time': isOrderActive ? null : _dateTimeController.text,
-      'type': isOrderActive ? 'order' : 'book',
-      'user_id': supabase.auth.currentUser?.id,
-      'created_at': DateTime.now().toIso8601String(),
-    };
+    // Check user authentication
+    final user = supabase.auth.currentUser;
+    if (user == null) {
+      _showSnackBar(
+        'User not logged in. Please log in to fund your account.',
+        Colors.red,
+      );
+      return;
+    }
 
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator()),
-    );
+    String fullName = 'Guest User';
+    String phoneNumber = '265XXXXXXXXX';
 
     try {
-      await supabase.from('rides').insert(rideData);
-      await Future.delayed(const Duration(seconds: 2));
+      // Debug print
+      print('Fetching user profile for user ID: ${user.id}');
 
-      if (mounted) {
-        Navigator.pop(context);
-        setState(() {
-          confirmationMessage = "Ride ${isOrderActive ? 'requested' : 'booked'} successfully!";
-          _pickupController.clear();
-          _dropoffController.clear();
-          _dateTimeController.clear();
-        });
+      // First try to get from driver_profiles
+      final driverResponse =
+          await supabase
+              .from('driver_profiles')
+              .select('business_name, phone')
+              .eq('user_id', user.id)
+              .maybeSingle();
+
+      if (driverResponse != null && driverResponse.isNotEmpty) {
+        print('Found driver profile: $driverResponse');
+        fullName = (driverResponse['business_name'] ?? 'Driver').toString();
+        phoneNumber = (driverResponse['phone']?.toString() ?? 'Unknown Phone');
+      } else {
+        // If not found in driver_profiles, try passenger_profiles
+        final passengerResponse =
+            await supabase
+                .from('passenger_profiles')
+                .select('full_name, phone')
+                .eq('user_id', user.id)
+                .maybeSingle();
+
+        if (passengerResponse != null && passengerResponse.isNotEmpty) {
+          print('Found passenger profile: $passengerResponse');
+          fullName = (passengerResponse['full_name'] ?? 'Passenger').toString();
+          phoneNumber =
+              (passengerResponse['phone']?.toString() ?? 'Unknown Phone');
+        }
       }
+
+      print('Using payment details - Name: $fullName, Phone: $phoneNumber');
     } catch (e) {
-      if (mounted) Navigator.pop(context);
-      print("Supabase Error: $e");
-      setState(() => confirmationMessage = "Error confirming ride. Try again.");
+      print('Error fetching user profile: $e');
+      _showSnackBar(
+        'Could not retrieve user details for payment. Using default values.',
+        Colors.orange,
+      );
+    }
+
+    try {
+      // Prepare payment data
+      final payment = PaymentsDto(
+        fullName: fullName,
+        phoneNumber: phoneNumber,
+        amount: amount,
+        narration: narration,
+        paymentMethod: _selectedPaymentMethod!,
+        currency: "MWK",
+      );
+
+      // Debug print
+      print('Sending payment request: ${payment.toJson()}');
+
+      _showSnackBar('Initiating PayChangu payment...', Colors.blueAccent);
+
+      // Process payment
+      final paymentResponse = await _fundAccountService.processPayment(payment);
+
+      // Debug print
+      print(
+        'Payment response: ${paymentResponse.statusCode} - ${paymentResponse.message}',
+      );
+
+      if (paymentResponse.statusCode == 200 ||
+          paymentResponse.statusCode == 201) {
+        if (paymentResponse.data != null &&
+            paymentResponse.data!.checkoutUrl.isNotEmpty) {
+          // Debug print
+          print('Checkout URL: ${paymentResponse.data!.checkoutUrl}');
+
+          await _launchURL(paymentResponse.data!.checkoutUrl);
+          _showSnackBar('Redirecting to PayChangu for payment.', Colors.green);
+
+          // Clear fields after successful initiation
+          _amountController.clear();
+          _narrationController.clear();
+        } else {
+          _showSnackBar(
+            'Payment initiated but no checkout URL received. Please contact support.',
+            Colors.orange,
+          );
+        }
+      } else {
+        _showSnackBar('Payment failed: ${paymentResponse.message}', Colors.red);
+      }
+    } on http.ClientException catch (e) {
+      // Network-related errors
+      print('Network error: $e');
+      _showSnackBar(
+        'Network error: Please check your internet connection and try again.',
+        Colors.red,
+      );
+    } on FormatException catch (e) {
+      // JSON parsing errors
+      print('Format error: $e');
+      _showSnackBar(
+        'Server returned invalid data. Please try again later.',
+        Colors.red,
+      );
+    } on Exception catch (e) {
+      // All other errors
+      print('Payment error: $e');
+
+      String errorMessage = 'Payment failed';
+      if (e.toString().contains('500')) {
+        errorMessage = 'Server error. Please try again later.';
+      } else if (e.toString().contains('timed out')) {
+        errorMessage = 'Request timed out. Please check your connection.';
+      }
+
+      _showSnackBar(errorMessage, Colors.red);
     }
   }
 
-  Future<String> getLocationName(double lat, double lon) async {
-    try {
-      List<Placemark> placemarks = await placemarkFromCoordinates(lat, lon);
-      if (placemarks.isNotEmpty) {
-        Placemark place = placemarks[0];
-        return "${place.street}, ${place.locality}, ${place.country}";
-      }
-      return "Unknown Location";
-    } catch (e) {
-      return "Unknown Location";
+  Future<void> _launchURL(String url) async {
+    final Uri uri = Uri.parse(url);
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      throw 'Could not launch $url';
     }
   }
 
-  Widget _buildOrderSection() {
-    return Column(
-      children: [
-        const SizedBox(height: 20),
-        Row(
-          children: [
-            Expanded(
-              child: _buildToggleButton(
-                "Request Ride", 
-                isOrderActive, 
-                () => setState(() => isOrderActive = true)
-              )
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _buildToggleButton(
-                "Book", 
-                !isOrderActive, 
-                () => setState(() => isOrderActive = false)
-              )
-            ),
-          ],
+  void _showSnackBar(String message, Color color) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: color,
+          duration: const Duration(
+            seconds: 3,
+          ), // Increased duration for better visibility
         ),
-        const SizedBox(height: 20),
-        _buildTextField("Pickup point", _pickupController, _selectPickup),
-        const SizedBox(height: 10),
-        _buildTextField("Dropoff point", _dropoffController, _selectDropoff),
-        const SizedBox(height: 10),
-        if (!isOrderActive) _buildTextField("Select date & time", _dateTimeController, _selectDateTime),
-        if (!isOrderActive) const SizedBox(height: 10),
-        const SizedBox(height: 20),
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF5A3D1F),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              padding: const EdgeInsets.symmetric(vertical: 15),
-            ),
-            onPressed: _confirmRide,
-            child: Text(
-              isOrderActive ? "Request Ride Now" : "Book Now",
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ),
-        if (confirmationMessage.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Text(
-              confirmationMessage,
-              style: const TextStyle(
-                color: Colors.green,
-                fontSize: 16,
-                fontWeight: FontWeight.bold
-              ),
-            ),
-          ),
-      ],
-    );
+      );
+    }
   }
 
-  Widget _buildToggleButton(String label, bool isActive, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: isActive ? const Color(0xFF5A3D1F) : Colors.grey[200],
-          borderRadius: BorderRadius.circular(10),
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isActive ? Colors.white : Colors.black,
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
-        ),
+  Widget _buildProfileHeader() {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF5A3D1F).withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
       ),
-    );
-  }
-
-  Widget _buildTextField(String hint, TextEditingController controller, VoidCallback onTap) {
-    Icon? icon;
-
-    if (hint.toLowerCase().contains('pickup') || hint.toLowerCase().contains('dropoff')) {
-      icon = const Icon(Icons.location_on, color: Color(0xFF5A3D1F));
-    } else if (hint.toLowerCase().contains('date')) {
-      icon = const Icon(Icons.calendar_today, color: Color(0xFF5A3D1F));
-    }
-
-    return TextField(
-      controller: controller,
-      readOnly: true,
-      onTap: onTap,
-      decoration: InputDecoration(
-        prefixIcon: icon,
-        hintText: hint,
-        filled: true,
-        fillColor: Colors.white,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF5A3D1F)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF8B5E3B), width: 2),
-        ),
+      child: Row(
+        children: [
+          const Icon(Icons.person, color: Color(0xFF5A3D1F), size: 28),
+          const SizedBox(width: 10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _userName,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF5A3D1F),
+                ),
+              ),
+              Text(
+                _userPhone,
+                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -419,46 +438,82 @@ class _FundAccountPageState extends State<SFundAccountPage> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
+        // Use a deeper, richer gradient for more impact
         gradient: const LinearGradient(
-          colors: [Color(0xFF8B5E3B), Color(0xFF5A3D1F)],
+          colors: [
+            Color(0xFF5A3D1F), // Darker brown
+            Color(0xFF8B5E3B), // Lighter brown
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(20), // More rounded corners
         boxShadow: [
           BoxShadow(
-            color: Colors.black26.withOpacity(0.2),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
+            color: Colors.black.withOpacity(0.3), // Stronger shadow
+            blurRadius: 15, // Larger blur
+            offset: const Offset(0, 8), // More pronounced offset
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Stack(
+        // Use Stack to add overlay elements if desired
         children: [
-          Text(
-            "Current Balance",
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.8),
-              fontSize: 16,
+          Positioned(
+            right: -20,
+            top: -20,
+            child: Icon(
+              Icons.account_balance_wallet,
+              size: 100,
+              color: Colors.white.withOpacity(0.1), // Subtle watermark icon
             ),
           ),
-          const SizedBox(height: 10),
-          const Text(
-            "K0.00", // This should ideally come from a state or backend call
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 32,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            "Last updated: ${DateFormat("hh:mm a").format(DateTime.now())}",
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.7),
-              fontSize: 12,
-            ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Current Balance",
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.9), // Slightly brighter
+                  fontSize: 18, // Slightly larger
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 12), // Increased spacing
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  const Text(
+                    "MWK", // Currency code
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24, // Consistent with currency
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    "0.00", // This should ideally come from a state or backend call
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 42, // Significantly larger for balance
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.2, // A bit of letter spacing
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 15), // Increased spacing
+              Text(
+                "Last updated: ${DateFormat("hh:mm a, dd MMM").format(DateTime.now())}", // More detailed date/time
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.7),
+                  fontSize: 13, // Slightly larger
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -489,11 +544,37 @@ class _FundAccountPageState extends State<SFundAccountPage> {
     );
   }
 
+  Widget _buildNarrationInputField() {
+    return TextField(
+      controller: _narrationController,
+      keyboardType: TextInputType.text,
+      decoration: InputDecoration(
+        labelText: 'Narration (e.g., "Top-up for rides")',
+        hintText: 'e.g., Top-up for daily commute',
+        labelStyle: const TextStyle(color: Color(0xFF5A3D1F)),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFF5A3D1F)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFF8B5E3B), width: 2),
+        ),
+        prefixIcon: const Icon(Icons.notes, color: Color(0xFF8B5E3B)),
+        filled: true,
+        fillColor: Colors.white,
+      ),
+      style: const TextStyle(color: Color(0xFF5A3D1F)),
+    );
+  }
+
   Widget _buildPaymentMethodSelection() {
     return _buildPaymentMethodOption(
       title: 'PayChangu',
       value: 'PayChangu',
-      icon: Icons.payments,
+      icon:
+          Icons
+              .payments, // You can replace this with an actual image if you have one
     );
   }
 
@@ -503,44 +584,53 @@ class _FundAccountPageState extends State<SFundAccountPage> {
     required IconData icon,
   }) {
     return Card(
-      elevation: _selectedPaymentMethod == value ? 4 : 2,
+      elevation:
+          _selectedPaymentMethod == value
+              ? 6
+              : 2, // Increased elevation for selected
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(15), // More rounded corners
         side: BorderSide(
-          color: _selectedPaymentMethod == value
-              ? const Color(0xFF8B5E3B)
-              : Colors.grey[300]!,
-          width: _selectedPaymentMethod == value ? 2 : 1,
+          color:
+              _selectedPaymentMethod == value
+                  ? const Color(0xFF8B5E3B)
+                  : Colors.grey[300]!,
+          width:
+              _selectedPaymentMethod == value
+                  ? 2.5
+                  : 1, // Thicker border for selected
         ),
       ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(15),
         onTap: () {
           setState(() {
             _selectedPaymentMethod = value;
           });
         },
         child: Padding(
-          padding: const EdgeInsets.all(15.0),
+          padding: const EdgeInsets.all(18.0), // Slightly more padding
           child: Row(
             children: [
               Icon(
                 icon,
-                color: _selectedPaymentMethod == value
-                    ? const Color(0xFF5A3D1F)
-                    : Colors.grey[600],
-                size: 30,
+                color:
+                    _selectedPaymentMethod == value
+                        ? const Color(0xFF5A3D1F)
+                        : Colors.grey[600],
+                size: 32, // Slightly larger icon
               ),
-              const SizedBox(width: 15),
+              const SizedBox(width: 20), // Increased spacing
               Expanded(
                 child: Text(
                   title,
                   style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: _selectedPaymentMethod == value
-                        ? const Color(0xFF5A3D1F)
-                        : Colors.grey[700],
+                    fontSize: 18, // Slightly larger text
+                    fontWeight: FontWeight.w600, // Bolder text
+                    color:
+                        _selectedPaymentMethod == value
+                            ? const Color(0xFF5A3D1F)
+                            : Colors.grey[700],
                   ),
                 ),
               ),
@@ -568,18 +658,24 @@ class _FundAccountPageState extends State<SFundAccountPage> {
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF5A3D1F),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(15), // More rounded corners
           ),
-          padding: const EdgeInsets.symmetric(vertical: 15),
+          padding: const EdgeInsets.symmetric(vertical: 18), // Taller button
+          elevation: 5, // Added elevation
         ),
-        onPressed: _onFundAccountPressed,
-        icon: const Icon(Icons.account_balance_wallet, color: Colors.white),
+        onPressed: _fundAccount,
+        icon: const Icon(
+          Icons.account_balance_wallet,
+          color: Colors.white,
+          size: 28,
+        ), // Larger icon
         label: const Text(
           'Fund Account',
           style: TextStyle(
             color: Colors.white,
-            fontSize: 18,
+            fontSize: 20, // Larger font size
             fontWeight: FontWeight.bold,
+            letterSpacing: 0.8, // Subtle letter spacing
           ),
         ),
       ),
@@ -624,9 +720,7 @@ class _FundAccountPageState extends State<SFundAccountPage> {
   @override
   void dispose() {
     _amountController.dispose();
-    _pickupController.dispose();
-    _dropoffController.dispose();
-    _dateTimeController.dispose();
+    _narrationController.dispose();
     super.dispose();
   }
 
@@ -638,9 +732,9 @@ class _FundAccountPageState extends State<SFundAccountPage> {
         automaticallyImplyLeading: false,
         backgroundColor: Colors.white,
         elevation: 0,
-        title: Text(
-          _showOrderSection ? "Request Ride" : "Fund Account",
-          style: const TextStyle(
+        title: const Text(
+          "Fund Account",
+          style: TextStyle(
             color: Color(0xFF5A3D1F),
             fontWeight: FontWeight.bold,
             fontSize: 24,
@@ -648,15 +742,13 @@ class _FundAccountPageState extends State<SFundAccountPage> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.notifications_none, color: Color(0xFF5A3D1F)),
-            onPressed: () {},
-          ),
-          IconButton(
-            icon: Icon(
-              _showOrderSection ? Icons.account_balance_wallet : Icons.directions_bus,
-              color: const Color(0xFF5A3D1F),
+            icon: const Icon(
+              Icons.notifications_none,
+              color: Color(0xFF5A3D1F),
             ),
-            onPressed: _toggleOrderSection,
+            onPressed: () {
+              // Handle notifications
+            },
           ),
           Padding(
             padding: const EdgeInsets.only(right: 10),
@@ -676,35 +768,35 @@ class _FundAccountPageState extends State<SFundAccountPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (!_showOrderSection) ...[
-                _buildBalanceCard(),
-                const SizedBox(height: 25),
-                const Text(
-                  "Add Funds",
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF5A3D1F),
-                  ),
+              _buildProfileHeader(), // Display logged-in user's name and phone
+              const SizedBox(height: 20),
+              _buildBalanceCard(),
+              const SizedBox(height: 25),
+              const Text(
+                "Add Funds",
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF5A3D1F),
                 ),
-                const SizedBox(height: 15),
-                _buildAmountInputField(),
-                const SizedBox(height: 20),
-                const Text(
-                  "Select Payment Method",
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF5A3D1F),
-                  ),
+              ),
+              const SizedBox(height: 15),
+              _buildAmountInputField(),
+              const SizedBox(height: 15), // Added spacing
+              _buildNarrationInputField(), // Added narration input field
+              const SizedBox(height: 20),
+              const Text(
+                "Select Payment Method",
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF5A3D1F),
                 ),
-                const SizedBox(height: 10),
-                _buildPaymentMethodSelection(),
-                const SizedBox(height: 30),
-                _buildFundAccountButton(),
-              ] else ...[
-                _buildOrderSection(),
-              ],
+              ),
+              const SizedBox(height: 10),
+              _buildPaymentMethodSelection(),
+              const SizedBox(height: 30),
+              _buildFundAccountButton(),
             ],
           ),
         ),
