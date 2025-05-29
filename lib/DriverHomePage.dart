@@ -32,8 +32,8 @@ class _DriverHomePageState extends State<DriverHomePage> {
   double _totalDistance = 0;
   int _totalFullRides = 0;
   int _totalUnfullRides = 0;
-  Map<String, dynamic>? _nearestRide;
-  Map<String, dynamic>? _recentBooking;
+  // Removed _nearestRide as it's no longer needed
+  // Removed _recentBooking as it's no longer needed
 
   // New state variables for ride status counts
   int _cancelledRides = 0;
@@ -81,8 +81,8 @@ class _DriverHomePageState extends State<DriverHomePage> {
         _fetchTotalBookings(user.id),
         _fetchTotalDistance(user.id),
         _fetchRideCapacityStats(user.id),
-        _fetchNearestRide(user.id),
-        _fetchRecentBooking(user.id),
+        // Removed _fetchNearestRide(user.id)
+        // Removed _fetchRecentBooking(user.id)
         _fetchRideStatusCounts(user.id), // Fetch new ride status counts
       ]);
     } catch (e) {
@@ -229,87 +229,8 @@ class _DriverHomePageState extends State<DriverHomePage> {
     }
   }
 
-  Future<void> _fetchNearestRide(String userId) async {
-    final now = DateTime.now().toIso8601String();
-
-    final response = await _supabase
-        .from('ride')
-        .select('*')
-        .eq('driver_id', userId)
-        .gte('departure_time', now)
-        .order('departure_time', ascending: true)
-        .limit(1);
-
-    if (mounted) {
-      // Check mounted before setState
-      if (response != null && response is List && response.isNotEmpty) {
-        setState(() {
-          _nearestRide = response[0];
-        });
-      } else {
-        setState(() {
-          _nearestRide = null; // Ensure it's null if no ride found
-        });
-      }
-    }
-  }
-
-  Future<void> _fetchRecentBooking(String userId) async {
-    // First, fetch the recent booking without trying to join user_profiles
-    final bookingResponse = await _supabase
-        .from('request_ride')
-        .select('*, user_id') // Select user_id to fetch user profile separately
-        .eq('driver_id', userId)
-        .order('created_at', ascending: false)
-        .limit(1);
-
-    if (mounted) {
-      // Check mounted before setState
-      if (bookingResponse != null &&
-          bookingResponse is List &&
-          bookingResponse.isNotEmpty) {
-        final recentBookingData = bookingResponse[0];
-        final passengerUserId = recentBookingData['user_id']?.toString();
-
-        String? passengerBusinessName = 'Passenger'; // Default value
-
-        if (passengerUserId != null) {
-          try {
-            // Fetch passenger profile from 'driver_profiles' as requested
-            final userProfileResponse =
-                await _supabase
-                    .from('driver_profiles') // Changed to 'driver_profiles'
-                    .select(
-                      'business_name',
-                    ) // Changed to business_name as requested
-                    .eq('user_id', passengerUserId)
-                    .maybeSingle(); // Use maybeSingle for nullable result
-
-            passengerBusinessName =
-                userProfileResponse?['business_name']?.toString() ??
-                'Passenger';
-          } catch (e) {
-            print('Error fetching passenger profile for recent booking: $e');
-            // Fallback if user profile fetch fails
-            passengerBusinessName = 'Unknown Passenger';
-          }
-        }
-
-        // Create a combined map for the recent booking
-        setState(() {
-          _recentBooking = {
-            ...recentBookingData,
-            // Use 'user_profiles' as the key for UI consistency, but value is business_name
-            'user_profiles': {'full_name': passengerBusinessName},
-          };
-        });
-      } else {
-        setState(() {
-          _recentBooking = null; // Ensure it's null if no booking found
-        });
-      }
-    }
-  }
+  // Removed _fetchNearestRide method entirely
+  // Removed _fetchRecentBooking method entirely
 
   // This _onItemTapped is for the BottomNavigationBar
   void _onItemTapped(int index) {
@@ -714,166 +635,8 @@ class _DriverHomePageState extends State<DriverHomePage> {
     );
   }
 
-  Widget _buildUpcomingRideCard() {
-    if (_nearestRide == null) return const SizedBox.shrink();
-
-    final departureTime = DateTime.parse(_nearestRide!['departure_time']);
-    final formattedTime = DateFormat('MMM dd, hh:mm a').format(departureTime);
-    final remainingTime = _formatRemainingTime(departureTime);
-
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            const Color(0xFF5A3D1F).withOpacity(0.9),
-            const Color(0xFF8B5E3B).withOpacity(0.9),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.timer, color: Colors.white, size: 20),
-              const SizedBox(width: 8),
-              Text(
-                "Upcoming Ride",
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            // Ensure these keys exist in your 'ride' table
-            "${_nearestRide!['pickup_point'] ?? 'N/A'} to ${_nearestRide!['dropoff_point'] ?? 'N/A'}",
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            // Using Wrap to handle potential overflow in detail items
-            spacing: 16,
-            runSpacing: 8,
-            children: [
-              _buildRideDetailItem(
-                icon: Icons.calendar_today,
-                text: formattedTime,
-              ),
-              _buildRideDetailItem(icon: Icons.timelapse, text: remainingTime),
-              _buildRideDetailItem(
-                icon: Icons.people,
-                text:
-                    "${(_nearestRide!['capacity'] as int? ?? 0) - (_nearestRide!['remaining_capacity'] as int? ?? 0)}/${_nearestRide!['capacity']?.toString() ?? '0'} seats",
-              ),
-              _buildRideDetailItem(
-                icon: Icons.attach_money,
-                text:
-                    "K ${_nearestRide!['total_cost']?.toStringAsFixed(2) ?? '0.00'}",
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRecentBookingCard() {
-    if (_recentBooking == null) return const SizedBox.shrink();
-
-    final bookingTime = DateTime.parse(_recentBooking!['created_at']);
-    final formattedTime = DateFormat('MMM dd, hh:mm a').format(bookingTime);
-    // Use 'full_name' key for UI consistency, but its value is now 'business_name' from driver_profiles
-    final passengerName =
-        _recentBooking!['user_profiles']?['full_name']?.toString() ??
-        'Passenger';
-
-    return Container(
-      width: double.infinity,
-      constraints: const BoxConstraints(minWidth: double.infinity),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.person, color: Color(0xFF5A3D1F), size: 20),
-              const SizedBox(width: 8),
-              Text(
-                "Recent Booking",
-                style: const TextStyle(
-                  color: Color(0xFF5A3D1F),
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            "Booked by $passengerName",
-            style: const TextStyle(
-              color: Color(0xFF5A3D1F),
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            // Using Wrap to handle potential overflow in detail items
-            spacing: 16,
-            runSpacing: 8,
-            children: [
-              _buildBookingDetailItem(
-                icon: Icons.calendar_today,
-                text: formattedTime,
-                color: const Color(0xFF8B5E3B),
-              ),
-              _buildBookingDetailItem(
-                icon: Icons.location_on,
-                text: _recentBooking!['pickup_point']?.toString() ?? 'N/A',
-                color: const Color(0xFF5A3D1F),
-              ),
-              _buildBookingDetailItem(
-                icon: Icons.flag,
-                text: _recentBooking!['dropoff_point']?.toString() ?? 'N/A',
-                color: const Color(0xFF3A2A15),
-              ),
-              _buildBookingDetailItem(
-                icon: Icons.attach_money,
-                text:
-                    "K ${_recentBooking!['total_cost']?.toStringAsFixed(2) ?? '0.00'}",
-                color: const Color(0xFF6D4C3D),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
+  // Removed _buildUpcomingRideCard method entirely
+  // Removed _buildRecentBookingCard method entirely
 
   Widget _buildRideDetailItem({required IconData icon, required String text}) {
     return Row(
@@ -883,7 +646,10 @@ class _DriverHomePageState extends State<DriverHomePage> {
         const SizedBox(width: 4),
         Text(
           text,
-          style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 14),
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.9),
+            fontSize: 14,
+          ),
         ),
       ],
     );
@@ -894,86 +660,31 @@ class _DriverHomePageState extends State<DriverHomePage> {
     required String text,
     required Color color,
   }) {
-    return SizedBox(
-      width: 120, // Give a fixed width to allow wrapping within the item
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: color, size: 16),
-          const SizedBox(width: 4),
-          Expanded(
-            // Ensure text expands within the SizedBox
-            child: Text(
-              text,
-              style: TextStyle(
-                color: color,
-                fontSize: 12,
-              ), // Smaller font for detail items
-              overflow: TextOverflow.ellipsis,
-              maxLines: 2, // Allow text to wrap if needed
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, color: color, size: 16),
+        const SizedBox(width: 4),
+        Flexible( // Use Flexible to prevent overflow if text is too long
+          child: Text(
+            text,
+            style: TextStyle(
+              color: Colors.grey[700],
+              fontSize: 14,
             ),
+            overflow: TextOverflow.ellipsis, // Add ellipsis for overflow
           ),
-        ],
-      ),
-    );
-  }
-
-  String _formatRemainingTime(DateTime departureTime) {
-    final now = DateTime.now();
-    final difference = departureTime.difference(now);
-
-    if (difference.isNegative) {
-      return "Departed";
-    } else if (difference.inDays > 0) {
-      return "${difference.inDays}d ${difference.inHours.remainder(24)}h left";
-    } else if (difference.inHours > 0) {
-      return "${difference.inHours}h ${difference.inMinutes.remainder(60)}m left";
-    } else if (difference.inMinutes > 0) {
-      return "${difference.inMinutes}m left";
-    } else {
-      return "Departing soon";
-    }
-  }
-
-  BottomNavigationBar _buildBottomNavBar() {
-    return BottomNavigationBar(
-      backgroundColor: Colors.white,
-      selectedItemColor: const Color(0xFF5A3D1F),
-      unselectedItemColor: Colors.grey[600],
-      currentIndex: _selectedIndex, // Use _selectedIndex here
-      onTap: _onItemTapped, // Use the defined _onItemTapped
-      type: BottomNavigationBarType.fixed,
-      elevation: 10,
-      selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
-      items: const [
-        BottomNavigationBarItem(
-          icon: Icon(Icons.home_outlined),
-          activeIcon: Icon(Icons.home),
-          label: "Home",
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.add_circle_outline),
-          activeIcon: Icon(Icons.add_circle),
-          label: "Add Ride",
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.history_outlined),
-          activeIcon: Icon(Icons.history),
-          label: "Records",
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.account_balance_wallet_outlined),
-          activeIcon: Icon(Icons.account_balance_wallet),
-          label: "Fund Account",
         ),
       ],
     );
   }
 
+  // Removed _formatRemainingTime as it's no longer used
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: Colors.grey[50], // Light background for the whole page
       appBar: AppBar(
         automaticallyImplyLeading: false,
         backgroundColor: Colors.white,
@@ -1010,45 +721,78 @@ class _DriverHomePageState extends State<DriverHomePage> {
           ),
         ],
       ),
-      body:
-          _isLoading
-              ? const Center(
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF5A3D1F)),
-                ),
-              )
-              : RefreshIndicator(
-                onRefresh: _fetchDriverData, // Refresh all data
-                color: const Color(0xFF5A3D1F),
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildWelcomeHeader(),
-                        const SizedBox(height: 20),
-                        _buildDashboardCards(),
-                        const SizedBox(height: 20),
-                        _buildStatsGrid(),
-                        const SizedBox(height: 20),
-                        _buildRideStatusSection(), // New section for ride status counts
-                        if (_nearestRide != null) ...[
-                          const SizedBox(height: 20),
-                          _buildUpcomingRideCard(),
-                        ],
-                        if (_recentBooking != null) ...[
-                          const SizedBox(height: 20),
-                          _buildRecentBookingCard(),
-                        ],
-                        const SizedBox(height: 20),
-                      ],
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF5A3D1F))))
+          : RefreshIndicator(
+              onRefresh: _fetchDriverData, // Refresh all data
+              color: const Color(0xFF5A3D1F),
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 20),
+                    _buildWelcomeHeader(), // Moved welcome header here
+                    const SizedBox(height: 30),
+                    _buildDashboardCards(),
+                    const SizedBox(height: 30),
+                    const Text(
+                      "Your Stats",
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF5A3D1F),
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 16),
+                    _buildStatsGrid(),
+                    const SizedBox(height: 30),
+                    _buildRideStatusSection(), // Display ride status counts
+                    const SizedBox(height: 30),
+                    // Removed conditional rendering for _buildUpcomingRideCard()
+                    // Removed conditional rendering for _buildRecentBookingCard()
+                    Padding( // Always show this message if no specific cards are present
+                      padding: const EdgeInsets.all(20.0),
+                      child: Center(
+                      ),
+                    ),
+                  ],
                 ),
               ),
-      bottomNavigationBar: _buildBottomNavBar(),
+            ),
+      bottomNavigationBar: BottomNavigationBar(
+        backgroundColor: Colors.white,
+        selectedItemColor: const Color(0xFF5A3D1F),
+        unselectedItemColor: Colors.grey[600],
+        currentIndex: _selectedIndex, // Use _selectedIndex here
+        onTap: _onItemTapped, // Use the defined _onItemTapped
+        type: BottomNavigationBarType.fixed,
+        elevation: 10,
+        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home_outlined),
+            activeIcon: Icon(Icons.home),
+            label: "Home",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.add_circle_outline),
+            activeIcon: Icon(Icons.add_circle),
+            label: "Add Ride",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.history_outlined),
+            activeIcon: Icon(Icons.history),
+            label: "Records",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.account_balance_wallet_outlined),
+            activeIcon: Icon(Icons.account_balance_wallet),
+            label: "Fund Account",
+          ),
+        ],
+      ),
     );
   }
 }

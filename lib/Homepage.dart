@@ -679,7 +679,7 @@ class _HomePageState extends State<HomePage> {
             _buildStatCard(
               icon: Icons.payments, // Replaced with a payments/credit card icon
               value: "K ${_totalCashToBeSpent.toStringAsFixed(2)}",
-              label: "Booking Cost",
+              label: "Ride Cost",
               color: const Color(0xFF3A2A15),
             ),
             _buildStatCard(
