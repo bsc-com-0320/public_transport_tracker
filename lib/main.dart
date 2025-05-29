@@ -57,7 +57,6 @@ class MyApp extends StatelessWidget {
         '/driver-home': (context) => DriverHomePage(),
         '/driver-records': (context) => DriverRecordsPage(),
         '/driver-ride': (context) => DriverAddRide(),
-        // Use the prefixed name here
         '/fund-account': (context) => app_fund.FundAccountPage(),
          '/s-fund-account': (context) => SFundAccountPage(),
       },
