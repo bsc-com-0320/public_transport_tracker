@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:intl/intl.dart'; // For date and time formatting
+import 'package:intl/intl.dart';
 
 class DriverHomePage extends StatefulWidget {
   const DriverHomePage({Key? key}) : super(key: key);
@@ -11,19 +11,16 @@ class DriverHomePage extends StatefulWidget {
 
 class _DriverHomePageState extends State<DriverHomePage> {
   final _supabase = Supabase.instance.client;
-  int _selectedIndex = 0; // Retained as per your provided code
+  int _selectedIndex = 0;
   final List<String> _pages = [
     '/driver-home',
     '/driver-ride',
     '/driver-records',
     '/fund-account',
   ];
-  // PageController is no longer used in _buildDashboardCards, but kept if it's used elsewhere
-  // final PageController _pageController = PageController(viewportFraction: 0.85);
-  // int _currentPage = 0; // No longer needed if PageView is not used with a listener
 
   String _businessName = '';
-  bool _isLoading = true; // Unified loading state
+  bool _isLoading = true;
 
   // Stats variables
   int _totalAvailableRides = 0;
@@ -38,8 +35,6 @@ class _DriverHomePageState extends State<DriverHomePage> {
   void initState() {
     super.initState();
     _fetchDriverData();
-    // Removed _pageController listener as PageView is now a Row with fixed children
-    // If you reintroduce PageView with dynamic children, you might need this listener again.
   }
 
   Future<void> _fetchDriverData() async {
@@ -92,10 +87,9 @@ class _DriverHomePageState extends State<DriverHomePage> {
   }
 
   Future<void> _fetchTotalAvailableRides(String userId) async {
-    // Corrected Supabase syntax: Fetch data and get length
     final response = await _supabase
         .from('ride')
-        .select('id') // Select a column to get a list
+        .select('id')
         .eq('driver_id', userId);
 
     setState(() {
@@ -104,10 +98,9 @@ class _DriverHomePageState extends State<DriverHomePage> {
   }
 
   Future<void> _fetchTotalBookings(String userId) async {
-    // Corrected Supabase syntax: Fetch data and get length
     final response = await _supabase
         .from('request_ride')
-        .select('id') // Select a column to get a list
+        .select('id')
         .eq('driver_id', userId);
 
     setState(() {
@@ -122,7 +115,6 @@ class _DriverHomePageState extends State<DriverHomePage> {
         .eq('driver_id', userId);
 
     double total = 0;
-    // Ensure response is a List before iterating
     if (response != null && response is List) {
       for (var ride in response) {
         total += (ride['distance'] as num?)?.toDouble() ?? 0.0;
@@ -135,17 +127,15 @@ class _DriverHomePageState extends State<DriverHomePage> {
   }
 
   Future<void> _fetchRideCapacityStats(String userId) async {
-    // Corrected Supabase syntax: Fetch data and get length
     final fullRidesResponse = await _supabase
         .from('ride')
-        .select('id') // Select a column to get a list
+        .select('id')
         .eq('driver_id', userId)
         .eq('remaining_capacity', 0);
 
-    // Corrected Supabase syntax: Fetch data and get length
     final unfullRidesResponse = await _supabase
         .from('ride')
-        .select('id') // Select a column to get a list
+        .select('id')
         .eq('driver_id', userId)
         .gt('remaining_capacity', 0);
 
@@ -172,7 +162,7 @@ class _DriverHomePageState extends State<DriverHomePage> {
       });
     } else {
       setState(() {
-        _nearestRide = null; // Ensure it's null if no ride found
+        _nearestRide = null;
       });
     }
   }
@@ -191,17 +181,16 @@ class _DriverHomePageState extends State<DriverHomePage> {
       final recentBookingData = bookingResponse[0];
       final passengerUserId = recentBookingData['user_id']?.toString();
 
-      String? passengerFullName = 'Passenger'; // Default value
+      String? passengerFullName = 'Passenger';
 
       if (passengerUserId != null) {
         try {
-          // Fetch from driver_profiles instead of user_profiles
           final driverProfileResponse =
               await _supabase
                   .from('driver_profiles')
                   .select('full_name')
                   .eq('user_id', passengerUserId)
-                  .maybeSingle(); // Use maybeSingle() instead of single() to handle null case
+                  .maybeSingle();
 
           passengerFullName =
               driverProfileResponse?['full_name']?.toString() ?? 'Passenger';
@@ -223,17 +212,10 @@ class _DriverHomePageState extends State<DriverHomePage> {
     }
   }
 
-  // This _onItemTapped is for the BottomNavigationBar
   void _onItemTapped(int index) {
     if (_selectedIndex == index) return;
     setState(() => _selectedIndex = index);
     Navigator.pushReplacementNamed(context, _pages[index]);
-  }
-
-  @override
-  void dispose() {
-    // Removed _pageController.dispose() as it's no longer a state variable
-    super.dispose();
   }
 
   Future<void> _showLogoutDialog() async {
@@ -394,12 +376,12 @@ class _DriverHomePageState extends State<DriverHomePage> {
 
   Widget _buildDashboardCards() {
     return SizedBox(
-      height: 180, // Fixed height to prevent overflow
+      height: 180,
       child: Row(
         children: [
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.only(bottom: 5.0), // Add bottom padding
+              padding: const EdgeInsets.only(bottom: 5.0),
               child: _buildActionCard(
                 title: "Add Ride",
                 subtitle: "Create a new ride offer",
@@ -412,7 +394,7 @@ class _DriverHomePageState extends State<DriverHomePage> {
           const SizedBox(width: 16),
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.only(bottom: 5.0), // Add bottom padding
+              padding: const EdgeInsets.only(bottom: 5.0),
               child: _buildActionCard(
                 title: "View Records",
                 subtitle: "See your bookings",
@@ -437,7 +419,7 @@ class _DriverHomePageState extends State<DriverHomePage> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        constraints: BoxConstraints(minHeight: 150), // Add minimum height
+        constraints: const BoxConstraints(minHeight: 150),
         decoration: BoxDecoration(
           color: color.withOpacity(0.1),
           borderRadius: BorderRadius.circular(16),
@@ -445,7 +427,7 @@ class _DriverHomePageState extends State<DriverHomePage> {
         ),
         padding: const EdgeInsets.all(16),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween, // Distribute space
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
@@ -462,7 +444,7 @@ class _DriverHomePageState extends State<DriverHomePage> {
                 Text(
                   title,
                   style: TextStyle(
-                    fontSize: 16, // Slightly smaller font
+                    fontSize: 16,
                     fontWeight: FontWeight.bold,
                     color: color,
                   ),
@@ -470,11 +452,8 @@ class _DriverHomePageState extends State<DriverHomePage> {
                 const SizedBox(height: 4),
                 Text(
                   subtitle,
-                  style: TextStyle(
-                    fontSize: 12, // Smaller font
-                    color: Colors.grey[600],
-                  ),
-                  maxLines: 2, // Limit to 2 lines
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
@@ -493,6 +472,7 @@ class _DriverHomePageState extends State<DriverHomePage> {
       childAspectRatio: 1.5,
       crossAxisSpacing: 16,
       mainAxisSpacing: 16,
+      padding: const EdgeInsets.all(0),
       children: [
         _buildStatCard(
           title: "Available Rides",
@@ -529,6 +509,7 @@ class _DriverHomePageState extends State<DriverHomePage> {
     required Color color,
   }) {
     return Container(
+      constraints: const BoxConstraints(minHeight: 100, maxHeight: 150),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -540,26 +521,28 @@ class _DriverHomePageState extends State<DriverHomePage> {
           ),
         ],
       ),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Icon(icon, color: color, size: 28),
+          Icon(icon, color: color, size: 24),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 value,
                 style: TextStyle(
-                  fontSize: 20,
+                  fontSize: 18,
                   fontWeight: FontWeight.bold,
                   color: color,
                 ),
               ),
               Text(
                 title,
-                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
@@ -569,10 +552,8 @@ class _DriverHomePageState extends State<DriverHomePage> {
   }
 
   Widget _buildUpcomingRideCard() {
-    // Ensure _nearestRide is not null before accessing its properties
-    if (_nearestRide == null) {
-      return Container(); // Or a placeholder if you prefer
-    }
+    if (_nearestRide == null) return const SizedBox.shrink();
+
     final departureTime = DateTime.parse(_nearestRide!['departure_time']);
     final formattedTime = DateFormat('MMM dd, hh:mm a').format(departureTime);
     final remainingTime = _formatRemainingTime(departureTime);
@@ -610,7 +591,6 @@ class _DriverHomePageState extends State<DriverHomePage> {
           ),
           const SizedBox(height: 12),
           Text(
-            // Ensure these keys exist in your 'ride' table
             "${_nearestRide!['pickup_point'] ?? 'N/A'} to ${_nearestRide!['dropoff_point'] ?? 'N/A'}",
             style: const TextStyle(
               color: Colors.white,
@@ -619,29 +599,24 @@ class _DriverHomePageState extends State<DriverHomePage> {
             ),
           ),
           const SizedBox(height: 8),
-          Row(
+          Wrap(
+            spacing: 16,
+            runSpacing: 8,
             children: [
               _buildRideDetailItem(
                 icon: Icons.calendar_today,
                 text: formattedTime,
               ),
-              const SizedBox(width: 16),
               _buildRideDetailItem(icon: Icons.timelapse, text: remainingTime),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
               _buildRideDetailItem(
                 icon: Icons.people,
                 text:
                     "${(_nearestRide!['capacity'] as int? ?? 0) - (_nearestRide!['remaining_capacity'] as int? ?? 0)}/${_nearestRide!['capacity']?.toString() ?? '0'} seats",
               ),
-              const SizedBox(width: 16),
               _buildRideDetailItem(
                 icon: Icons.attach_money,
                 text:
-                    "K ${_nearestRide!['total_cost']?.toStringAsFixed(2) ?? '0.00'}", // Changed to total_cost
+                    "K ${_nearestRide!['total_cost']?.toStringAsFixed(2) ?? '0.00'}",
               ),
             ],
           ),
@@ -651,18 +626,17 @@ class _DriverHomePageState extends State<DriverHomePage> {
   }
 
   Widget _buildRecentBookingCard() {
-    // Ensure _recentBooking is not null before accessing its properties
-    if (_recentBooking == null) {
-      return Container(); // Or a placeholder if you prefer
-    }
+    if (_recentBooking == null) return const SizedBox.shrink();
+
     final bookingTime = DateTime.parse(_recentBooking!['created_at']);
     final formattedTime = DateFormat('MMM dd, hh:mm a').format(bookingTime);
     final passengerName =
-        _recentBooking!['user_profiles']?['full_name']?.toString() ??
-        'Passenger'; // Changed to full_name
+        _recentBooking!['driver_profiles']?['full_name']?.toString() ??
+        'Passenger';
 
     return Container(
       width: double.infinity,
+      constraints: const BoxConstraints(minWidth: double.infinity),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -702,44 +676,29 @@ class _DriverHomePageState extends State<DriverHomePage> {
             ),
           ),
           const SizedBox(height: 8),
-          Row(
+          Wrap(
+            spacing: 16,
+            runSpacing: 8,
             children: [
               _buildBookingDetailItem(
                 icon: Icons.calendar_today,
                 text: formattedTime,
                 color: const Color(0xFF8B5E3B),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                // Added Expanded to prevent overflow
-                child: _buildBookingDetailItem(
-                  icon: Icons.location_on,
-                  text:
-                      _recentBooking!['pickup_point']?.toString() ??
-                      'N/A', // Changed to pickup_point
-                  color: const Color(0xFF5A3D1F),
-                ),
+              _buildBookingDetailItem(
+                icon: Icons.location_on,
+                text: _recentBooking!['pickup_point']?.toString() ?? 'N/A',
+                color: const Color(0xFF5A3D1F),
               ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                // Added Expanded to prevent overflow
-                child: _buildBookingDetailItem(
-                  icon: Icons.flag,
-                  text:
-                      _recentBooking!['dropoff_point']?.toString() ??
-                      'N/A', // Changed to dropoff_point
-                  color: const Color(0xFF3A2A15),
-                ),
+              _buildBookingDetailItem(
+                icon: Icons.flag,
+                text: _recentBooking!['dropoff_point']?.toString() ?? 'N/A',
+                color: const Color(0xFF3A2A15),
               ),
-              const SizedBox(width: 16),
               _buildBookingDetailItem(
                 icon: Icons.attach_money,
                 text:
-                    "K ${_recentBooking!['total_cost']?.toStringAsFixed(2) ?? '0.00'}", // Changed to total_cost
+                    "K ${_recentBooking!['total_cost']?.toStringAsFixed(2) ?? '0.00'}",
                 color: const Color(0xFF6D4C3D),
               ),
             ],
@@ -751,6 +710,7 @@ class _DriverHomePageState extends State<DriverHomePage> {
 
   Widget _buildRideDetailItem({required IconData icon, required String text}) {
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Icon(icon, color: Colors.white.withOpacity(0.8), size: 16),
         const SizedBox(width: 4),
@@ -767,12 +727,22 @@ class _DriverHomePageState extends State<DriverHomePage> {
     required String text,
     required Color color,
   }) {
-    return Row(
-      children: [
-        Icon(icon, color: color, size: 16),
-        const SizedBox(width: 4),
-        Text(text, style: TextStyle(color: color, fontSize: 14)),
-      ],
+    return SizedBox(
+      width: 120,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 16),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(color: color, fontSize: 12),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -781,7 +751,7 @@ class _DriverHomePageState extends State<DriverHomePage> {
     final difference = departureTime.difference(now);
 
     if (difference.isNegative) {
-      return "Departed"; // Handle past times
+      return "Departed";
     } else if (difference.inDays > 0) {
       return "${difference.inDays}d ${difference.inHours.remainder(24)}h left";
     } else if (difference.inHours > 0) {
@@ -798,8 +768,8 @@ class _DriverHomePageState extends State<DriverHomePage> {
       backgroundColor: Colors.white,
       selectedItemColor: const Color(0xFF5A3D1F),
       unselectedItemColor: Colors.grey[600],
-      currentIndex: _selectedIndex, // Use _selectedIndex here
-      onTap: _onItemTapped, // Use the defined _onItemTapped
+      currentIndex: _selectedIndex,
+      onTap: _onItemTapped,
       type: BottomNavigationBarType.fixed,
       elevation: 10,
       selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
@@ -876,32 +846,41 @@ class _DriverHomePageState extends State<DriverHomePage> {
                 ),
               )
               : RefreshIndicator(
-                onRefresh: _fetchDriverData, // Refresh all data
+                onRefresh: _fetchDriverData,
                 color: const Color(0xFF5A3D1F),
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildWelcomeHeader(),
-                        const SizedBox(height: 20),
-                        _buildDashboardCards(),
-                        const SizedBox(height: 20),
-                        _buildStatsGrid(),
-                        if (_nearestRide != null) ...[
-                          const SizedBox(height: 20),
-                          _buildUpcomingRideCard(),
-                        ],
-                        if (_recentBooking != null) ...[
-                          const SizedBox(height: 20),
-                          _buildRecentBookingCard(),
-                        ],
-                        const SizedBox(height: 20),
-                      ],
-                    ),
-                  ),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    return SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minHeight: constraints.maxHeight,
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildWelcomeHeader(),
+                              const SizedBox(height: 20),
+                              _buildDashboardCards(),
+                              const SizedBox(height: 20),
+                              _buildStatsGrid(),
+                              if (_nearestRide != null) ...[
+                                const SizedBox(height: 20),
+                                _buildUpcomingRideCard(),
+                              ],
+                              if (_recentBooking != null) ...[
+                                const SizedBox(height: 20),
+                                _buildRecentBookingCard(),
+                              ],
+                              const SizedBox(height: 20),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
       bottomNavigationBar: _buildBottomNavBar(),
