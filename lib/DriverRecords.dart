@@ -105,7 +105,7 @@ class _DriverRecordsPageState extends State<DriverRecordsPage> {
             final passengerProfile =
                 await _supabase
                     .from(
-                      'user_profiles',
+                      'passenger_profiles',
                     ) // Assuming 'user_profiles' table for passengers
                     .select('full_name, phone') // Select full_name and phone
                     .eq('user_id', passengerUserId)
