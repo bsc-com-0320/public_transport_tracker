@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:flutter/foundation.dart'; // Import for debugPrint
 
 class DriverRecordsPage extends StatefulWidget {
   @override
@@ -80,14 +81,64 @@ class _DriverRecordsPageState extends State<DriverRecordsPage> {
         return;
       }
 
+      // Fetch bookings including user_id (passenger's ID)
       final response = await _supabase
           .from('request_ride')
-          .select('*')
+          .select('''
+            *,
+            user_id
+          ''') // Select all columns and explicitly user_id
           .eq('driver_id', userId)
           .order('booking_time', ascending: false);
 
+      List<Map<String, dynamic>> fetchedBookings =
+          List<Map<String, dynamic>>.from(response);
+
+      // Fetch passenger details (name and phone) for each booking
+      for (var booking in fetchedBookings) {
+        final passengerUserId = booking['user_id'];
+        debugPrint(
+          'Processing booking for passengerUserId: $passengerUserId',
+        ); // Debug print
+        if (passengerUserId != null) {
+          try {
+            final passengerProfile =
+                await _supabase
+                    .from(
+                      'user_profiles',
+                    ) // Assuming 'user_profiles' table for passengers
+                    .select('full_name, phone') // Select full_name and phone
+                    .eq('user_id', passengerUserId)
+                    .maybeSingle(); // Use maybeSingle to handle cases where no profile is found
+
+            debugPrint(
+              'Passenger profile response for $passengerUserId: $passengerProfile',
+            ); // Debug print
+
+            if (passengerProfile != null) {
+              booking['passenger_name'] =
+                  passengerProfile['full_name']?.toString() ?? 'N/A';
+              booking['passenger_phone'] =
+                  passengerProfile['phone']?.toString() ?? 'N/A';
+            } else {
+              booking['passenger_name'] = 'N/A';
+              booking['passenger_phone'] = 'N/A';
+            }
+          } catch (e) {
+            debugPrint(
+              'Error fetching passenger profile for ID $passengerUserId: $e',
+            );
+            booking['passenger_name'] = 'Error';
+            booking['passenger_phone'] = 'Error';
+          }
+        } else {
+          booking['passenger_name'] = 'N/A';
+          booking['passenger_phone'] = 'N/A';
+        }
+      }
+
       setState(() {
-        _bookings = List<Map<String, dynamic>>.from(response);
+        _bookings = fetchedBookings;
         _filterBookings();
         _isLoading = false;
       });
@@ -118,7 +169,13 @@ class _DriverRecordsPageState extends State<DriverRecordsPage> {
                     booking['pickup_point'].toLowerCase().contains(query) ||
                     booking['dropoff_point'].toLowerCase().contains(query) ||
                     booking['departure_time'].toLowerCase().contains(query) ||
-                    booking['vehicle_type'].toLowerCase().contains(query),
+                    booking['vehicle_type'].toLowerCase().contains(query) ||
+                    (booking['passenger_name']?.toLowerCase().contains(query) ??
+                        false) || // Search by passenger name
+                    (booking['passenger_phone']?.toLowerCase().contains(
+                          query,
+                        ) ??
+                        false), // Search by passenger phone
               )
               .toList();
     }
@@ -323,6 +380,14 @@ class _DriverRecordsPageState extends State<DriverRecordsPage> {
                     booking['status'],
                     color: _getStatusColor(booking['status']),
                   ),
+                  _buildDetailRow(
+                    'Passenger Name',
+                    booking['passenger_name'] ?? 'N/A',
+                  ), // Display passenger name
+                  _buildDetailRow(
+                    'Passenger Contact',
+                    booking['passenger_phone'] ?? 'N/A',
+                  ), // Display passenger phone
                   _buildDetailRow('Pickup Point', booking['pickup_point']),
                   _buildDetailRow('Dropoff Point', booking['dropoff_point']),
                   _buildDetailRow('Vehicle Type', booking['vehicle_type']),
@@ -338,7 +403,10 @@ class _DriverRecordsPageState extends State<DriverRecordsPage> {
                       'MMM dd,EEEE - hh:mm a',
                     ).format(DateTime.parse(booking['booking_time'])),
                   ),
-                  _buildDetailRow('Total Cost', '\$${booking['total_cost']}'),
+                  _buildDetailRow(
+                    'Total Cost',
+                    'K ${booking['total_cost']}',
+                  ), // Changed symbol to K
                   if (booking['pickup_lat'] != null &&
                       booking['pickup_lng'] != null)
                     _buildDetailRow(
@@ -407,19 +475,62 @@ class _DriverRecordsPageState extends State<DriverRecordsPage> {
     }
   }
 
+  /// Builds a row to display an icon, label, and value for booking information.
+  Widget _buildInfoRow(IconData icon, String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, color: const Color(0xFF5A3D1F), size: 18), // Smaller icon
+        const SizedBox(width: 8), // Reduced space
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12, // Smaller font
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 2), // Reduced space
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 13, // Smaller font
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF5A3D1F),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildBookingCard(Map<String, dynamic> booking) {
     final String bookingId = booking['id'].toString();
     final String currentStatus = booking['status'].toLowerCase();
+    final String passengerName = booking['passenger_name']?.toString() ?? 'N/A';
+    final String passengerPhone =
+        booking['passenger_phone']?.toString() ?? 'N/A';
 
     return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      margin: const EdgeInsets.symmetric(
+        vertical: 6,
+        horizontal: 12,
+      ), // Reduced card margins
       elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+      ), // Slightly smaller radius
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
         onTap: () => _showBookingDetails(booking),
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(12.0), // Reduced internal padding
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -428,14 +539,14 @@ class _DriverRecordsPageState extends State<DriverRecordsPage> {
                 children: [
                   Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
+                      horizontal: 6, // Reduced padding
+                      vertical: 3, // Reduced padding
                     ),
                     decoration: BoxDecoration(
                       color: _getStatusColor(
                         booking['status'],
                       ).withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(6), // Smaller radius
                       border: Border.all(
                         color: _getStatusColor(booking['status']),
                         width: 1,
@@ -445,7 +556,7 @@ class _DriverRecordsPageState extends State<DriverRecordsPage> {
                       booking['status'].toUpperCase(),
                       style: TextStyle(
                         color: _getStatusColor(booking['status']),
-                        fontSize: 12,
+                        fontSize: 11, // Smaller font
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -454,11 +565,19 @@ class _DriverRecordsPageState extends State<DriverRecordsPage> {
                     DateFormat(
                       'MMM dd',
                     ).format(DateTime.parse(booking['booking_time'])),
-                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 11,
+                    ), // Smaller font
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10), // Reduced space
+              // Display Passenger Name and Contact
+              _buildInfoRow(Icons.person, 'Passenger Name:', passengerName),
+              const SizedBox(height: 6), // Reduced space
+              _buildInfoRow(Icons.phone, 'Passenger Contact:', passengerPhone),
+              const SizedBox(height: 10), // Reduced space
               Row(
                 children: [
                   const Icon(
@@ -473,6 +592,7 @@ class _DriverRecordsPageState extends State<DriverRecordsPage> {
                       style: const TextStyle(
                         color: Color(0xFF5A3D1F),
                         fontWeight: FontWeight.bold,
+                        fontSize: 13, // Smaller font
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -485,7 +605,7 @@ class _DriverRecordsPageState extends State<DriverRecordsPage> {
                 child: Icon(
                   Icons.arrow_downward,
                   color: Color(0xFF5A3D1F),
-                  size: 16,
+                  size: 14, // Smaller icon
                 ),
               ),
               Row(
@@ -498,6 +618,7 @@ class _DriverRecordsPageState extends State<DriverRecordsPage> {
                       style: const TextStyle(
                         color: Color(0xFF5A3D1F),
                         fontWeight: FontWeight.bold,
+                        fontSize: 13, // Smaller font
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -505,7 +626,7 @@ class _DriverRecordsPageState extends State<DriverRecordsPage> {
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10), // Reduced space
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -519,7 +640,10 @@ class _DriverRecordsPageState extends State<DriverRecordsPage> {
                       const SizedBox(width: 4),
                       Text(
                         booking['vehicle_type'],
-                        style: TextStyle(color: Colors.grey[700]),
+                        style: TextStyle(
+                          color: Colors.grey[700],
+                          fontSize: 13,
+                        ), // Smaller font
                       ),
                     ],
                   ),
@@ -527,11 +651,14 @@ class _DriverRecordsPageState extends State<DriverRecordsPage> {
                     DateFormat(
                       'hh:mm a',
                     ).format(DateTime.parse(booking['departure_time'])),
-                    style: TextStyle(color: Colors.grey[700]),
+                    style: TextStyle(
+                      color: Colors.grey[700],
+                      fontSize: 13,
+                    ), // Smaller font
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10), // Reduced space
               if (currentStatus == 'pending')
                 Row(
                   children: [
@@ -542,16 +669,22 @@ class _DriverRecordsPageState extends State<DriverRecordsPage> {
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 8,
+                          ), // Reduced padding
                         ),
                         onPressed:
                             () => _updateBookingStatus(bookingId, 'cancelled'),
                         child: const Text(
                           'Cancel',
-                          style: TextStyle(color: Colors.red),
+                          style: TextStyle(
+                            color: Colors.red,
+                            fontSize: 13,
+                          ), // Smaller font
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 6), // Reduced space
                     Expanded(
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
@@ -559,12 +692,18 @@ class _DriverRecordsPageState extends State<DriverRecordsPage> {
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 8,
+                          ), // Reduced padding
                         ),
                         onPressed:
                             () => _updateBookingStatus(bookingId, 'confirmed'),
                         child: const Text(
                           'Confirm',
-                          style: TextStyle(color: Colors.white),
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                          ), // Smaller font
                         ),
                       ),
                     ),
@@ -580,16 +719,22 @@ class _DriverRecordsPageState extends State<DriverRecordsPage> {
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 8,
+                          ), // Reduced padding
                         ),
                         onPressed:
                             () => _updateBookingStatus(bookingId, 'cancelled'),
                         child: const Text(
                           'Cancel Ride',
-                          style: TextStyle(color: Colors.red),
+                          style: TextStyle(
+                            color: Colors.red,
+                            fontSize: 13,
+                          ), // Smaller font
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 6), // Reduced space
                     Expanded(
                       child: OutlinedButton(
                         style: OutlinedButton.styleFrom(
@@ -597,12 +742,18 @@ class _DriverRecordsPageState extends State<DriverRecordsPage> {
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 8,
+                          ), // Reduced padding
                         ),
                         onPressed:
                             () => _updateBookingStatus(bookingId, 'pending'),
                         child: const Text(
                           'Revert to Pending',
-                          style: TextStyle(color: Color(0xFF5A3D1F)),
+                          style: TextStyle(
+                            color: Color(0xFF5A3D1F),
+                            fontSize: 13,
+                          ), // Smaller font
                         ),
                       ),
                     ),
@@ -618,16 +769,22 @@ class _DriverRecordsPageState extends State<DriverRecordsPage> {
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 8,
+                          ), // Reduced padding
                         ),
                         onPressed:
                             () => _updateBookingStatus(bookingId, 'confirmed'),
                         child: const Text(
                           'Re-Confirm',
-                          style: TextStyle(color: Colors.white),
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                          ), // Smaller font
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 6), // Reduced space
                     Expanded(
                       child: OutlinedButton(
                         style: OutlinedButton.styleFrom(
@@ -635,12 +792,18 @@ class _DriverRecordsPageState extends State<DriverRecordsPage> {
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 8,
+                          ), // Reduced padding
                         ),
                         onPressed:
                             () => _updateBookingStatus(bookingId, 'pending'),
                         child: const Text(
                           'Revert to Pending',
-                          style: TextStyle(color: Color(0xFF5A3D1F)),
+                          style: TextStyle(
+                            color: Color(0xFF5A3D1F),
+                            fontSize: 13,
+                          ), // Smaller font
                         ),
                       ),
                     ),
@@ -923,28 +1086,14 @@ class _DriverRecordsPageState extends State<DriverRecordsPage> {
                 ),
               ),
               onChanged: (value) {
-                setState(() => _searchQuery = value);
-                _filterBookings();
+                setState(() {
+                  _searchQuery = value;
+                  _filterBookings();
+                });
               },
             ),
           ),
           _buildFilterChips(),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Row(
-              children: [
-                Text(
-                  'Total Bookings: ${_filteredBookings.length}',
-                  style: const TextStyle(
-                    color: Color(0xFF5A3D1F),
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
           Expanded(
             child:
                 _isLoading
@@ -959,16 +1108,24 @@ class _DriverRecordsPageState extends State<DriverRecordsPage> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
-                            Icons.history,
-                            size: 48,
+                            Icons.event_note,
+                            size: 60,
                             color: Colors.grey[400],
                           ),
                           const SizedBox(height: 16),
                           Text(
-                            'No bookings found',
+                            'No matching bookings found.',
                             style: TextStyle(
-                              color: Colors.grey[600],
                               fontSize: 18,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Try adjusting your filters or search query.',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[500],
                             ),
                           ),
                         ],
@@ -978,9 +1135,11 @@ class _DriverRecordsPageState extends State<DriverRecordsPage> {
                       onRefresh: _fetchBookings,
                       color: const Color(0xFF5A3D1F),
                       child: ListView.builder(
+                        padding: const EdgeInsets.all(16.0),
                         itemCount: _filteredBookings.length,
                         itemBuilder: (context, index) {
-                          return _buildBookingCard(_filteredBookings[index]);
+                          final booking = _filteredBookings[index];
+                          return _buildBookingCard(booking);
                         },
                       ),
                     ),
