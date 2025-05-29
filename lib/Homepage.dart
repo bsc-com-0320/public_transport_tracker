@@ -485,7 +485,7 @@ class _HomePageState extends State<HomePage> {
     return Column(
       children: [
         SizedBox(
-          height: 200,
+          height: 180, // Reduced height for a more compact look
           child: PageView(
             controller: _pageController,
             padEnds: false,
@@ -545,22 +545,29 @@ class _HomePageState extends State<HomePage> {
           borderRadius: BorderRadius.circular(20),
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.all(15),
+            padding: const EdgeInsets.all(12), // Slightly reduced padding
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              mainAxisAlignment: MainAxisAlignment.start, // Changed to start
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  width: 50,
-                  height: 50,
+                  width: 45, // Slightly reduced icon container size
+                  height: 45, // Slightly reduced icon container size
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(15),
+                    borderRadius: BorderRadius.circular(
+                      12,
+                    ), // Adjusted border radius
                   ),
                   child: Center(
-                    child: Icon(icon, color: Colors.white, size: 30),
+                    child: Icon(
+                      icon,
+                      color: Colors.white,
+                      size: 28,
+                    ), // Slightly reduced icon size
                   ),
                 ),
+                const SizedBox(height: 10), // Added spacing after icon
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -568,21 +575,21 @@ class _HomePageState extends State<HomePage> {
                       title,
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 18,
+                        fontSize: 16, // Slightly reduced font size
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 3), // Reduced spacing
                     Text(
                       subtitle,
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.9),
-                        fontSize: 13,
+                        fontSize: 12, // Slightly reduced font size
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 10), // Increased spacing before button
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
@@ -590,9 +597,10 @@ class _HomePageState extends State<HomePage> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
+                      horizontal: 12,
+                      vertical: 6,
+                    ), // Further reduced padding
+                    minimumSize: Size.zero, // Allow button to shrink
                   ),
                   onPressed: onTap,
                   child: Text(
@@ -600,7 +608,7 @@ class _HomePageState extends State<HomePage> {
                     style: TextStyle(
                       color: gradientColors.first,
                       fontWeight: FontWeight.bold,
-                      fontSize: 14,
+                      fontSize: 12, // Further reduced font size
                     ),
                   ),
                 ),
