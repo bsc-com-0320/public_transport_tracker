@@ -444,7 +444,7 @@ class _RecordsPageState extends State<RecordsPage> {
                     ],
                   ),
                   // Only show cancel button if the status is 'pending'
-                  if ((booking['status'] ?? 'pending') == 'pending')
+                 // if ((booking['status'] ?? 'pending') == 'pending')
                     ElevatedButton(
                       onPressed: () => _showCancelDialog(booking['id']?.toString() ?? ''),
                       style: ElevatedButton.styleFrom(

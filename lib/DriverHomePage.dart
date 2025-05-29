@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart'; // For date and time formatting
+import 'package:flutter/foundation.dart'; // Import for debugPrint
 
 class DriverHomePage extends StatefulWidget {
   const DriverHomePage({Key? key}) : super(key: key);
@@ -33,6 +34,12 @@ class _DriverHomePageState extends State<DriverHomePage> {
   int _totalUnfullRides = 0;
   Map<String, dynamic>? _nearestRide;
   Map<String, dynamic>? _recentBooking;
+
+  // New state variables for ride status counts
+  int _cancelledRides = 0;
+  int _confirmedRides = 0;
+  int _pendingRides = 0;
+  // Removed _inProgressRides as per your clarification
 
   @override
   void initState() {
@@ -76,6 +83,7 @@ class _DriverHomePageState extends State<DriverHomePage> {
         _fetchRideCapacityStats(user.id),
         _fetchNearestRide(user.id),
         _fetchRecentBooking(user.id),
+        _fetchRideStatusCounts(user.id), // Fetch new ride status counts
       ]);
     } catch (e) {
       print('Error fetching driver data: $e');
@@ -166,6 +174,58 @@ class _DriverHomePageState extends State<DriverHomePage> {
         _totalFullRides = (fullRidesResponse as List?)?.length ?? 0;
         _totalUnfullRides = (unfullRidesResponse as List?)?.length ?? 0;
       });
+    }
+  }
+
+  /// Fetches the number of cancelled, confirmed, and pending rides
+  /// for the logged-in driver from the 'request_ride' table.
+  Future<void> _fetchRideStatusCounts(String userId) async {
+    debugPrint('Fetching ride status counts for driver_id: $userId');
+    try {
+      final response = await _supabase
+          .from('request_ride')
+          .select('status')
+          .eq('driver_id', userId);
+
+      debugPrint('Supabase response for ride status: $response');
+
+      int cancelled = 0;
+      int confirmed = 0;
+      int pending = 0;
+      // Removed inProgress as per your clarification
+
+      if (response != null && response is List) {
+        for (var booking in response) {
+          final status = booking['status']?.toLowerCase();
+          if (status == 'cancelled') {
+            cancelled++;
+          } else if (status == 'confirmed') {
+            confirmed++;
+          } else if (status == 'pending') {
+            pending++;
+          }
+          // Removed 'in_progress' check
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _cancelledRides = cancelled;
+          _confirmedRides = confirmed;
+          _pendingRides = pending;
+          // Removed _inProgressRides from setState
+        });
+        debugPrint(
+          'Updated ride status counts: Confirmed: $_confirmedRides, Pending: $_pendingRides, Cancelled: $_cancelledRides',
+        );
+      }
+    } catch (e) {
+      debugPrint('Error fetching ride status counts: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error fetching ride status: $e')),
+        );
+      }
     }
   }
 
@@ -395,7 +455,7 @@ class _DriverHomePageState extends State<DriverHomePage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          "Welcome back!",
+          "Welcome,",
           style: TextStyle(
             fontSize: 18,
             color: Colors.grey[600],
@@ -545,7 +605,7 @@ class _DriverHomePageState extends State<DriverHomePage> {
           color: const Color(0xFF3A2A15),
         ),
         _buildStatCard(
-          title: "Ride Status",
+          title: "Ride Capacity", // Changed title for clarity
           value: "$_totalFullRides Full / $_totalUnfullRides Open",
           icon: Icons.people,
           color: const Color(0xFF6D4C3D),
@@ -603,6 +663,54 @@ class _DriverHomePageState extends State<DriverHomePage> {
           ),
         ],
       ),
+    );
+  }
+
+  /// Builds a section to display the counts of rides by their status.
+  Widget _buildRideStatusSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          "Booking Status Overview",
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF5A3D1F),
+          ),
+        ),
+        const SizedBox(height: 16),
+        GridView.count(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisCount: 2, // Display two cards per row
+          childAspectRatio: 1.5, // Adjust aspect ratio for better display
+          crossAxisSpacing: 16,
+          mainAxisSpacing: 16,
+          padding: const EdgeInsets.all(0),
+          children: [
+            _buildStatCard(
+              title: "Confirmed Rides",
+              value: _confirmedRides.toString(),
+              icon: Icons.check_circle_outline,
+              color: Colors.green,
+            ),
+            _buildStatCard(
+              title: "Pending Rides",
+              value: _pendingRides.toString(),
+              icon: Icons.hourglass_empty,
+              color: Colors.orange,
+            ),
+            // Removed 'In Progress Rides' card
+            _buildStatCard(
+              title: "Cancelled Rides",
+              value: _cancelledRides.toString(),
+              icon: Icons.cancel_outlined,
+              color: Colors.red,
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -924,6 +1032,8 @@ class _DriverHomePageState extends State<DriverHomePage> {
                         _buildDashboardCards(),
                         const SizedBox(height: 20),
                         _buildStatsGrid(),
+                        const SizedBox(height: 20),
+                        _buildRideStatusSection(), // New section for ride status counts
                         if (_nearestRide != null) ...[
                           const SizedBox(height: 20),
                           _buildUpcomingRideCard(),

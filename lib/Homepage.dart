@@ -401,7 +401,7 @@ class _HomePageState extends State<HomePage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          "Welcome back,",
+          "Welcome,",
           style: TextStyle(
             fontSize: 20,
             color: const Color(0xFF5A3D1F),
@@ -493,7 +493,7 @@ class _HomePageState extends State<HomePage> {
               _buildDashboardCard(
                 icon: Icons.directions_car,
                 title: "Instant Ride",
-                subtitle: "Book now with 1 tap",
+                subtitle: "Tap to Request",
                 buttonText: "Request Now",
                 gradientColors: const [Color(0xFF8B5E3B), Color(0xFF5A3D1F)],
                 onTap: () => Navigator.pushNamed(context, '/order'),
@@ -501,7 +501,7 @@ class _HomePageState extends State<HomePage> {
               _buildDashboardCard(
                 icon: Icons.history,
                 title: "Your Journeys",
-                subtitle: "Past trips & receipts",
+                subtitle: "Tap to View Records",
                 buttonText: "View Records",
                 gradientColors: const [Color(0xFF5A3D1F), Color(0xFF3A2A15)],
                 onTap: () => Navigator.pushNamed(context, '/records'),
@@ -677,9 +677,9 @@ class _HomePageState extends State<HomePage> {
               color: const Color(0xFF5A3D1F),
             ),
             _buildStatCard(
-              icon: Icons.attach_money,
+              icon: Icons.payments, // Replaced with a payments/credit card icon
               value: "K ${_totalCashToBeSpent.toStringAsFixed(2)}",
-              label: "Total Cost",
+              label: "Booking Cost",
               color: const Color(0xFF3A2A15),
             ),
             _buildStatCard(
