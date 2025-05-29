@@ -251,7 +251,18 @@ class _AvailableDriverRidesState extends State<AvailableDriverRides> {
       context: context,
       builder:
           (context) => AlertDialog(
-            title: Text('Edit Ride Details'),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            backgroundColor: Colors.white, // Consistent with app background
+            title: Text(
+              'Edit Ride Details',
+              style: TextStyle(
+                color: Color(0xFF5A3D1F), // App's primary color
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+              ),
+            ),
             content: SingleChildScrollView(
               child: Form(
                 child: Column(
@@ -259,7 +270,20 @@ class _AvailableDriverRidesState extends State<AvailableDriverRides> {
                   children: [
                     TextFormField(
                       controller: capacityController,
-                      decoration: InputDecoration(labelText: 'Total Capacity'),
+                      decoration: InputDecoration(
+                        labelText: 'Total Capacity',
+                        labelStyle: TextStyle(color: Colors.grey[700]),
+                        enabledBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: Colors.grey[400]!),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderSide: BorderSide(
+                            color: Color(0xFF5A3D1F),
+                          ), // App's primary color
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
                       keyboardType: TextInputType.number,
                       validator: (value) {
                         if (value == null || value.isEmpty) return 'Required';
@@ -271,7 +295,20 @@ class _AvailableDriverRidesState extends State<AvailableDriverRides> {
                     SizedBox(height: 16),
                     TextFormField(
                       controller: costController,
-                      decoration: InputDecoration(labelText: 'Total Cost'),
+                      decoration: InputDecoration(
+                        labelText: 'Total Cost',
+                        labelStyle: TextStyle(color: Colors.grey[700]),
+                        enabledBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: Colors.grey[400]!),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderSide: BorderSide(
+                            color: Color(0xFF5A3D1F),
+                          ), // App's primary color
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
                       keyboardType: TextInputType.numberWithOptions(
                         decimal: true,
                       ),
@@ -287,8 +324,22 @@ class _AvailableDriverRidesState extends State<AvailableDriverRides> {
                       controller: timeController,
                       decoration: InputDecoration(
                         labelText: 'Departure Time',
+                        labelStyle: TextStyle(color: Colors.grey[700]),
+                        enabledBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: Colors.grey[400]!),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderSide: BorderSide(
+                            color: Color(0xFF5A3D1F),
+                          ), // App's primary color
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                         suffixIcon: IconButton(
-                          icon: Icon(Icons.access_time),
+                          icon: Icon(
+                            Icons.access_time,
+                            color: Color(0xFF5A3D1F),
+                          ), // App's primary color
                           onPressed: () async {
                             final time = await showTimePicker(
                               context: context,
@@ -313,6 +364,9 @@ class _AvailableDriverRidesState extends State<AvailableDriverRides> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context, false),
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.grey[700], // Subtle color for cancel
+                ),
                 child: Text('Cancel'),
               ),
               ElevatedButton(
@@ -323,6 +377,14 @@ class _AvailableDriverRidesState extends State<AvailableDriverRides> {
                   // For simplicity here, assuming validation happens correctly or will be handled.
                   Navigator.pop(context, true);
                 },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Color(0xFF5A3D1F), // App's primary color
+                  foregroundColor: Colors.white, // White text for contrast
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                ),
                 child: Text('Save'),
               ),
             ],
