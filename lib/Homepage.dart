@@ -685,7 +685,7 @@ class _HomePageState extends State<HomePage> {
             _buildStatCard(
               icon: Icons.people,
               value: _totalUnfullRides.toString(),
-              label: "Unfull Rides",
+              label: "Open Rides",
               color: const Color(0xFF5A3D1F),
             ),
           ],
