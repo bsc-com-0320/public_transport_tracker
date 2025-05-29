@@ -1,10 +1,10 @@
 // File: lib/s_fund_account_page.dart (Your main page)
 import 'package:flutter/material.dart';
-// Corrected import: Assuming FundAccountService expects PaymentsDto from the 'server' model.
-// If your FundAccountService expects the DTO from the non-server model, change this back.
+import 'package:public_transport_tracker/payment_webview_page.dart';
 import 'package:public_transport_tracker/server/fund_account.model.dart';
 import 'package:public_transport_tracker/fund_account.service.dart';
-import 'package:supabase_flutter/supabase_flutter.dart'; // Keep if Supabase is still used for navigation logic, otherwise remove.
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart'; // Import url_launcher
 
 class SFundAccountPage extends StatefulWidget {
   const SFundAccountPage({Key? key}) : super(key: key);
@@ -38,28 +38,76 @@ class _SFundAccountPageState extends State<SFundAccountPage> {
   Future<void> _confirmDeposit() async {
     if (_formKey.currentState!.validate()) {
       try {
+        // Show loading indicator
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder:
+              (context) => const Center(child: CircularProgressIndicator()),
+        );
+
         final payment = PaymentsDto(
           fullName: _fullNameController.text,
           phoneNumber: _phoneController.text,
           amount: double.parse(_amountController.text),
           narration: _narrationController.text,
-          paymentMethod: "", // This might need to be selected by the user
+          paymentMethod: "", // Update if needed
           currency: "MWK",
         );
 
-        // The type error should be resolved now that PaymentsDto is imported consistently.
         final response = await fundService.processPayment(payment);
-        _showDialog("Success", response.message);
-        _cancel(); // Clear form on successful deposit
+
+        // Dismiss loading indicator
+        if (mounted) Navigator.of(context).pop();
+
+        // Check if we have a checkout URL in the response
+        if (response.data?.checkoutUrl != null) {
+          final Uri url = Uri.parse(response.data!.checkoutUrl);
+
+          // Launch payment webview and wait for result
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => PaymentWebViewPage(paymentUrl: url.toString()),
+            ),
+          );
+
+          if (result == true) {
+            // Payment was successful
+            if (mounted) {
+              await _showDialog("Success", "Payment completed successfully");
+              _cancel(); // Clear form only after successful payment
+            }
+          } else {
+            // Payment was cancelled or failed
+            if (mounted) {
+              await _showDialog("Notice", "Payment was not completed");
+            }
+          }
+        } else {
+          // No checkout URL case
+          if (mounted) {
+            await _showDialog("Success", response.message);
+            _cancel(); // Clear form only if we're not opening WebView
+          }
+        }
       } catch (e) {
-        _showDialog("Error", "Failed to process payment: ${e.toString()}");
+        // Dismiss loading indicator if still showing
+        if (mounted) Navigator.of(context).pop();
+
+        if (mounted) {
+          await _showDialog(
+            "Error",
+            "Failed to process payment: ${e.toString()}",
+          );
+        }
         debugPrint("Payment processing error: ${e.toString()}");
       }
     }
   }
 
-  void _showDialog(String title, String message) {
-    showDialog(
+  Future<void> _showDialog(String title, String message) async {
+    return showDialog<void>(
       context: context,
       builder:
           (_) => AlertDialog(
@@ -69,7 +117,7 @@ class _SFundAccountPageState extends State<SFundAccountPage> {
             actions: [
               TextButton(
                 child: const Text("OK", style: TextStyle(color: Colors.white)),
-                onPressed: () => Navigator.pop(context),
+                onPressed: () => Navigator.of(context).pop(),
               ),
             ],
           ),
@@ -149,15 +197,11 @@ class _SFundAccountPageState extends State<SFundAccountPage> {
     '/s-fund-account',
   ];
 
-  // Supabase client instance. Ensure Supabase is initialized in your main.dart or a parent widget.
-  // Example: await Supabase.initialize(url: 'YOUR_SUPABASE_URL', anonKey: 'YOUR_SUPABASE_ANON_KEY');
   final SupabaseClient supabase = Supabase.instance.client;
 
   void _onItemTapped(int index) {
     if (_selectedIndex == index) return;
     setState(() => _selectedIndex = index);
-    // This will navigate to the specified route.
-    // Ensure these routes are defined in your MaterialApp's routes.
     Navigator.pushReplacementNamed(context, _pages[index]);
   }
 
