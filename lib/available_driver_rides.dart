@@ -370,7 +370,19 @@ class _AvailableDriverRidesState extends State<AvailableDriverRides> {
           })
           .eq('id', rideId);
 
-      if (response.error == null) {
+      // Print the full response object for debugging
+      print('Supabase Update Response: $response');
+
+      // Check if response is null or if response.error is not null
+      if (response == null) {
+        // If response is null, it indicates a deeper issue with the Supabase client
+        // or network where even a response object isn't returned.
+        throw Exception('Supabase update operation returned a null response.');
+      } else if (response.error != null) {
+        // If response is not null but contains an error, throw that error.
+        throw response.error!;
+      } else {
+        // Success case: response is not null and response.error is null
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Ride updated successfully!'),
@@ -378,8 +390,6 @@ class _AvailableDriverRidesState extends State<AvailableDriverRides> {
           ),
         );
         await _fetchAvailableRides();
-      } else {
-        throw response.error!;
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
