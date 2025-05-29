@@ -1269,7 +1269,7 @@ class _OrderPageState extends State<OrderPage> {
                           color:
                               confirmationMessage.contains("Error")
                                   ? Colors.red
-                                  : Colors.green,
+                                  : Colors.red,
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
@@ -1307,9 +1307,9 @@ class _OrderPageState extends State<OrderPage> {
             label: "Records",
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.add_circle_outline),
-            activeIcon: Icon(Icons.add_circle),
-            label: "Add Ride",
+            icon: Icon(Icons.account_balance_wallet_outlined),
+            activeIcon: Icon(Icons.account_balance_wallet),
+            label: "Fund Account",
           ),
         ],
       ),

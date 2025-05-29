@@ -370,7 +370,7 @@ class _DriverAddRide extends State<DriverAddRide> {
         'dropoff_lng': _dropoffLatLng?.longitude,
         'created_at': DateTime.now().toIso8601String(),
         'driver_id': userId,
-        'image_url': imageUrl, // Include the image URL if it exists.
+      //  'image_url': imageUrl, // Include the image URL if it exists.
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
