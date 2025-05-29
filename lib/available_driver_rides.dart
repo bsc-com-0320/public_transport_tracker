@@ -373,16 +373,15 @@ class _AvailableDriverRidesState extends State<AvailableDriverRides> {
       // Print the full response object for debugging
       print('Supabase Update Response: $response');
 
-      // Check if response is null or if response.error is not null
-      if (response == null) {
-        // If response is null, it indicates a deeper issue with the Supabase client
-        // or network where even a response object isn't returned.
-        throw Exception('Supabase update operation returned a null response.');
-      } else if (response.error != null) {
-        // If response is not null but contains an error, throw that error.
+      // If response is not null and contains an error, throw that error.
+      // Otherwise, assume success if the database update is confirmed to work.
+      if (response != null && response.error != null) {
         throw response.error!;
       } else {
-        // Success case: response is not null and response.error is null
+        // This block is reached if:
+        // 1. response is not null AND response.error is null (standard success)
+        // 2. response IS null (the scenario you're reporting where DB updates but response is null)
+        // In both cases, we now show the success feedback.
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Ride updated successfully!'),
