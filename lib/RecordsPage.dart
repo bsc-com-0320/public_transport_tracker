@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter/foundation.dart'; // Import for debugPrint
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,12 +28,27 @@ class MyApp extends StatelessWidget {
       ),
       // Define routes for navigation
       routes: {
-        '/home': (context) => const Center(child: Text('Home Page (Not implemented)')), // Replace with your actual Home page
-        '/order': (context) => const Center(child: Text('Order Page (Not implemented)')), // Replace with your actual Order page
+        '/home':
+            (context) => const Center(
+              child: Text('Home Page (Not implemented)'),
+            ), // Replace with your actual Home page
+        '/order':
+            (context) => const Center(
+              child: Text('Order Page (Not implemented)'),
+            ), // Replace with your actual Order page
         '/records': (context) => const RecordsPage(),
-        '/s-fund-account': (context) => const Center(child: Text('Fund Account Page (Not implemented)')), // Replace with your actual Fund Account page
-        '/profile': (context) => const Center(child: Text('Profile Page (Not implemented)')), // Replace with your actual Profile page
-        '/login': (context) => const Center(child: Text('Login Page (Not implemented)')), // Replace with your actual Login page
+        '/s-fund-account':
+            (context) => const Center(
+              child: Text('Fund Account Page (Not implemented)'),
+            ), // Replace with your actual Fund Account page
+        '/profile':
+            (context) => const Center(
+              child: Text('Profile Page (Not implemented)'),
+            ), // Replace with your actual Profile page
+        '/login':
+            (context) => const Center(
+              child: Text('Login Page (Not implemented)'),
+            ), // Replace with your actual Login page
       },
       home: const RecordsPage(),
     );
@@ -69,9 +85,9 @@ class _RecordsPageState extends State<RecordsPage> {
   /// Sets `isLoading` to true before fetching data and to false afterwards.
   /// If no user is logged in, an exception is thrown.
   /// Fetches `id`, `ride_id`, `pickup_point`, `dropoff_point`, `booking_time`,
-  /// `departure_time`, `vehicle_type`, `total_cost`, `status`, and `type`
-  /// from the 'request_ride' table, filtered by the current user's ID
-  /// and ordered by `booking_time` in descending order.
+  /// `departure_time`, `vehicle_type`, `total_cost`, `status`, `type`,
+  /// and `driver_id` from the 'request_ride' table.
+  /// Then, for each booking, it fetches the driver's 'phone' and 'business_name' from 'driver_profiles'.
   /// Displays a SnackBar with an error message if loading fails.
   Future<void> _loadBookings() async {
     setState(() => isLoading = true);
@@ -82,6 +98,7 @@ class _RecordsPageState extends State<RecordsPage> {
         throw Exception('User not logged in');
       }
 
+      // Fetch bookings including driver_id
       final response = await supabase
           .from('request_ride')
           .select('''
@@ -94,21 +111,69 @@ class _RecordsPageState extends State<RecordsPage> {
             vehicle_type,
             total_cost,
             status,
-            type
+            type,
+            driver_id
           ''')
           .eq('user_id', userId)
           .order('booking_time', ascending: false);
 
+      List<Map<String, dynamic>> fetchedBookings =
+          List<Map<String, dynamic>>.from(response);
+
+      // Fetch driver phone numbers and business names for each booking
+      for (var booking in fetchedBookings) {
+        final driverId = booking['driver_id'];
+        debugPrint(
+          'Processing booking with driverId: $driverId',
+        ); // Debug print
+        if (driverId != null) {
+          try {
+            final driverProfile =
+                await supabase
+                    .from('driver_profiles')
+                    .select(
+                      'phone, business_name',
+                    ) // Select business_name as well
+                    .eq('user_id', driverId)
+                    .maybeSingle(); // Use maybeSingle to handle cases where no profile is found
+
+            debugPrint(
+              'Driver profile response for $driverId: $driverProfile',
+            ); // Debug print
+
+            if (driverProfile != null) {
+              booking['driver_phone'] =
+                  driverProfile['phone']?.toString() ?? 'N/A';
+              booking['driver_business_name'] =
+                  driverProfile['business_name']?.toString() ?? 'N/A';
+            } else {
+              booking['driver_phone'] = 'N/A'; // Default if phone not found
+              booking['driver_business_name'] =
+                  'N/A'; // Default if business name not found
+            }
+          } catch (e) {
+            debugPrint('Error fetching driver profile for ID $driverId: $e');
+            booking['driver_phone'] = 'Error'; // Indicate an error occurred
+            booking['driver_business_name'] =
+                'Error'; // Indicate an error occurred
+          }
+        } else {
+          booking['driver_phone'] = 'N/A'; // Default if driver_id is null
+          booking['driver_business_name'] =
+              'N/A'; // Default if driver_id is null
+        }
+      }
+
       setState(() {
-        bookings = List<Map<String, dynamic>>.from(response);
+        bookings = fetchedBookings;
         isLoading = false;
       });
     } catch (e) {
       setState(() => isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading bookings: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error loading bookings: $e')));
       }
     }
   }
@@ -132,9 +197,9 @@ class _RecordsPageState extends State<RecordsPage> {
     } catch (e) {
       setState(() => isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to cancel booking: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to cancel booking: $e')));
       }
     }
   }
@@ -188,7 +253,9 @@ class _RecordsPageState extends State<RecordsPage> {
   /// Otherwise, displays a list of booking cards with a `RefreshIndicator`.
   Widget _buildBody() {
     if (isLoading) {
-      return const Center(child: CircularProgressIndicator(color: Color(0xFF5A3D1F)));
+      return const Center(
+        child: CircularProgressIndicator(color: Color(0xFF5A3D1F)),
+      );
     }
 
     if (bookings.isEmpty) {
@@ -219,9 +286,15 @@ class _RecordsPageState extends State<RecordsPage> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
               ),
-              child: const Text('Refresh', style: TextStyle(color: Colors.white)),
+              child: const Text(
+                'Refresh',
+                style: TextStyle(color: Colors.white),
+              ),
             ),
           ],
         ),
@@ -332,22 +405,38 @@ class _RecordsPageState extends State<RecordsPage> {
   /// Builds a `Card` widget to display individual booking details.
   ///
   /// Parses and formats booking time, departure time, and total cost.
-  /// Includes a "Cancel" button if the booking status is 'pending'.
+  /// Always includes a "Cancel" button.
   Widget _buildBookingCard(Map<String, dynamic> booking) {
     try {
       final bookingTime =
-          booking['booking_time'] != null ? DateTime.tryParse(booking['booking_time']) ?? DateTime.now() : DateTime.now();
+          booking['booking_time'] != null
+              ? DateTime.tryParse(booking['booking_time']) ?? DateTime.now()
+              : DateTime.now();
 
       final departureTime =
-          booking['departure_time'] != null ? DateTime.tryParse(booking['departure_time']) : null;
+          booking['departure_time'] != null
+              ? DateTime.tryParse(booking['departure_time'])
+              : null;
 
       final formattedBookingDate = DateFormat('MMM d, y').format(bookingTime);
       final formattedBookingTime = DateFormat('h:mm a').format(bookingTime);
       final formattedDeparture =
-          departureTime != null ? DateFormat('MMM d, h:mm a').format(departureTime) : 'Not specified';
+          departureTime != null
+              ? DateFormat('MMM d, h:mm a').format(departureTime)
+              : 'Not specified';
 
       final price =
-          booking['total_cost'] != null ? NumberFormat.currency(symbol: '\$').format(booking['total_cost']) : '\$0.00';
+          booking['total_cost'] != null
+              ? NumberFormat.currency(
+                symbol: 'K ',
+              ).format(booking['total_cost'])
+              : 'K 0.00';
+
+      final driverPhone =
+          booking['driver_phone']?.toString() ?? 'N/A'; // Get driver phone
+      final driverBusinessName =
+          booking['driver_business_name']?.toString() ??
+          'N/A'; // Get driver business name
 
       return Container(
         margin: const EdgeInsets.only(bottom: 16),
@@ -355,6 +444,7 @@ class _RecordsPageState extends State<RecordsPage> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
           boxShadow: const [
+            // Corrected: Removed extra 'box' keyword
             BoxShadow(
               color: Colors.black26,
               blurRadius: 10,
@@ -399,6 +489,13 @@ class _RecordsPageState extends State<RecordsPage> {
                 ],
               ),
               const SizedBox(height: 16),
+              // Display Driver's Business Name at the top
+              _buildInfoRow(
+                Icons.business,
+                'Driver Company:',
+                driverBusinessName,
+              ),
+              const SizedBox(height: 12),
               _buildInfoRow(
                 Icons.directions_car,
                 'Vehicle Type:',
@@ -423,7 +520,14 @@ class _RecordsPageState extends State<RecordsPage> {
                 formattedDeparture,
               ),
               const SizedBox(height: 12),
-              _buildInfoRow(Icons.monetization_on, 'Total Cost:', price),
+              _buildInfoRow(
+                Icons.attach_money,
+                'Total Cost:',
+                price,
+              ), // Changed icon to Icons.attach_money
+              const SizedBox(height: 12),
+              // Display Driver's Phone Number
+              _buildInfoRow(Icons.phone, 'Driver Contact:', driverPhone),
               const SizedBox(height: 16),
               Divider(height: 1, color: Colors.grey[300]),
               const SizedBox(height: 12),
@@ -443,28 +547,29 @@ class _RecordsPageState extends State<RecordsPage> {
                       ),
                     ],
                   ),
-                  // Only show cancel button if the status is 'pending'
-                 // if ((booking['status'] ?? 'pending') == 'pending')
-                    ElevatedButton(
-                      onPressed: () => _showCancelDialog(booking['id']?.toString() ?? ''),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: Colors.red,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          side: const BorderSide(color: Colors.red),
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
+                  // The cancel button is now always displayed, regardless of status
+                  ElevatedButton(
+                    onPressed:
+                        () =>
+                            _showCancelDialog(booking['id']?.toString() ?? ''),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.red,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: const BorderSide(color: Colors.red),
                       ),
-                      child: const Text(
-                        'Cancel',
-                        style: TextStyle(fontWeight: FontWeight.bold),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
                       ),
                     ),
+                    child: const Text(
+                      'Cancel',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
                 ],
               ),
             ],
@@ -483,7 +588,9 @@ class _RecordsPageState extends State<RecordsPage> {
     if (id == null) return 'N/A';
     final idStr = id.toString();
     if (idStr.isEmpty) return 'N/A';
-    return idStr.length <= 8 ? idStr : '...${idStr.substring(idStr.length - 5)}';
+    return idStr.length <= 8
+        ? idStr
+        : '...${idStr.substring(idStr.length - 5)}';
   }
 
   /// Builds a row to display an icon, label, and value for booking information.
