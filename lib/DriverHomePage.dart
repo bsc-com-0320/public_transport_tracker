@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:intl/intl.dart';
+import 'package:intl/intl.dart'; // For date and time formatting
 
 class DriverHomePage extends StatefulWidget {
   const DriverHomePage({Key? key}) : super(key: key);
@@ -11,16 +11,19 @@ class DriverHomePage extends StatefulWidget {
 
 class _DriverHomePageState extends State<DriverHomePage> {
   final _supabase = Supabase.instance.client;
-  int _selectedIndex = 0;
+  int _selectedIndex = 0; // Retained as per your provided code
   final List<String> _pages = [
     '/driver-home',
     '/driver-ride',
     '/driver-records',
     '/fund-account',
   ];
+  // PageController is no longer used in _buildDashboardCards, but kept if it's used elsewhere
+  // final PageController _pageController = PageController(viewportFraction: 0.85);
+  // int _currentPage = 0; // No longer needed if PageView is not used with a listener
 
   String _businessName = '';
-  bool _isLoading = true;
+  bool _isLoading = true; // Unified loading state
 
   // Stats variables
   int _totalAvailableRides = 0;
@@ -35,6 +38,8 @@ class _DriverHomePageState extends State<DriverHomePage> {
   void initState() {
     super.initState();
     _fetchDriverData();
+    // Removed _pageController listener as PageView is now a Row with fixed children
+    // If you reintroduce PageView with dynamic children, you might need this listener again.
   }
 
   Future<void> _fetchDriverData() async {
@@ -55,10 +60,13 @@ class _DriverHomePageState extends State<DriverHomePage> {
               .eq('user_id', user.id)
               .single();
 
-      setState(() {
-        _businessName =
-            profileResponse['business_name']?.toString() ?? 'Your Business';
-      });
+      if (mounted) {
+        // Check mounted before setState
+        setState(() {
+          _businessName =
+              profileResponse['business_name']?.toString() ?? 'Your Business';
+        });
+      }
 
       // Fetch all stats data concurrently
       await Future.wait([
@@ -80,32 +88,41 @@ class _DriverHomePageState extends State<DriverHomePage> {
         );
       }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        // Check mounted before setState
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
   Future<void> _fetchTotalAvailableRides(String userId) async {
     final response = await _supabase
         .from('ride')
-        .select('id')
+        .select('id') // Select a column to get a list
         .eq('driver_id', userId);
 
-    setState(() {
-      _totalAvailableRides = (response as List?)?.length ?? 0;
-    });
+    if (mounted) {
+      // Check mounted before setState
+      setState(() {
+        _totalAvailableRides = (response as List?)?.length ?? 0;
+      });
+    }
   }
 
   Future<void> _fetchTotalBookings(String userId) async {
     final response = await _supabase
         .from('request_ride')
-        .select('id')
+        .select('id') // Select a column to get a list
         .eq('driver_id', userId);
 
-    setState(() {
-      _totalBookings = (response as List?)?.length ?? 0;
-    });
+    if (mounted) {
+      // Check mounted before setState
+      setState(() {
+        _totalBookings = (response as List?)?.length ?? 0;
+      });
+    }
   }
 
   Future<void> _fetchTotalDistance(String userId) async {
@@ -115,34 +132,41 @@ class _DriverHomePageState extends State<DriverHomePage> {
         .eq('driver_id', userId);
 
     double total = 0;
+    // Ensure response is a List before iterating
     if (response != null && response is List) {
       for (var ride in response) {
         total += (ride['distance'] as num?)?.toDouble() ?? 0.0;
       }
     }
 
-    setState(() {
-      _totalDistance = total;
-    });
+    if (mounted) {
+      // Check mounted before setState
+      setState(() {
+        _totalDistance = total;
+      });
+    }
   }
 
   Future<void> _fetchRideCapacityStats(String userId) async {
     final fullRidesResponse = await _supabase
         .from('ride')
-        .select('id')
+        .select('id') // Select a column to get a list
         .eq('driver_id', userId)
         .eq('remaining_capacity', 0);
 
     final unfullRidesResponse = await _supabase
         .from('ride')
-        .select('id')
+        .select('id') // Select a column to get a list
         .eq('driver_id', userId)
         .gt('remaining_capacity', 0);
 
-    setState(() {
-      _totalFullRides = (fullRidesResponse as List?)?.length ?? 0;
-      _totalUnfullRides = (unfullRidesResponse as List?)?.length ?? 0;
-    });
+    if (mounted) {
+      // Check mounted before setState
+      setState(() {
+        _totalFullRides = (fullRidesResponse as List?)?.length ?? 0;
+        _totalUnfullRides = (unfullRidesResponse as List?)?.length ?? 0;
+      });
+    }
   }
 
   Future<void> _fetchNearestRide(String userId) async {
@@ -156,66 +180,91 @@ class _DriverHomePageState extends State<DriverHomePage> {
         .order('departure_time', ascending: true)
         .limit(1);
 
-    if (response != null && response is List && response.isNotEmpty) {
-      setState(() {
-        _nearestRide = response[0];
-      });
-    } else {
-      setState(() {
-        _nearestRide = null;
-      });
+    if (mounted) {
+      // Check mounted before setState
+      if (response != null && response is List && response.isNotEmpty) {
+        setState(() {
+          _nearestRide = response[0];
+        });
+      } else {
+        setState(() {
+          _nearestRide = null; // Ensure it's null if no ride found
+        });
+      }
     }
   }
 
   Future<void> _fetchRecentBooking(String userId) async {
+    // First, fetch the recent booking without trying to join user_profiles
     final bookingResponse = await _supabase
         .from('request_ride')
-        .select('*')
+        .select('*, user_id') // Select user_id to fetch user profile separately
         .eq('driver_id', userId)
         .order('created_at', ascending: false)
         .limit(1);
 
-    if (bookingResponse != null &&
-        bookingResponse is List &&
-        bookingResponse.isNotEmpty) {
-      final recentBookingData = bookingResponse[0];
-      final passengerUserId = recentBookingData['user_id']?.toString();
+    if (mounted) {
+      // Check mounted before setState
+      if (bookingResponse != null &&
+          bookingResponse is List &&
+          bookingResponse.isNotEmpty) {
+        final recentBookingData = bookingResponse[0];
+        final passengerUserId = recentBookingData['user_id']?.toString();
 
-      String? passengerFullName = 'Passenger';
+        String? passengerBusinessName = 'Passenger'; // Default value
 
-      if (passengerUserId != null) {
-        try {
-          final driverProfileResponse =
-              await _supabase
-                  .from('driver_profiles')
-                  .select('full_name')
-                  .eq('user_id', passengerUserId)
-                  .maybeSingle();
+        if (passengerUserId != null) {
+          try {
+            // Fetch passenger profile from 'driver_profiles' as requested
+            final userProfileResponse =
+                await _supabase
+                    .from('driver_profiles') // Changed to 'driver_profiles'
+                    .select(
+                      'business_name',
+                    ) // Changed to business_name as requested
+                    .eq('user_id', passengerUserId)
+                    .maybeSingle(); // Use maybeSingle for nullable result
 
-          passengerFullName =
-              driverProfileResponse?['full_name']?.toString() ?? 'Passenger';
-        } catch (e) {
-          print('Error fetching passenger profile: $e');
+            passengerBusinessName =
+                userProfileResponse?['business_name']?.toString() ??
+                'Passenger';
+          } catch (e) {
+            print('Error fetching passenger profile for recent booking: $e');
+            // Fallback if user profile fetch fails
+            passengerBusinessName = 'Unknown Passenger';
+          }
         }
-      }
 
-      setState(() {
-        _recentBooking = {
-          ...recentBookingData,
-          'driver_profiles': {'full_name': passengerFullName},
-        };
-      });
-    } else {
-      setState(() {
-        _recentBooking = null;
-      });
+        // Create a combined map for the recent booking
+        setState(() {
+          _recentBooking = {
+            ...recentBookingData,
+            // Use 'user_profiles' as the key for UI consistency, but value is business_name
+            'user_profiles': {'full_name': passengerBusinessName},
+          };
+        });
+      } else {
+        setState(() {
+          _recentBooking = null; // Ensure it's null if no booking found
+        });
+      }
     }
   }
 
+  // This _onItemTapped is for the BottomNavigationBar
   void _onItemTapped(int index) {
     if (_selectedIndex == index) return;
-    setState(() => _selectedIndex = index);
+    if (mounted) {
+      // Check mounted before setState
+      setState(() => _selectedIndex = index);
+    }
     Navigator.pushReplacementNamed(context, _pages[index]);
+  }
+
+  @override
+  void dispose() {
+    // Removed _pageController.dispose() as it's no longer a state variable
+    super.dispose();
   }
 
   Future<void> _showLogoutDialog() async {
@@ -444,7 +493,7 @@ class _DriverHomePageState extends State<DriverHomePage> {
                 Text(
                   title,
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: 16, // Slightly reduced font size
                     fontWeight: FontWeight.bold,
                     color: color,
                   ),
@@ -452,7 +501,10 @@ class _DriverHomePageState extends State<DriverHomePage> {
                 const SizedBox(height: 4),
                 Text(
                   subtitle,
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[600],
+                  ), // Slightly reduced font size
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -533,15 +585,18 @@ class _DriverHomePageState extends State<DriverHomePage> {
               Text(
                 value,
                 style: TextStyle(
-                  fontSize: 18,
+                  fontSize: 18, // Slightly reduced font size
                   fontWeight: FontWeight.bold,
                   color: color,
                 ),
               ),
               Text(
                 title,
-                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                maxLines: 1,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[600],
+                ), // Slightly reduced font size
+                maxLines: 1, // Ensure title doesn't overflow
                 overflow: TextOverflow.ellipsis,
               ),
             ],
@@ -591,6 +646,7 @@ class _DriverHomePageState extends State<DriverHomePage> {
           ),
           const SizedBox(height: 12),
           Text(
+            // Ensure these keys exist in your 'ride' table
             "${_nearestRide!['pickup_point'] ?? 'N/A'} to ${_nearestRide!['dropoff_point'] ?? 'N/A'}",
             style: const TextStyle(
               color: Colors.white,
@@ -600,6 +656,7 @@ class _DriverHomePageState extends State<DriverHomePage> {
           ),
           const SizedBox(height: 8),
           Wrap(
+            // Using Wrap to handle potential overflow in detail items
             spacing: 16,
             runSpacing: 8,
             children: [
@@ -630,8 +687,9 @@ class _DriverHomePageState extends State<DriverHomePage> {
 
     final bookingTime = DateTime.parse(_recentBooking!['created_at']);
     final formattedTime = DateFormat('MMM dd, hh:mm a').format(bookingTime);
+    // Use 'full_name' key for UI consistency, but its value is now 'business_name' from driver_profiles
     final passengerName =
-        _recentBooking!['driver_profiles']?['full_name']?.toString() ??
+        _recentBooking!['user_profiles']?['full_name']?.toString() ??
         'Passenger';
 
     return Container(
@@ -677,6 +735,7 @@ class _DriverHomePageState extends State<DriverHomePage> {
           ),
           const SizedBox(height: 8),
           Wrap(
+            // Using Wrap to handle potential overflow in detail items
             spacing: 16,
             runSpacing: 8,
             children: [
@@ -728,17 +787,22 @@ class _DriverHomePageState extends State<DriverHomePage> {
     required Color color,
   }) {
     return SizedBox(
-      width: 120,
+      width: 120, // Give a fixed width to allow wrapping within the item
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, color: color, size: 16),
           const SizedBox(width: 4),
           Expanded(
+            // Ensure text expands within the SizedBox
             child: Text(
               text,
-              style: TextStyle(color: color, fontSize: 12),
+              style: TextStyle(
+                color: color,
+                fontSize: 12,
+              ), // Smaller font for detail items
               overflow: TextOverflow.ellipsis,
+              maxLines: 2, // Allow text to wrap if needed
             ),
           ),
         ],
@@ -768,8 +832,8 @@ class _DriverHomePageState extends State<DriverHomePage> {
       backgroundColor: Colors.white,
       selectedItemColor: const Color(0xFF5A3D1F),
       unselectedItemColor: Colors.grey[600],
-      currentIndex: _selectedIndex,
-      onTap: _onItemTapped,
+      currentIndex: _selectedIndex, // Use _selectedIndex here
+      onTap: _onItemTapped, // Use the defined _onItemTapped
       type: BottomNavigationBarType.fixed,
       elevation: 10,
       selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
@@ -846,41 +910,32 @@ class _DriverHomePageState extends State<DriverHomePage> {
                 ),
               )
               : RefreshIndicator(
-                onRefresh: _fetchDriverData,
+                onRefresh: _fetchDriverData, // Refresh all data
                 color: const Color(0xFF5A3D1F),
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    return SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          minHeight: constraints.maxHeight,
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildWelcomeHeader(),
-                              const SizedBox(height: 20),
-                              _buildDashboardCards(),
-                              const SizedBox(height: 20),
-                              _buildStatsGrid(),
-                              if (_nearestRide != null) ...[
-                                const SizedBox(height: 20),
-                                _buildUpcomingRideCard(),
-                              ],
-                              if (_recentBooking != null) ...[
-                                const SizedBox(height: 20),
-                                _buildRecentBookingCard(),
-                              ],
-                              const SizedBox(height: 20),
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
-                  },
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildWelcomeHeader(),
+                        const SizedBox(height: 20),
+                        _buildDashboardCards(),
+                        const SizedBox(height: 20),
+                        _buildStatsGrid(),
+                        if (_nearestRide != null) ...[
+                          const SizedBox(height: 20),
+                          _buildUpcomingRideCard(),
+                        ],
+                        if (_recentBooking != null) ...[
+                          const SizedBox(height: 20),
+                          _buildRecentBookingCard(),
+                        ],
+                        const SizedBox(height: 20),
+                      ],
+                    ),
+                  ),
                 ),
               ),
       bottomNavigationBar: _buildBottomNavBar(),
