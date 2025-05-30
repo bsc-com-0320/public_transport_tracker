@@ -1,84 +1,74 @@
-// main.dart
 import 'package:flutter/material.dart';
-import 'EditProfilePage.dart';
-import 'OrderPage.dart';
-import 'CheckPage.dart';
-import 'AccountsPage.dart';
+import 'package:public_transport_tracker/AccountsPage.dart';
+import 'package:public_transport_tracker/AuthChecker.dart';
+import 'package:public_transport_tracker/DriverAddRide.dart';
+import 'package:public_transport_tracker/DriverFundAccountPage.dart';
+import 'package:public_transport_tracker/DriverHomePage.dart';
+import 'package:public_transport_tracker/DriverRecords.dart';
+import 'package:public_transport_tracker/LoginPage.dart';
+import 'package:public_transport_tracker/SignUpPage.dart';
+import 'package:public_transport_tracker/forgot_password_page.dart';
+import 'package:public_transport_tracker/profile_page.dart';
+import 'package:public_transport_tracker/verify_email_page.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-void main() {
+// Use prefixes for ambiguous imports
+import 'package:public_transport_tracker/homepage.dart' as app_home; // For your general user home page
+
+import 'RecordsPage.dart';
+import 'OrderPage.dart';
+import 'SFundAccountPage.dart';
+import 'map_screen.dart'; // Make sure this file exists
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Supabase.initialize(
+    url: 'https://oilotmwaixynjaupkucd.supabase.co',
+    anonKey:
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9pbG90bXdhaXh5bmphdXBrdWNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI4MzMyMzcsImV4cCI6MjA1ODQwOTIzN30.iQcQ1FxZz5jollXQgkAflSuIUFoPHgfbc6_L8c66QwM',
+  );
+
   runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
+  final _supabase = Supabase.instance.client;
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      debugShowCheckedModeBanner: false,
       title: 'Public Transport Tracker',
-      theme: ThemeData(
-        primarySwatch: Colors.brown,
-        scaffoldBackgroundColor: Color(0xFFF5F5DC),
-      ),
-      initialRoute: '/',
+      debugShowCheckedModeBanner: false,
+      initialRoute: '/auth-check',
       routes: {
-        '/': (context) => MainNavigationPage(),
+        '/login': (context) => SignInPage(),
+        '/signup': (context) => SignUpPage(),
+        '/verify-email': (context) => VerifyEmailPage(),
+        // Use the prefixed names here
+        '/home': (context) => app_home.HomePage(), // This is your general user home page
+        '/records': (context) => RecordsPage(),
         '/order': (context) => OrderPage(),
-        '/edit-profile': (context) => EditProfilePage(),
-        '/check': (context) => CheckPage(),
-        '/accounts': (context) => AccountsPage(),
+        '/map': (context) => MapScreen(),
+        '/account': (context) => AccountsPage(),
+        '/forgot-password': (context) => const ForgotPasswordPage(),
+        '/profile': (context) => const ProfilePage(),
+        '/auth-check': (context) => const AuthChecker(),
+        '/driver-home': (context) => DriverHomePage(),
+        '/driver-records': (context) => DriverRecordsPage(),
+        '/driver-ride': (context) => DriverAddRide(),
+        '/driver-fund-account': (context) => DriverFundAccountPage(),
+         '/passenger-fund-account': (context) => SFundAccountPage(),
       },
-    );
-  }
-}
-
-class MainNavigationPage extends StatefulWidget {
-  @override
-  _MainNavigationPageState createState() => _MainNavigationPageState();
-}
-
-class _MainNavigationPageState extends State<MainNavigationPage> {
-  int _currentIndex = 0;
-
-  final List<Widget> _pages = [
-    OrderPage(),
-    CheckPage(),
-    AccountsPage(),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: _pages[_currentIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        backgroundColor: Color(0xFF8B5E3B),
-        selectedItemColor: Colors.white,
-        unselectedItemColor: Colors.white70,
-        items: [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.directions_bus),
-            label: 'Order',
+      onUnknownRoute: (settings) {
+        return MaterialPageRoute(
+          builder: (context) => Scaffold(
+            body: Center(
+              child: Text('Route ${settings.name} not found'),
+            ),
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.receipt),
-            label: 'History',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.account_balance_wallet),
-            label: 'Account',
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: Color(0xFF5A3D1F),
-        child: Icon(Icons.person),
-        onPressed: () => Navigator.pushNamed(context, '/edit-profile'),
-      ),
+        );
+      },
     );
   }
 }
