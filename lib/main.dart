@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:public_transport_tracker/AccountsPage.dart';
 import 'package:public_transport_tracker/CheckPage.dart';
+import 'package:public_transport_tracker/DriverFundAccountPage.dart';
 import 'package:public_transport_tracker/EditProfilePage.dart';
 import 'package:public_transport_tracker/GPSPage.dart';
 import 'package:public_transport_tracker/OrderPage.dart';
 import 'package:public_transport_tracker/RidesPage.dart';
+import 'package:public_transport_tracker/SFundAccountPage.dart';
 import 'package:public_transport_tracker/map_screen.dart';
+import 'package:public_transport_tracker/payment_webview_page.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'Homepage.dart';
 import 'LoginPage.dart';
@@ -50,6 +53,12 @@ class MyApp extends StatelessWidget {
          '/editprofile': (context) => EditProfilePage(),
          '/gps': (context) => GPSPage(),
          '/map': (context) => MapScreen(),
+         '/driverfundaccount': (context) => DriverFundAccountPage(),
+         '/paymentwebview': (context) => PaymentWebViewPage(paymentUrl: '',),
+         '/sfundaccount': (context) => SFundAccountPage(),
+          
+          
+          
           
          
          
