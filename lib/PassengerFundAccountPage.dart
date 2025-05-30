@@ -40,19 +40,32 @@ class _SFundAccountPageState extends State<SFundAccountPage> {
     try {
       final user = Supabase.instance.client.auth.currentUser;
       if (user != null) {
+        // Changed .single() to .maybeSingle() to handle cases where no profile exists.
+        // .maybeSingle() returns null if no row is found, preventing the PGRST116 error.
         final response =
             await Supabase.instance.client
                 .from('passenger_profiles') // Confirmed table name
                 .select('full_name, phone') // Confirmed column names
                 .eq('user_id', user.id)
-                .single();
+                .maybeSingle(); // <--- IMPORTANT CHANGE: Use maybeSingle()
 
         if (mounted) {
           setState(() {
-            // Access 'full_name' and 'phone' from the response
-            _fullName = (response['full_name']?.toString() ?? 'Name not found');
-            _phoneNumber = (response['phone']?.toString() ?? 'Phone not found');
-            _isLoading = false;
+            if (response != null) {
+              // Profile found, update state with fetched data
+              _fullName =
+                  (response['full_name']?.toString() ?? 'Name not found');
+              _phoneNumber =
+                  (response['phone']?.toString() ?? 'Phone not found');
+            } else {
+              // No profile found for the current user
+              _fullName = 'No profile found';
+              _phoneNumber = 'N/A';
+              _errorMessage =
+                  'No user profile found. Please ensure your profile exists.';
+            }
+            _isLoading =
+                false; // Loading is complete whether a profile was found or not
           });
         }
       } else {
@@ -62,6 +75,7 @@ class _SFundAccountPageState extends State<SFundAccountPage> {
             _fullName = 'Please log in';
             _phoneNumber = 'N/A';
             _isLoading = false;
+            _errorMessage = 'No active user session. Please log in.';
           });
         }
       }
@@ -72,8 +86,9 @@ class _SFundAccountPageState extends State<SFundAccountPage> {
           _fullName = 'Failed to load name'; // More generic error for the field
           _phoneNumber =
               'Failed to load phone'; // More generic error for the field
-          _errorMessage = "Error: ${e.toString()}"; // Store the specific error
-          _isLoading = false;
+          _errorMessage =
+              "Error fetching profile: ${e.toString()}"; // Store the specific error
+          _isLoading = false; // Loading is complete even on error
         });
       }
       debugPrint("Error fetching profile: $e");
@@ -184,7 +199,6 @@ class _SFundAccountPageState extends State<SFundAccountPage> {
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
-          // Changed to Column to stack error message below
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
@@ -322,9 +336,9 @@ class _SFundAccountPageState extends State<SFundAccountPage> {
   }
 
   final List<String> _pages = [
-    '/home',
-    '/order',
-    '/records',
+    '/driver-home',
+    '/driver-ride',
+    '/driver-records',
     '/passenger-fund-account', // Keeping this consistent with the Canvas version
   ];
 
@@ -406,7 +420,7 @@ class _SFundAccountPageState extends State<SFundAccountPage> {
       ),
       body:
           // Show a circular progress indicator while loading user profile.
-          _isLoading && _fullName.isEmpty && _phoneNumber.isEmpty
+          _isLoading
               ? const Center(child: CircularProgressIndicator())
               : RefreshIndicator(
                 // Added RefreshIndicator

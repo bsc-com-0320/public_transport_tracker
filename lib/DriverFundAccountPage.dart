@@ -334,9 +334,9 @@ class _DriverFundAccountPageState extends State<DriverFundAccountPage> {
   }
 
   final List<String> _pages = [
-    '/home',
-    '/order',
-    '/records',
+    '/driver-home',
+    '/driver-ride',
+    '/driver-records',
     '/driver-fund-account', // Corrected path for consistency
   ];
 
@@ -365,9 +365,9 @@ class _DriverFundAccountPageState extends State<DriverFundAccountPage> {
           label: "Home",
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.directions_bus_outlined),
-          activeIcon: Icon(Icons.directions_bus),
-          label: "Request Ride",
+          icon: Icon(Icons.add_circle_outline),
+          activeIcon: Icon(Icons.add_circle),
+          label: "Add Ride",
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.history_outlined),

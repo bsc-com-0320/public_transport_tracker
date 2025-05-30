@@ -101,16 +101,16 @@ class _DriverAddRide extends State<DriverAddRide> {
   }
 
   /// Allows the user to pick an image from the gallery.
-  Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+  //Future<void> _pickImage() async {
+   // final picker = ImagePicker();
+   // final pickedFile = await picker.pickImage(source: ImageSource.gallery);
 
-    if (pickedFile != null) {
-      setState(() {
-        _selectedImage = File(pickedFile.path);
-      });
-    }
-  }
+   // if (pickedFile != null) {
+    //  setState(() {
+      //  _selectedImage = File(pickedFile.path);
+     // });
+   // }
+  //}
 
   /// Shows a time picker and updates the departure time controller with the selected time.
   Future<void> _selectTime(BuildContext context) async {
@@ -935,66 +935,68 @@ class _DriverAddRide extends State<DriverAddRide> {
                             key: _formKey,
                             child: Column(
                               children: [
-                                // Add Photos Button
-                                GestureDetector(
-                                  onTap: _pickImage,
-                                  child: Container(
-                                    width: double.infinity,
-                                    padding: EdgeInsets.all(20),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(12),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.black26,
-                                          blurRadius: 10,
-                                          offset: Offset(0, 5),
-                                        ),
-                                      ],
-                                    ),
-                                    child: Column(
-                                      children: [
-                                        if (_selectedImage != null)
-                                          Container(
-                                            height: 120,
-                                            width: 120,
-                                            decoration: BoxDecoration(
-                                              image: DecorationImage(
-                                                image: FileImage(_selectedImage!),
-                                                fit: BoxFit.cover,
-                                              ),
-                                              borderRadius: BorderRadius.circular(8),
-                                            ),
-                                          )
-                                        else
-                                          Container(
-                                            height: 80,
-                                            width: 80,
-                                            decoration: BoxDecoration(
-                                              color: Color(0xFF8B5E3B).withOpacity(0.1),
-                                              borderRadius: BorderRadius.circular(40),
-                                            ),
-                                            child: Icon(
-                                              Icons.add_a_photo,
-                                              color: Color(0xFF5A3D1F),
-                                              size: 40,
-                                            ),
-                                          ),
-                                        SizedBox(height: 10),
-                                        Text(
-                                          _selectedImage != null
-                                              ? "Change Photo"
-                                              : "Add Photos",
-                                          style: TextStyle(
-                                            color: Color(0xFF5A3D1F),
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                                SizedBox(height: 20),
+                              //  // Add Photos Button
+                              //  GestureDetector(
+                              //    onTap: _pickImage,
+                              //    child: Container(
+                              //      width: double.infinity,
+                              //      padding: EdgeInsets.all(20),
+                              //      decoration: BoxDecoration(
+                              //        color: Colors.white,
+                              //        borderRadius: BorderRadius.circular(12),
+                              //        boxShadow: [
+                              //          BoxShadow(
+                              //            color: Colors.black26,
+                              //            blurRadius: 10,
+                              //            offset: Offset(0, 5),
+                              //          ),
+                              //        ],
+                              //      ),
+                              //      child: Column(
+                              //        children: [
+                              //          if (_selectedImage != null)
+                              //            Container(
+                              //              height: 120,
+                              //              width: 120,
+                              //              decoration: BoxDecoration(
+                              //                image: DecorationImage(
+                              //                  image: FileImage(_selectedImage!),
+                              //                  fit: BoxFit.cover,
+                              //                ),
+                              //                borderRadius: BorderRadius.circular(8),
+                              //              ),
+                              //            )
+                              //          else
+                              //            Container(
+                              //              height: 80,
+                              //              width: 80,
+                              //              decoration: BoxDecoration(
+                              //                color: Color(0xFF8B5E3B).withOpacity(0.1),
+                              //                borderRadius: BorderRadius.circular(40),
+                              //              ),
+                              //              child: Icon(
+                              //                Icons.add_a_photo,
+                              //                color: Color(0xFF5A3D1F),
+                              //                size: 40,
+                              //              ),
+                              //            ),
+                              //          SizedBox(height: 10),
+                              //          Text(
+                              //            _selectedImage != null
+                              //                ? "Change Photo"
+                              //                : "Add Photos",
+                              //            style: TextStyle(
+                              //              color: Color(0xFF5A3D1F),
+                              //              fontWeight: FontWeight.bold,
+                              //            ),
+                              //          ),
+                              //        ],
+                              //      ),
+                              //    ),
+                              //  ),
+//
+                              //  
+                              //  SizedBox(height: 20),
 
                                 // Ride Number (Numbers only)
                                 _buildInputField(
