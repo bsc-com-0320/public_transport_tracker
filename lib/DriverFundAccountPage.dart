@@ -8,15 +8,15 @@ class DriverFundAccountPage extends StatefulWidget {
   const DriverFundAccountPage({Key? key}) : super(key: key);
 
   @override
-  State<DriverFundAccountPage> createState() => _SFundAccountPageState();
+  State<DriverFundAccountPage> createState() => _DriverFundAccountPageState();
 }
 
-class _SFundAccountPageState extends State<DriverFundAccountPage> {
+class _DriverFundAccountPageState extends State<DriverFundAccountPage> {
   int _selectedIndex = 3;
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _narrationController = TextEditingController();
-  String _fullName = '';
+  String _businessName = ''; // Changed from _fullName to _businessName
   String _phoneNumber = '';
   bool _isLoading = true;
   String? _errorMessage; // New state variable to hold specific error messages
@@ -31,7 +31,7 @@ class _SFundAccountPageState extends State<DriverFundAccountPage> {
     _fetchUserProfile();
   }
 
-  // Fetches the user's full name and phone number from Supabase.
+  // Fetches the user's business name and phone number from Supabase.
   Future<void> _fetchUserProfile() async {
     setState(() {
       _errorMessage = null; // Clear any previous error messages
@@ -42,16 +42,26 @@ class _SFundAccountPageState extends State<DriverFundAccountPage> {
       if (user != null) {
         final response =
             await Supabase.instance.client
-                .from('passenger_profiles') // Confirmed table name
-                .select('full_name, phone') // Confirmed column names
-                .eq('user_id', user.id)
-                .single();
+                .from('driver_profiles') // Confirmed table name
+                .select('business_name, phone') // Confirmed column names
+                .eq('user_id', user.id) // Query by driver_id
+                .maybeSingle(); // Use maybeSingle() to handle no rows gracefully
 
         if (mounted) {
           setState(() {
-            // Access 'full_name' and 'phone' from the response
-            _fullName = (response['full_name']?.toString() ?? 'Name not found');
-            _phoneNumber = (response['phone']?.toString() ?? 'Phone not found');
+            if (response != null) {
+              // Access 'business_name' and 'phone' from the response
+              _businessName =
+                  (response['business_name']?.toString() ??
+                      'Business name not found');
+              _phoneNumber =
+                  (response['phone']?.toString() ?? 'Phone not found');
+            } else {
+              // Handle case where no driver profile is found for the user
+              _businessName = 'Driver profile not found';
+              _phoneNumber = 'N/A';
+              _errorMessage = 'No driver profile found for this user.';
+            }
             _isLoading = false;
           });
         }
@@ -59,7 +69,7 @@ class _SFundAccountPageState extends State<DriverFundAccountPage> {
         // If no user is logged in, set loading to false and provide default text
         if (mounted) {
           setState(() {
-            _fullName = 'Please log in';
+            _businessName = 'Please log in';
             _phoneNumber = 'N/A';
             _isLoading = false;
           });
@@ -69,10 +79,12 @@ class _SFundAccountPageState extends State<DriverFundAccountPage> {
       // On error, set loading to false and display error messages
       if (mounted) {
         setState(() {
-          _fullName = 'Failed to load name'; // More generic error for the field
+          _businessName =
+              'Failed to load profile'; // More generic error for the field
           _phoneNumber =
               'Failed to load phone'; // More generic error for the field
-          _errorMessage = "Error: ${e.toString()}"; // Store the specific error
+          _errorMessage =
+              "Error fetching profile: ${e.toString()}"; // Store the specific error
           _isLoading = false;
         });
       }
@@ -99,7 +111,7 @@ class _SFundAccountPageState extends State<DriverFundAccountPage> {
         );
 
         final payment = PaymentsDto(
-          fullName: _fullName,
+          fullName: _businessName, // Use _businessName for payment
           phoneNumber: _phoneNumber,
           amount: double.parse(_amountController.text),
           narration: _narrationController.text,
@@ -196,12 +208,12 @@ class _SFundAccountPageState extends State<DriverFundAccountPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        "Account",
+                        "Business Account:", // Updated text
                         style: TextStyle(color: Colors.white70, fontSize: 14),
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        _fullName, // Displays the fetched full name
+                        _businessName, // Displays the fetched business name
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 18,
@@ -325,7 +337,7 @@ class _SFundAccountPageState extends State<DriverFundAccountPage> {
     '/home',
     '/order',
     '/records',
-    'driver-fund-account', // Keeping this consistent with the Canvas version
+    '/driver-fund-account', // Corrected path for consistency
   ];
 
   // Handles navigation when a bottom navigation bar item is tapped.
@@ -406,7 +418,7 @@ class _SFundAccountPageState extends State<DriverFundAccountPage> {
       ),
       body:
           // Show a circular progress indicator while loading user profile.
-          _isLoading && _fullName.isEmpty && _phoneNumber.isEmpty
+          _isLoading && _businessName.isEmpty && _phoneNumber.isEmpty
               ? const Center(child: CircularProgressIndicator())
               : RefreshIndicator(
                 // Added RefreshIndicator
