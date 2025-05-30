@@ -100,7 +100,7 @@ class _OrderPageState extends State<OrderPage> {
     );
 
     try {
-      await supabase.from('request_ride').insert(rideData);
+      await supabase.from('test_ride').insert(rideData);
       await Future.delayed(Duration(seconds: 2));
 
       if (mounted) {

@@ -52,6 +52,7 @@ class _AccountsPageState extends State<AccountsPage> {
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: Color(0xFF8B5E3B),
+
         title: Text(title, style: TextStyle(color: Colors.white)),
         content: Text(message, style: TextStyle(color: Colors.white)),
         actions: [
@@ -67,7 +68,7 @@ class _AccountsPageState extends State<AccountsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFF5A3D1F),
+      backgroundColor: Colors.white,
       body: Padding(
         padding: EdgeInsets.all(16.0),
         child: Form(
@@ -99,7 +100,7 @@ class _AccountsPageState extends State<AccountsPage> {
                     Text(
                       "Fund account",
                       style: TextStyle(
-                          color: Colors.green,
+                          color: Colors.brown,
                           fontSize: 18,
                           fontWeight: FontWeight.bold),
                     ),
@@ -125,7 +126,7 @@ class _AccountsPageState extends State<AccountsPage> {
                     label: Text("Cancel", style: TextStyle(color: Colors.red)),
                     onPressed: _cancel,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
+                      backgroundColor: Colors.brown,
                     ),
                   ),
                   ElevatedButton(
@@ -152,12 +153,13 @@ class _AccountsPageState extends State<AccountsPage> {
       child: TextFormField(
         controller: controller,
         keyboardType: keyboardType,
-        style: TextStyle(color: Colors.white),
+        style: TextStyle(color: Colors.brown),
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: TextStyle(color: Colors.white),
+          labelStyle: TextStyle(color: Colors.green),
           filled: true,
-          fillColor: Color(0xFF8B5E3B),
+          //fillColor: Color(0xFF8B5E3B),
+          fillColor: Colors.white,
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
         ),
         validator: (value) =>
