@@ -336,9 +336,9 @@ class _SFundAccountPageState extends State<SFundAccountPage> {
   }
 
   final List<String> _pages = [
-    '/driver-home',
-    '/driver-ride',
-    '/driver-records',
+    '/home',
+    '/order',
+    '/records',
     '/passenger-fund-account', // Keeping this consistent with the Canvas version
   ];
 
