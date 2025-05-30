@@ -199,14 +199,43 @@ class _EnhancedPaymentWebViewPageState extends State<PaymentWebViewPage> {
       context: context,
       builder:
           (context) => AlertDialog(
-            title: const Text('WhatsApp Error'),
+            backgroundColor: const Color(0xFF4E342E), // Deep brown
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            title: const Text(
+              'Proceed To EasyRide',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             content: const Text(
-              'Could not open WhatsApp. Please complete the payment directly in the app.',
+              ' Thank You!',
+              style: TextStyle(
+                color: Color(0xFFD7CCC8), // Light brown-grey
+                fontSize: 16,
+              ),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text('OK'),
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  backgroundColor: Color(0xFF6D4C41), // Medium brown
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 10,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: const Text(
+                  'OK',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                ),
               ),
             ],
           ),
