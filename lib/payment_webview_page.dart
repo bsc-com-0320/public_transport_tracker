@@ -1,5 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:public_transport_tracker/server/fund_account.model.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class PaymentWebViewPage extends StatefulWidget {
   final String paymentUrl;
@@ -8,12 +13,13 @@ class PaymentWebViewPage extends StatefulWidget {
     : super(key: key);
 
   @override
-  State<PaymentWebViewPage> createState() => _PaymentWebViewPageState();
+  State<PaymentWebViewPage> createState() => _EnhancedPaymentWebViewPageState();
 }
 
-class _PaymentWebViewPageState extends State<PaymentWebViewPage> {
+class _EnhancedPaymentWebViewPageState extends State<PaymentWebViewPage> {
   late final WebViewController _controller;
   bool _isLoading = true;
+  bool _paymentCompleted = false;
 
   @override
   void initState() {
@@ -24,7 +30,6 @@ class _PaymentWebViewPageState extends State<PaymentWebViewPage> {
           ..setNavigationDelegate(
             NavigationDelegate(
               onProgress: (int progress) {
-                // Update loading state based on webview progress
                 setState(() {
                   _isLoading = progress < 100;
                 });
@@ -34,68 +39,269 @@ class _PaymentWebViewPageState extends State<PaymentWebViewPage> {
               },
               onPageFinished: (String url) {
                 debugPrint('Page finished loading: $url');
+                _handlePaymentCompletion(url);
               },
               onNavigationRequest: (NavigationRequest request) {
-                // Check for payment completion URLs to pop the page and indicate success
-                if (request.url.contains('success') ||
-                    request.url.contains('completed') ||
-                    request.url.contains('status=success')) {
-                  Navigator.pop(context, true); // Return success status
-                  return NavigationDecision
-                      .prevent; // Prevent further navigation in the webview
-                }
-                return NavigationDecision.navigate; // Allow normal navigation
+                return _handleNavigation(request);
               },
             ),
           )
           ..loadRequest(Uri.parse(widget.paymentUrl));
   }
 
+  NavigationDecision _handleNavigation(NavigationRequest request) {
+    debugPrint('Navigation to: ${request.url}');
+
+    // Handle WhatsApp URL scheme error
+    if (request.url.startsWith('whatsapp://')) {
+      _showWhatsAppError();
+      return NavigationDecision.prevent;
+    }
+
+    // Handle payment completion
+    if (request.url.contains('success') ||
+        request.url.contains('completed') ||
+        request.url.contains('status=success')) {
+      if (!_paymentCompleted) {
+        _paymentCompleted = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _showPaymentSuccessDialog();
+        });
+      }
+      return NavigationDecision.prevent;
+    }
+
+    return NavigationDecision.navigate;
+  }
+
+  void _handlePaymentCompletion(String url) {
+    if (url.contains('success') ||
+        url.contains('completed') ||
+        url.contains('status=success')) {
+      if (!_paymentCompleted) {
+        _paymentCompleted = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _showPaymentSuccessDialog();
+        });
+      }
+    }
+  }
+
+  void _showPaymentSuccessDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder:
+          (context) => AlertDialog(
+            backgroundColor: const Color(0xFF5A3D1F),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: const Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.green, size: 28),
+                SizedBox(width: 10),
+                Text(
+                  'Payment Successful!',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Your payment has been processed successfully',
+                  style: TextStyle(color: Colors.white70),
+                ),
+                const SizedBox(height: 16),
+                _buildDetailRow('Paid To:', 'Public Transport Tracker'),
+                _buildDetailRow('Amount:', 'MWK 500.00'),
+                _buildDetailRow('Date & Time:', _getFormattedDateTime()),
+                const SizedBox(height: 8),
+                const LinearProgressIndicator(
+                  value: 1.0,
+                  backgroundColor: Colors.grey,
+                  color: Colors.green,
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Redirecting...',
+                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context); // Close dialog
+                  Navigator.pop(context, true); // Return to previous screen
+                },
+                child: const Text('OK', style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white70,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(value, style: const TextStyle(color: Colors.white)),
+        ],
+      ),
+    );
+  }
+
+  String _getFormattedDateTime() {
+    final now = DateTime.now();
+    return '${now.day}th ${_getMonthName(now.month)} ${now.year} at ${_formatTime(now)}';
+  }
+
+  String _getMonthName(int month) {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return months[month - 1];
+  }
+
+  String _formatTime(DateTime time) {
+    return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+  }
+
+  void _showWhatsAppError() {
+    showDialog(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('WhatsApp Error'),
+            content: const Text(
+              'Could not open WhatsApp. Please complete the payment directly in the app.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        // Enhanced title for better visibility and style
         title: const Row(
-          mainAxisAlignment:
-              MainAxisAlignment.center, // Center the title and icon
-          mainAxisSize: MainAxisSize.min, // Keep the row size minimal
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.payment, color: Colors.white, size: 28), // Payment icon
-            SizedBox(width: 10), // Spacing between icon and text
+            Icon(Icons.payment, color: Colors.white, size: 28),
+            SizedBox(width: 10),
             Text(
               'Complete Payment',
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
-                fontSize: 22, // Increased font size
-                letterSpacing: 1.2, // Added letter spacing for style
+                fontSize: 22,
               ),
             ),
           ],
         ),
-        centerTitle: true, // Ensure the title is centered in the AppBar
-        backgroundColor: const Color(0xFF5A3D1F), // Consistent background color
-        elevation: 8, // Added elevation for a subtle shadow effect
+        centerTitle: true,
+        backgroundColor: const Color(0xFF5A3D1F),
+        elevation: 8,
         leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back,
-            color: Colors.white,
-          ), // Back arrow icon
-          onPressed:
-              () =>
-                  Navigator.pop(context, false), // Pop with false on back press
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context, false),
         ),
-        // Optional: Add a subtle shadow for a more premium feel
-        shadowColor: Colors.black.withOpacity(0.4),
       ),
       body: Stack(
         children: [
           WebViewWidget(controller: _controller),
-          // Show a circular progress indicator while the webview is loading
-          if (_isLoading) const Center(child: CircularProgressIndicator()),
+          if (_isLoading)
+            const Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF5A3D1F)),
+              ),
+            ),
         ],
       ),
     );
   }
+}
+
+// Updated Payment Service with better error handling
+class EnhancedFundAccountService {
+  final String baseUrl;
+  final SupabaseClient supabase;
+
+  EnhancedFundAccountService({required this.baseUrl, required this.supabase});
+
+  Future<PaymentResponse> processPayment(PaymentsDto dto) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/payments/pay'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(dto.toJson()),
+      );
+
+      debugPrint('Payment Response: ${response.statusCode} - ${response.body}');
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return PaymentResponse.fromJson(data);
+      } else {
+        throw PaymentException(
+          code: response.statusCode,
+          message: data['message'] ?? 'Payment processing failed',
+          details: data,
+        );
+      }
+    } catch (e) {
+      debugPrint('Payment Error: $e');
+      throw PaymentException(
+        code: 500,
+        message: 'Network error occurred',
+        details: {'error': e.toString()},
+      );
+    }
+  }
+}
+
+class PaymentException implements Exception {
+  final int code;
+  final String message;
+  final dynamic details;
+
+  PaymentException({required this.code, required this.message, this.details});
+
+  @override
+  String toString() => 'PaymentException($code): $message';
 }
