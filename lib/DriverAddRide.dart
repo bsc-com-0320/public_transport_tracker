@@ -48,7 +48,7 @@ class _DriverAddRide extends State<DriverAddRide> {
     '/driver-home',
     '/driver-ride', // This screen's route
     '/driver-records',
-    '/fund-account',
+    '/driver-fund-account',
   ];
 
   // Vehicle type dropdown options.

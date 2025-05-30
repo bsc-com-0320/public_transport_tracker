@@ -325,7 +325,7 @@ class _SFundAccountPageState extends State<SFundAccountPage> {
     '/home',
     '/order',
     '/records',
-    '/s-fund-account', // Keeping this consistent with the Canvas version
+    '/passenger-fund-account', // Keeping this consistent with the Canvas version
   ];
 
   // Handles navigation when a bottom navigation bar item is tapped.

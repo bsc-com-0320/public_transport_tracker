@@ -53,7 +53,7 @@ class _OrderPageState extends State<OrderPage> {
     '/home',
     '/order',
     '/records',
-    'passenger-fund-account',
+    '/passenger-fund-account',
   ];
 
   @override

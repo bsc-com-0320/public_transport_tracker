@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:public_transport_tracker/AccountsPage.dart';
 import 'package:public_transport_tracker/AuthChecker.dart';
 import 'package:public_transport_tracker/DriverAddRide.dart';
+import 'package:public_transport_tracker/DriverFundAccountPage.dart';
 import 'package:public_transport_tracker/DriverHomePage.dart';
 import 'package:public_transport_tracker/DriverRecords.dart';
 import 'package:public_transport_tracker/LoginPage.dart';
@@ -13,7 +14,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 // Use prefixes for ambiguous imports
 import 'package:public_transport_tracker/homepage.dart' as app_home; // For your general user home page
-import 'package:public_transport_tracker/DriverFundAccountPage.dart' as app_fund; // For your general user fund account page
 
 import 'RecordsPage.dart';
 import 'OrderPage.dart';
@@ -57,7 +57,7 @@ class MyApp extends StatelessWidget {
         '/driver-home': (context) => DriverHomePage(),
         '/driver-records': (context) => DriverRecordsPage(),
         '/driver-ride': (context) => DriverAddRide(),
-        '/driver-fund-account': (context) => app_fund.FundAccountPage(),
+        '/driver-fund-account': (context) => DriverFundAccountPage(),
          '/passenger-fund-account': (context) => SFundAccountPage(),
       },
       onUnknownRoute: (settings) {

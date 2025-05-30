@@ -17,7 +17,7 @@ class _DriverHomePageState extends State<DriverHomePage> {
     '/driver-home',
     '/driver-ride',
     '/driver-records',
-    '/fund-account',
+    '/driver-fund-account',
   ];
   // PageController is no longer used in _buildDashboardCards, but kept if it's used elsewhere
   // final PageController _pageController = PageController(viewportFraction: 0.85);

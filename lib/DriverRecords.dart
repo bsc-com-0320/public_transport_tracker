@@ -26,7 +26,7 @@ class _DriverRecordsPageState extends State<DriverRecordsPage> {
     '/driver-home',
     '/driver-ride',
     '/driver-records',
-    '/fund-account',
+    '/driver-fund-account',
   ];
 
   @override
