@@ -71,7 +71,7 @@ class _RecordsPageState extends State<RecordsPage> {
     '/home',
     '/order',
     '/records',
-    '/s-fund-account',
+    '/passenger-fund-account',
   ];
 
   @override

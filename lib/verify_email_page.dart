@@ -19,7 +19,7 @@ class VerifyEmailPage extends StatelessWidget {
             ),
             SizedBox(height: 10),
             Text(
-              'gordianmorten@gmail.com',
+              'Click the link then come back to Login',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
           ],

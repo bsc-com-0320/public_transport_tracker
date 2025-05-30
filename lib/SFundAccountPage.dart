@@ -1,10 +1,8 @@
-// File: lib/s_fund_account_page.dart (Your main page)
 import 'package:flutter/material.dart';
 import 'package:public_transport_tracker/payment_webview_page.dart';
 import 'package:public_transport_tracker/server/fund_account.model.dart';
 import 'package:public_transport_tracker/fund_account.service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:url_launcher/url_launcher.dart'; // Import url_launcher
 
 class SFundAccountPage extends StatefulWidget {
   const SFundAccountPage({Key? key}) : super(key: key);
@@ -16,29 +14,83 @@ class SFundAccountPage extends StatefulWidget {
 class _SFundAccountPageState extends State<SFundAccountPage> {
   int _selectedIndex = 3;
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _fullNameController = TextEditingController();
-  final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _narrationController = TextEditingController();
+  String _fullName = '';
+  String _phoneNumber = '';
+  bool _isLoading = true;
+  String? _errorMessage; // New state variable to hold specific error messages
 
   final FundAccountService fundService = FundAccountService(
     baseUrl: "https://unimatherapyapplication.com/publictransporttracker",
   );
 
-  void _cancel() {
-    _fullNameController.clear();
-    _phoneController.clear();
-    _amountController.clear();
-    _narrationController.clear();
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text("Form cleared")));
+  @override
+  void initState() {
+    super.initState();
+    _fetchUserProfile();
   }
 
+  // Fetches the user's full name and phone number from Supabase.
+  Future<void> _fetchUserProfile() async {
+    setState(() {
+      _errorMessage = null; // Clear any previous error messages
+      _isLoading = true; // Set loading to true when starting to fetch data
+    });
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user != null) {
+        final response =
+            await Supabase.instance.client
+                .from('passenger_profiles') // Confirmed table name
+                .select('full_name, phone') // Confirmed column names
+                .eq('user_id', user.id)
+                .single();
+
+        if (mounted) {
+          setState(() {
+            // Access 'full_name' and 'phone' from the response
+            _fullName = (response['full_name']?.toString() ?? 'Name not found');
+            _phoneNumber = (response['phone']?.toString() ?? 'Phone not found');
+            _isLoading = false;
+          });
+        }
+      } else {
+        // If no user is logged in, set loading to false and provide default text
+        if (mounted) {
+          setState(() {
+            _fullName = 'Please log in';
+            _phoneNumber = 'N/A';
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      // On error, set loading to false and display error messages
+      if (mounted) {
+        setState(() {
+          _fullName = 'Failed to load name'; // More generic error for the field
+          _phoneNumber =
+              'Failed to load phone'; // More generic error for the field
+          _errorMessage = "Error: ${e.toString()}"; // Store the specific error
+          _isLoading = false;
+        });
+      }
+      debugPrint("Error fetching profile: $e");
+    }
+  }
+
+  // Clears the amount and narration text fields.
+  void _cancel() {
+    _amountController.clear();
+    _narrationController.clear();
+  }
+
+  // Handles the payment confirmation process.
   Future<void> _confirmDeposit() async {
     if (_formKey.currentState!.validate()) {
       try {
-        // Show loading indicator
+        // Show a loading indicator while processing payment.
         showDialog(
           context: context,
           barrierDismissible: false,
@@ -47,24 +99,23 @@ class _SFundAccountPageState extends State<SFundAccountPage> {
         );
 
         final payment = PaymentsDto(
-          fullName: _fullNameController.text,
-          phoneNumber: _phoneController.text,
+          fullName: _fullName,
+          phoneNumber: _phoneNumber,
           amount: double.parse(_amountController.text),
           narration: _narrationController.text,
-          paymentMethod: "", // Update if needed
+          paymentMethod:
+              "", // This might need to be dynamically set based on user selection
           currency: "MWK",
         );
 
         final response = await fundService.processPayment(payment);
 
-        // Dismiss loading indicator
-        if (mounted) Navigator.of(context).pop();
+        // Dismiss the loading indicator.
+        if (mounted) Navigator.pop(context);
 
-        // Check if we have a checkout URL in the response
         if (response.data?.checkoutUrl != null) {
           final Uri url = Uri.parse(response.data!.checkoutUrl);
-
-          // Launch payment webview and wait for result
+          // Navigate to the web view for payment.
           final result = await Navigator.push(
             context,
             MaterialPageRoute(
@@ -72,29 +123,19 @@ class _SFundAccountPageState extends State<SFundAccountPage> {
             ),
           );
 
-          if (result == true) {
-            // Payment was successful
-            if (mounted) {
-              await _showDialog("Success", "Payment completed successfully");
-              _cancel(); // Clear form only after successful payment
-            }
-          } else {
-            // Payment was cancelled or failed
-            if (mounted) {
-              await _showDialog("Notice", "Payment was not completed");
-            }
+          // Handle the result after returning from the payment web view.
+          if (result == true && mounted) {
+            await _showDialog("Success", "Payment completed successfully");
+            _cancel(); // Clear fields on successful payment.
           }
         } else {
-          // No checkout URL case
           if (mounted) {
             await _showDialog("Success", response.message);
-            _cancel(); // Clear form only if we're not opening WebView
           }
         }
       } catch (e) {
-        // Dismiss loading indicator if still showing
-        if (mounted) Navigator.of(context).pop();
-
+        // Dismiss loading indicator and show error dialog on failure.
+        if (mounted) Navigator.pop(context);
         if (mounted) {
           await _showDialog(
             "Error",
@@ -106,17 +147,27 @@ class _SFundAccountPageState extends State<SFundAccountPage> {
     }
   }
 
+  // Displays a custom alert dialog.
   Future<void> _showDialog(String title, String message) async {
     return showDialog<void>(
       context: context,
       builder:
           (_) => AlertDialog(
-            backgroundColor: const Color(0xFF8B5E3B),
-            title: Text(title, style: const TextStyle(color: Colors.white)),
+            backgroundColor: const Color(0xFF5A3D1F),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(15),
+            ),
+            title: Text(
+              title,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             content: Text(message, style: const TextStyle(color: Colors.white)),
             actions: [
               TextButton(
-                child: const Text("OK", style: TextStyle(color: Colors.white)),
+                child: const Text("OK", style: TextStyle(color: Colors.amber)),
                 onPressed: () => Navigator.of(context).pop(),
               ),
             ],
@@ -124,69 +175,149 @@ class _SFundAccountPageState extends State<SFundAccountPage> {
     );
   }
 
-  Widget _buildTextField(
-    TextEditingController controller,
-    String label, {
-    TextInputType keyboardType = TextInputType.text,
-    String? Function(String?)? validator, // Added validator parameter
-  }) {
+  // Builds the user information card.
+  Widget _buildUserInfoCard() {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      color: const Color(0xFF5A3D1F),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          // Changed to Column to stack error message below
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.account_circle, size: 40, color: Colors.white),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "Account",
+                        style: TextStyle(color: Colors.white70, fontSize: 14),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _fullName, // Displays the fetched full name
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.phone,
+                            size: 16,
+                            color: Colors.white70,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            _phoneNumber, // Displays the fetched phone number
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            if (_errorMessage != null) // Display error message if present
+              Padding(
+                padding: const EdgeInsets.only(top: 8.0),
+                child: Text(
+                  _errorMessage!,
+                  style: const TextStyle(color: Colors.redAccent, fontSize: 12),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Builds the amount input field with styling and validation.
+  Widget _buildAmountField() {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: TextFormField(
-        controller: controller,
-        keyboardType: keyboardType,
-        style: const TextStyle(color: Colors.brown),
+        controller: _amountController,
+        keyboardType: TextInputType.number,
+        style: const TextStyle(color: Color(0xFF5A3D1F)),
         decoration: InputDecoration(
-          labelText: label,
-          labelStyle: const TextStyle(color: Colors.green),
+          labelText: "Amount (MWK)",
+          labelStyle: const TextStyle(color: Color(0xFF5A3D1F)),
+          prefixIcon: const Icon(Icons.attach_money, color: Color(0xFF5A3D1F)),
+          prefixText: "MWK ",
+          prefixStyle: const TextStyle(color: Color(0xFF5A3D1F)),
           filled: true,
           fillColor: Colors.white,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Color(0xFF5A3D1F)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Color(0xFF5A3D1F)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Color(0xFF5A3D1F), width: 2),
+          ),
         ),
-        validator:
-            validator ??
-            (value) =>
-                value == null || value.isEmpty ? "Please enter $label" : null,
+        validator: (value) {
+          if (value == null || value.isEmpty) {
+            return "Please enter an amount";
+          }
+          final amount = double.tryParse(value);
+          if (amount == null) {
+            return "Please enter a valid number";
+          }
+          if (amount < 500) {
+            return "Minimum amount is MWK 500";
+          }
+          return null;
+        },
       ),
     );
   }
 
-  Widget _buildPaymentOption(String title, String imageUrl) {
+  // Builds the narration input field with styling.
+  Widget _buildNarrationField() {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10.0),
-      child: Row(
-        children: [
-          Image.network(
-            imageUrl,
-            width: 30,
-            height: 30,
-            errorBuilder: (context, error, stackTrace) {
-              return const Icon(
-                Icons.broken_image,
-                color: Colors.grey,
-                size: 30,
-              );
-            },
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: TextFormField(
+        controller: _narrationController,
+        style: const TextStyle(color: Color(0xFF5A3D1F)),
+        decoration: InputDecoration(
+          labelText: "Narration (Optional)",
+          labelStyle: const TextStyle(color: Color(0xFF5A3D1F)),
+          prefixIcon: const Icon(Icons.note, color: Color(0xFF5A3D1F)),
+          filled: true,
+          fillColor: Colors.white,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Color(0xFF5A3D1F)),
           ),
-          const SizedBox(width: 10),
-          Text(
-            title,
-            style: const TextStyle(
-              color: Colors.black,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Color(0xFF5A3D1F)),
           ),
-        ],
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Color(0xFF5A3D1F), width: 2),
+          ),
+        ),
       ),
-    );
-  }
-
-  Widget _buildDivider() {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 5),
-      height: 2,
-      color: Colors.yellow,
     );
   }
 
@@ -194,17 +325,17 @@ class _SFundAccountPageState extends State<SFundAccountPage> {
     '/home',
     '/order',
     '/records',
-    '/s-fund-account',
+    '/s-fund-account', // Keeping this consistent with the Canvas version
   ];
 
-  final SupabaseClient supabase = Supabase.instance.client;
-
+  // Handles navigation when a bottom navigation bar item is tapped.
   void _onItemTapped(int index) {
     if (_selectedIndex == index) return;
     setState(() => _selectedIndex = index);
     Navigator.pushReplacementNamed(context, _pages[index]);
   }
 
+  // Builds the bottom navigation bar.
   BottomNavigationBar _buildBottomNavBar() {
     return BottomNavigationBar(
       backgroundColor: Colors.white,
@@ -243,7 +374,7 @@ class _SFundAccountPageState extends State<SFundAccountPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50], // Theme background color
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
         automaticallyImplyLeading: false,
         backgroundColor: Colors.white,
@@ -262,137 +393,116 @@ class _SFundAccountPageState extends State<SFundAccountPage> {
               Icons.notifications_none,
               color: Color(0xFF5A3D1F),
             ),
-            onPressed: () {
-              // Notification action (currently empty)
-            },
+            onPressed: () {},
           ),
           Padding(
             padding: const EdgeInsets.only(right: 10),
-            child: GestureDetector(
-              onTap: () {
-                // Profile menu action (currently empty)
-              },
-              child: CircleAvatar(
-                backgroundColor: const Color(0xFF5A3D1F).withOpacity(0.1),
-                child: const Icon(Icons.person, color: Color(0xFF5A3D1F)),
-              ),
+            child: CircleAvatar(
+              backgroundColor: const Color(0xFF5A3D1F).withOpacity(0.1),
+              child: const Icon(Icons.person, color: Color(0xFF5A3D1F)),
             ),
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                "Deposit Details",
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF5A3D1F),
-                ),
-              ),
-              const SizedBox(height: 15),
-              _buildTextField(_fullNameController, "Full Name"),
-              _buildTextField(
-                _phoneController,
-                "Phone Number",
-                keyboardType: TextInputType.phone,
-              ),
-              _buildTextField(
-                _amountController,
-                "Amount (MWK)",
-                keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return "Please enter an amount";
-                  }
-                  if (double.tryParse(value) == null) {
-                    return "Please enter a valid number";
-                  }
-                  if (double.parse(value) <= 0) {
-                    return "Amount must be greater than zero";
-                  }
-                  return null;
-                },
-              ),
-              _buildTextField(
-                _narrationController,
-                "Narration (Optional)",
-                validator: (value) => null,
-              ), // Narration is optional
-              const SizedBox(height: 20),
-              const Text(
-                "Payment Options",
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF5A3D1F),
-                ),
-              ),
-              const SizedBox(height: 15),
-              _buildPaymentOption(
-                "Airtel Money",
-                "https://placehold.co/30x30/000000/FFFFFF?text=AM",
-              ), // Placeholder
-              _buildDivider(),
-              _buildPaymentOption(
-                "Mpamba",
-                "https://placehold.co/30x30/000000/FFFFFF?text=MP",
-              ), // Placeholder
-              _buildDivider(),
-              _buildPaymentOption(
-                "National Bank",
-                "https://placehold.co/30x30/000000/FFFFFF?text=NB",
-              ), // Placeholder
-              _buildDivider(),
-              const SizedBox(height: 30),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: _confirmDeposit,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF5A3D1F),
-                        padding: const EdgeInsets.symmetric(vertical: 15),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
+      body:
+          // Show a circular progress indicator while loading user profile.
+          _isLoading && _fullName.isEmpty && _phoneNumber.isEmpty
+              ? const Center(child: CircularProgressIndicator())
+              : RefreshIndicator(
+                // Added RefreshIndicator
+                onRefresh:
+                    _fetchUserProfile, // Call _fetchUserProfile on swipe down
+                child: SingleChildScrollView(
+                  physics:
+                      const AlwaysScrollableScrollPhysics(), // Ensure scrollability for refresh
+                  padding: const EdgeInsets.all(16.0),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // User Info Card with Icon and potential error message
+                        _buildUserInfoCard(),
+                        const SizedBox(height: 24),
+
+                        // Amount Section with Icon
+                        const Row(
+                          children: [
+                            Icon(
+                              Icons.money,
+                              color: Color(0xFF5A3D1F),
+                              size: 24,
+                            ),
+                            SizedBox(width: 8),
+                            Text(
+                              "Enter Amount",
+                              style: TextStyle(
+                                color: Color(0xFF5A3D1F),
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                      child: const Text(
-                        "Confirm Deposit",
-                        style: TextStyle(fontSize: 18, color: Colors.white),
-                      ),
+                        const SizedBox(height: 8),
+                        _buildAmountField(),
+                        const SizedBox(height: 16),
+
+                        // Narration Section with Icon
+                        const Row(
+                          children: [
+                            Icon(
+                              Icons.edit_note,
+                              color: Color(0xFF5A3D1F),
+                              size: 24,
+                            ),
+                            SizedBox(width: 8),
+                            Text(
+                              "Add Narration (Optional)",
+                              style: TextStyle(
+                                color: Color(0xFF5A3D1F),
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        _buildNarrationField(),
+                        const SizedBox(height: 32),
+
+                        // Proceed Button with Icon
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            icon: const Icon(
+                              Icons.payment,
+                              color: Colors.white,
+                            ),
+                            label: const Text(
+                              "PROCEED TO PAYCHANGU",
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                            onPressed: _confirmDeposit,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF5A3D1F),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              elevation: 3,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(width: 15),
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: _cancel,
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFF5A3D1F),
-                        padding: const EdgeInsets.symmetric(vertical: 15),
-                        side: const BorderSide(color: Color(0xFF5A3D1F)),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      child: const Text(
-                        "Clear Form",
-                        style: TextStyle(fontSize: 18),
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ],
-          ),
-        ),
-      ),
       bottomNavigationBar: _buildBottomNavBar(),
     );
   }

@@ -13,7 +13,7 @@ class _HomePageState extends State<HomePage> {
     '/home',
     '/order',
     '/records',
-    '/s-fund-account',
+    '/passenger-fund-account',
   ];
   final PageController _pageController = PageController(viewportFraction: 0.85);
   int _currentPage = 0;

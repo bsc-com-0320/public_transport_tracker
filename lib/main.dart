@@ -57,8 +57,8 @@ class MyApp extends StatelessWidget {
         '/driver-home': (context) => DriverHomePage(),
         '/driver-records': (context) => DriverRecordsPage(),
         '/driver-ride': (context) => DriverAddRide(),
-        '/fund-account': (context) => app_fund.FundAccountPage(),
-         '/s-fund-account': (context) => SFundAccountPage(),
+        '/driver-fund-account': (context) => app_fund.FundAccountPage(),
+         '/passenger-fund-account': (context) => SFundAccountPage(),
       },
       onUnknownRoute: (settings) {
         return MaterialPageRoute(
