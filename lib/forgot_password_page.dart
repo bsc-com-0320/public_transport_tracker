@@ -28,7 +28,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     try {
       await _supabase.auth.resetPasswordForEmail(
         _emailController.text.trim(),
-        redirectTo: 'myapp://reset-password', // Your custom URL scheme
+        redirectTo: 'myapp://reset-password', 
       );
 
       setState(() => _resetSent = true);

@@ -3,7 +3,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:public_transport_tracker/ride_search_service.dart'; // Import the new service file
+import 'package:public_transport_tracker/ride_search_service.dart';
 
 class AvailableRidesPage extends StatefulWidget {
   final List<Map<String, dynamic>> availableRides;
