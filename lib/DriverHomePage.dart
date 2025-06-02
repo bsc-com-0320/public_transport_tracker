@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:intl/intl.dart'; // For date and time formatting
-import 'package:flutter/foundation.dart'; // Import for debugPrint
+import 'package:intl/intl.dart';
+import 'package:flutter/foundation.dart';
 
 class DriverHomePage extends StatefulWidget {
   const DriverHomePage({Key? key}) : super(key: key);
@@ -12,19 +12,16 @@ class DriverHomePage extends StatefulWidget {
 
 class _DriverHomePageState extends State<DriverHomePage> {
   final _supabase = Supabase.instance.client;
-  int _selectedIndex = 0; // Retained as per your provided code
+  int _selectedIndex = 0;
   final List<String> _pages = [
     '/driver-home',
     '/driver-ride',
     '/driver-records',
     '/driver-fund-account',
   ];
-  // PageController is no longer used in _buildDashboardCards, but kept if it's used elsewhere
-  // final PageController _pageController = PageController(viewportFraction: 0.85);
-  // int _currentPage = 0; // No longer needed if PageView is not used with a listener
 
   String _businessName = '';
-  bool _isLoading = true; // Unified loading state
+  bool _isLoading = true;
 
   // Stats variables
   int _totalAvailableRides = 0;
@@ -32,21 +29,16 @@ class _DriverHomePageState extends State<DriverHomePage> {
   double _totalDistance = 0;
   int _totalFullRides = 0;
   int _totalUnfullRides = 0;
-  // Removed _nearestRide as it's no longer needed
-  // Removed _recentBooking as it's no longer needed
 
-  // New state variables for ride status counts
+  // Ride status counts
   int _cancelledRides = 0;
   int _confirmedRides = 0;
   int _pendingRides = 0;
-  // Removed _inProgressRides as per your clarification
 
   @override
   void initState() {
     super.initState();
     _fetchDriverData();
-    // Removed _pageController listener as PageView is now a Row with fixed children
-    // If you reintroduce PageView with dynamic children, you might need this listener again.
   }
 
   Future<void> _fetchDriverData() async {
@@ -68,7 +60,6 @@ class _DriverHomePageState extends State<DriverHomePage> {
               .single();
 
       if (mounted) {
-        // Check mounted before setState
         setState(() {
           _businessName =
               profileResponse['business_name']?.toString() ?? 'Your Business';
@@ -81,12 +72,10 @@ class _DriverHomePageState extends State<DriverHomePage> {
         _fetchTotalBookings(user.id),
         _fetchTotalDistance(user.id),
         _fetchRideCapacityStats(user.id),
-        // Removed _fetchNearestRide(user.id)
-        // Removed _fetchRecentBooking(user.id)
-        _fetchRideStatusCounts(user.id), // Fetch new ride status counts
+        _fetchRideStatusCounts(user.id),
       ]);
     } catch (e) {
-      print('Error fetching driver data: $e');
+      debugPrint('Error fetching driver data: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -97,7 +86,6 @@ class _DriverHomePageState extends State<DriverHomePage> {
       }
     } finally {
       if (mounted) {
-        // Check mounted before setState
         setState(() {
           _isLoading = false;
         });
@@ -108,11 +96,10 @@ class _DriverHomePageState extends State<DriverHomePage> {
   Future<void> _fetchTotalAvailableRides(String userId) async {
     final response = await _supabase
         .from('ride')
-        .select('id') // Select a column to get a list
+        .select('id')
         .eq('driver_id', userId);
 
     if (mounted) {
-      // Check mounted before setState
       setState(() {
         _totalAvailableRides = (response as List?)?.length ?? 0;
       });
@@ -122,11 +109,10 @@ class _DriverHomePageState extends State<DriverHomePage> {
   Future<void> _fetchTotalBookings(String userId) async {
     final response = await _supabase
         .from('request_ride')
-        .select('id') // Select a column to get a list
+        .select('id')
         .eq('driver_id', userId);
 
     if (mounted) {
-      // Check mounted before setState
       setState(() {
         _totalBookings = (response as List?)?.length ?? 0;
       });
@@ -140,7 +126,6 @@ class _DriverHomePageState extends State<DriverHomePage> {
         .eq('driver_id', userId);
 
     double total = 0;
-    // Ensure response is a List before iterating
     if (response != null && response is List) {
       for (var ride in response) {
         total += (ride['distance'] as num?)?.toDouble() ?? 0.0;
@@ -148,7 +133,6 @@ class _DriverHomePageState extends State<DriverHomePage> {
     }
 
     if (mounted) {
-      // Check mounted before setState
       setState(() {
         _totalDistance = total;
       });
@@ -158,18 +142,17 @@ class _DriverHomePageState extends State<DriverHomePage> {
   Future<void> _fetchRideCapacityStats(String userId) async {
     final fullRidesResponse = await _supabase
         .from('ride')
-        .select('id') // Select a column to get a list
+        .select('id')
         .eq('driver_id', userId)
         .eq('remaining_capacity', 0);
 
     final unfullRidesResponse = await _supabase
         .from('ride')
-        .select('id') // Select a column to get a list
+        .select('id')
         .eq('driver_id', userId)
         .gt('remaining_capacity', 0);
 
     if (mounted) {
-      // Check mounted before setState
       setState(() {
         _totalFullRides = (fullRidesResponse as List?)?.length ?? 0;
         _totalUnfullRides = (unfullRidesResponse as List?)?.length ?? 0;
@@ -177,8 +160,6 @@ class _DriverHomePageState extends State<DriverHomePage> {
     }
   }
 
-  /// Fetches the number of cancelled, confirmed, and pending rides
-  /// for the logged-in driver from the 'request_ride' table.
   Future<void> _fetchRideStatusCounts(String userId) async {
     debugPrint('Fetching ride status counts for driver_id: $userId');
     try {
@@ -192,7 +173,6 @@ class _DriverHomePageState extends State<DriverHomePage> {
       int cancelled = 0;
       int confirmed = 0;
       int pending = 0;
-      // Removed inProgress as per your clarification
 
       if (response != null && response is List) {
         for (var booking in response) {
@@ -204,7 +184,6 @@ class _DriverHomePageState extends State<DriverHomePage> {
           } else if (status == 'pending') {
             pending++;
           }
-          // Removed 'in_progress' check
         }
       }
 
@@ -213,7 +192,6 @@ class _DriverHomePageState extends State<DriverHomePage> {
           _cancelledRides = cancelled;
           _confirmedRides = confirmed;
           _pendingRides = pending;
-          // Removed _inProgressRides from setState
         });
         debugPrint(
           'Updated ride status counts: Confirmed: $_confirmedRides, Pending: $_pendingRides, Cancelled: $_cancelledRides',
@@ -229,14 +207,9 @@ class _DriverHomePageState extends State<DriverHomePage> {
     }
   }
 
-  // Removed _fetchNearestRide method entirely
-  // Removed _fetchRecentBooking method entirely
-
-  // This _onItemTapped is for the BottomNavigationBar
   void _onItemTapped(int index) {
     if (_selectedIndex == index) return;
     if (mounted) {
-      // Check mounted before setState
       setState(() => _selectedIndex = index);
     }
     Navigator.pushReplacementNamed(context, _pages[index]);
@@ -244,7 +217,6 @@ class _DriverHomePageState extends State<DriverHomePage> {
 
   @override
   void dispose() {
-    // Removed _pageController.dispose() as it's no longer a state variable
     super.dispose();
   }
 
@@ -405,37 +377,34 @@ class _DriverHomePageState extends State<DriverHomePage> {
   }
 
   Widget _buildDashboardCards() {
-    return SizedBox(
-      height: 180,
-      child: Row(
-        children: [
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 5.0),
-              child: _buildActionCard(
-                title: "Add Ride",
-                subtitle: "Create a new ride offer",
-                icon: Icons.add_road_rounded,
-                color: const Color(0xFF8B5E3B),
-                onTap: () => Navigator.pushNamed(context, '/driver-ride'),
-              ),
+    return Row(
+      children: [
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 5.0),
+            child: _buildActionCard(
+              title: "Add Ride",
+              subtitle: "Create a new ride offer",
+              icon: Icons.add_road_rounded,
+              color: const Color(0xFF8B5E3B),
+              onTap: () => Navigator.pushNamed(context, '/driver-ride'),
             ),
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 5.0),
-              child: _buildActionCard(
-                title: "View Records",
-                subtitle: "See your bookings",
-                icon: Icons.history_rounded,
-                color: const Color(0xFF5A3D1F),
-                onTap: () => Navigator.pushNamed(context, '/driver-records'),
-              ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 5.0),
+            child: _buildActionCard(
+              title: "View Records",
+              subtitle: "See your bookings",
+              icon: Icons.history_rounded,
+              color: const Color(0xFF5A3D1F),
+              onTap: () => Navigator.pushNamed(context, '/driver-records'),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -474,7 +443,7 @@ class _DriverHomePageState extends State<DriverHomePage> {
                 Text(
                   title,
                   style: TextStyle(
-                    fontSize: 16, // Slightly reduced font size
+                    fontSize: 16,
                     fontWeight: FontWeight.bold,
                     color: color,
                   ),
@@ -482,10 +451,7 @@ class _DriverHomePageState extends State<DriverHomePage> {
                 const SizedBox(height: 4),
                 Text(
                   subtitle,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                  ), // Slightly reduced font size
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -526,7 +492,7 @@ class _DriverHomePageState extends State<DriverHomePage> {
           color: const Color(0xFF3A2A15),
         ),
         _buildStatCard(
-          title: "Ride Capacity", // Changed title for clarity
+          title: "Ride Capacity",
           value: "$_totalFullRides Full / $_totalUnfullRides Open",
           icon: Icons.people,
           color: const Color(0xFF6D4C3D),
@@ -542,7 +508,7 @@ class _DriverHomePageState extends State<DriverHomePage> {
     required Color color,
   }) {
     return Container(
-      constraints: const BoxConstraints(minHeight: 100, maxHeight: 150),
+      constraints: const BoxConstraints(minHeight: 100),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -566,18 +532,16 @@ class _DriverHomePageState extends State<DriverHomePage> {
               Text(
                 value,
                 style: TextStyle(
-                  fontSize: 18, // Slightly reduced font size
+                  fontSize: 18,
                   fontWeight: FontWeight.bold,
                   color: color,
                 ),
               ),
+              const SizedBox(height: 4),
               Text(
                 title,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[600],
-                ), // Slightly reduced font size
-                maxLines: 1, // Ensure title doesn't overflow
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
             ],
@@ -587,7 +551,6 @@ class _DriverHomePageState extends State<DriverHomePage> {
     );
   }
 
-  /// Builds a section to display the counts of rides by their status.
   Widget _buildRideStatusSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -604,8 +567,8 @@ class _DriverHomePageState extends State<DriverHomePage> {
         GridView.count(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: 2, // Display two cards per row
-          childAspectRatio: 1.5, // Adjust aspect ratio for better display
+          crossAxisCount: 2,
+          childAspectRatio: 1.5,
           crossAxisSpacing: 16,
           mainAxisSpacing: 16,
           padding: const EdgeInsets.all(0),
@@ -622,7 +585,6 @@ class _DriverHomePageState extends State<DriverHomePage> {
               icon: Icons.hourglass_empty,
               color: Colors.orange,
             ),
-            // Removed 'In Progress Rides' card
             _buildStatCard(
               title: "Cancelled Rides",
               value: _cancelledRides.toString(),
@@ -635,56 +597,10 @@ class _DriverHomePageState extends State<DriverHomePage> {
     );
   }
 
-  // Removed _buildUpcomingRideCard method entirely
-  // Removed _buildRecentBookingCard method entirely
-
-  Widget _buildRideDetailItem({required IconData icon, required String text}) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, color: Colors.white.withOpacity(0.8), size: 16),
-        const SizedBox(width: 4),
-        Text(
-          text,
-          style: TextStyle(
-            color: Colors.white.withOpacity(0.9),
-            fontSize: 14,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildBookingDetailItem({
-    required IconData icon,
-    required String text,
-    required Color color,
-  }) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, color: color, size: 16),
-        const SizedBox(width: 4),
-        Flexible( // Use Flexible to prevent overflow if text is too long
-          child: Text(
-            text,
-            style: TextStyle(
-              color: Colors.grey[700],
-              fontSize: 14,
-            ),
-            overflow: TextOverflow.ellipsis, // Add ellipsis for overflow
-          ),
-        ),
-      ],
-    );
-  }
-
-  // Removed _formatRemainingTime as it's no longer used
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50], // Light background for the whole page
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
         automaticallyImplyLeading: false,
         backgroundColor: Colors.white,
@@ -721,52 +637,53 @@ class _DriverHomePageState extends State<DriverHomePage> {
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF5A3D1F))))
-          : RefreshIndicator(
-              onRefresh: _fetchDriverData, // Refresh all data
-              color: const Color(0xFF5A3D1F),
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 20),
-                    _buildWelcomeHeader(), // Moved welcome header here
-                    const SizedBox(height: 30),
-                    _buildDashboardCards(),
-                    const SizedBox(height: 30),
-                    const Text(
-                      "Your Stats",
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF5A3D1F),
+      body:
+          _isLoading
+              ? const Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF5A3D1F)),
+                ),
+              )
+              : RefreshIndicator(
+                onRefresh: _fetchDriverData,
+                color: const Color(0xFF5A3D1F),
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 10,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 20),
+                      _buildWelcomeHeader(),
+                      const SizedBox(height: 30),
+                      _buildDashboardCards(),
+                      const SizedBox(height: 30),
+                      const Text(
+                        "Your Stats",
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF5A3D1F),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    _buildStatsGrid(),
-                    const SizedBox(height: 30),
-                    _buildRideStatusSection(), // Display ride status counts
-                    const SizedBox(height: 30),
-                    // Removed conditional rendering for _buildUpcomingRideCard()
-                    // Removed conditional rendering for _buildRecentBookingCard()
-                    Padding( // Always show this message if no specific cards are present
-                      padding: const EdgeInsets.all(20.0),
-                      child: Center(
-                      ),
-                    ),
-                  ],
+                      const SizedBox(height: 16),
+                      _buildStatsGrid(),
+                      const SizedBox(height: 30),
+                      _buildRideStatusSection(),
+                      const SizedBox(height: 30),
+                    ],
+                  ),
                 ),
               ),
-            ),
       bottomNavigationBar: BottomNavigationBar(
         backgroundColor: Colors.white,
         selectedItemColor: const Color(0xFF5A3D1F),
         unselectedItemColor: Colors.grey[600],
-        currentIndex: _selectedIndex, // Use _selectedIndex here
-        onTap: _onItemTapped, // Use the defined _onItemTapped
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
         type: BottomNavigationBarType.fixed,
         elevation: 10,
         selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
